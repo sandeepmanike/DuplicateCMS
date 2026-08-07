@@ -65,7 +65,7 @@ builder.Services.AddSingleton<DatabaseContext>();
 
 #region AutoMapper & FluentValidation
 
-builder.Services.AddAutoMapper(typeof(FacultyMappingProfile));
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>();
 
@@ -87,18 +87,23 @@ builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IFacultyRepository, FacultyRepository>();
 builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAllocationRepository>();
 
+// Department
+builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+
 // Group & Subject
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 
-// Department & Section
-builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+// Section
 builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 
-// Timetable Master Repositories
+// Timetable, Period & Room
 builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+
+// Admin
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 
 #endregion
 
@@ -113,18 +118,22 @@ builder.Services.AddScoped<IBoardService, BoardService>();
 
 builder.Services.AddScoped<IFacultyService, FacultyService>();
 
-// Timetable Master Services
-builder.Services.AddScoped<IPeriodService, PeriodService>();
-builder.Services.AddScoped<IRoomService, RoomService>();
-builder.Services.AddScoped<ITimetableService, TimetableService>();
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
 // Group & Subject
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 
-// Department & Section
-builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+// Section
 builder.Services.AddScoped<ISectionService, SectionService>();
+
+// Timetable, Period & Room
+builder.Services.AddScoped<IPeriodService, PeriodService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<ITimetableService, TimetableService>();
+
+// Admin
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 #endregion
 

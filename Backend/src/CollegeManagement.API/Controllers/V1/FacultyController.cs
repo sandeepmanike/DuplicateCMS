@@ -6,12 +6,14 @@ using CollegeManagement.API.Services;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers
 {
     [ApiController]
     [Route("api/v1/faculty")]
     [Produces("application/json")]
+    [Authorize]
     public class FacultyController : ControllerBase
     {
         private readonly IFacultyService _facultyService;
@@ -114,18 +116,6 @@ namespace CollegeManagement.API.Controllers
         {
             var (physicalPath, contentType) = await _facultyService.GetPhotoAsync(id);
             return PhysicalFile(physicalPath, contentType);
-        }
-
-        /// <summary>
-        /// 8. GET /api/v1/faculty/dropdown
-        /// Get active faculty list for dropdown assignment (Id, EmployeeId, FullName).
-        /// </summary>
-        [HttpGet("dropdown")]
-        [ProducesResponseType(typeof(List<FacultyDropdownDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetFacultyDropdown()
-        {
-            var list = await _facultyService.GetFacultyDropdownAsync();
-            return Ok(list);
         }
     }
 }

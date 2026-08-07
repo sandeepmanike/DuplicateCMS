@@ -1,4 +1,4 @@
-﻿using CollegeManagement.API.Repositories.Interfaces;
+using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.Models;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +24,13 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             var result = await _context.AcademicYears
                 .FromSqlRaw("CALL usp_GetAcademicYearById({0})", id)
+                .ToListAsync();
+            return result.FirstOrDefault();
+        }
+        public async Task<AcademicYear?> GetActiveAsync()
+        {
+            var result = await _context.AcademicYears
+                .FromSqlRaw("CALL usp_GetActiveAcademicYear()")
                 .ToListAsync();
             return result.FirstOrDefault();
         }

@@ -1,11 +1,16 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CollegeManagement.API.Models;
+using CollegeManagement.API.DTOs.Sections;
 
 namespace CollegeManagement.API.Services.Interfaces
 {
     public interface ISectionService
     {
-        Task<IEnumerable<Section>> GetActiveSectionsAsync();
+        Task<IEnumerable<SectionResponse>> GetAllSectionsAsync();
+        Task<SectionResponse?> GetSectionByIdAsync(int id);
+        Task<SectionResponse> CreateSectionAsync(CreateSectionRequest request);
+        Task<SectionResponse> UpdateSectionAsync(int id, UpdateSectionRequest request);
+        Task<bool> DeleteSectionAsync(int id);
+        Task<IEnumerable<SectionResponse>> GetSectionsByGroupAsync(int groupId);
     }
 }

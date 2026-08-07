@@ -3,11 +3,13 @@ using CollegeManagement.API.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using CollegeManagement.API.Exceptions;
 using MySqlConnector;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers
 {
     [ApiController]
     [Route("api/v1/groups")]
+    [Authorize]
     public class GroupsController : ControllerBase
     {
         private readonly IGroupRepository _groupRepository;

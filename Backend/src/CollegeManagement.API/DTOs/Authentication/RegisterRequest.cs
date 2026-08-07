@@ -17,8 +17,8 @@ namespace CollegeManagement.API.DTOs.Authentication
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [Phone]
-        [StringLength(15)]
+        // Updated line: enforces exactly 10 digits and sets custom error message
+        [RegularExpression(@"^\d{10}$", ErrorMessage = "Enter valid mobile number")]
         public string MobileNumber { get; set; } = string.Empty;
 
         [Required]

@@ -14,7 +14,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [Route("api/v1/academic-years")]
     [Produces("application/json")]
-    //[Authorize]
+    [Authorize]
     public class AcademicYearsController : ControllerBase
     {
         private readonly IAcademicYearService _service;
@@ -32,6 +32,26 @@ namespace CollegeManagement.API.Controllers.V1
             {
                 Status = true,
                 Message = "Academic years retrieved successfully.",
+                Data = result
+            });
+        }
+
+        [HttpGet("active")]
+        public async Task<ActionResult> GetActive()
+        {
+            var result = await _service.GetActiveAsync();
+            if (result == null)
+            {
+                return NotFound(new
+                {
+                    Status = false,
+                    Message = "No active academic year found."
+                });
+            }
+            return Ok(new
+            {
+                Status = true,
+                Message = "Active academic year retrieved successfully.",
                 Data = result
             });
         }

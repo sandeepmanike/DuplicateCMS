@@ -7,6 +7,7 @@ using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers.V1
 {
@@ -17,6 +18,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/boards")]
     [Produces("application/json")]
+    [Authorize]
     public class BoardController : ControllerBase
     {
         private readonly IBoardService _boardService;

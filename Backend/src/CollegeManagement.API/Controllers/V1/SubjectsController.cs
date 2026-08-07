@@ -1,12 +1,14 @@
-﻿using CollegeManagement.API.DTOs;
+using CollegeManagement.API.DTOs;
 using CollegeManagement.API.DTOs.Subject;
 using CollegeManagement.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class SubjectsController : ControllerBase
     {
         private readonly ISubjectService _service;

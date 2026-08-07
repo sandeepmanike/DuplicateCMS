@@ -27,14 +27,15 @@ namespace CollegeManagement.API.Data
         public DbSet<Board> Boards { get; set; }
         public DbSet<BoardAcademicLevel> BoardAcademicLevels { get; set; }
         public DbSet<BoardAssessment> BoardAssessments { get; set; }
+        public DbSet<Section> Sections { get; set; }
+        public DbSet<Admin> Admins { get; set; }
+        public DbSet<Student> Students { get; set; }
         public DbSet<Faculty> Faculties { get; set; }
         public DbSet<FacultySubjectAllocation> FacultySubjectAllocations { get; set; }
-        public DbSet<Section> Sections { get; set; }
         public DbSet<Department> Departments { get; set; }
         public DbSet<Period> Periods { get; set; }
         public DbSet<Room> Rooms { get; set; }
-        public DbSet<Models.Timetable.Timetable> Timetables { get; set; }
-        public DbSet<Student> Students { get; set; }
+        public DbSet<Timetable> Timetables { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +44,12 @@ namespace CollegeManagement.API.Data
             #region User
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
+                .IsUnique();
+            #endregion
+
+            #region Admin
+            modelBuilder.Entity<Admin>()
+                .HasIndex(a => a.Email)
                 .IsUnique();
             #endregion
 
@@ -469,80 +476,6 @@ namespace CollegeManagement.API.Data
                     .WithMany(at => at.BoardAssessments)
                     .HasForeignKey(ba => ba.AssessmentTypeId)
                     .OnDelete(DeleteBehavior.Cascade);
-            });
-            #endregion
-
-            #region FacultySubjectAllocation
-            modelBuilder.Entity<FacultySubjectAllocation>(entity =>
-            {
-                entity.HasKey(fsa => fsa.Id);
-
-                entity.HasOne(fsa => fsa.Faculty)
-                    .WithMany(f => f.FacultySubjectAllocations)
-                    .HasForeignKey(fsa => fsa.FacultyId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(fsa => fsa.Board)
-                    .WithMany()
-                    .HasForeignKey(fsa => fsa.BoardId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(fsa => fsa.AcademicLevel)
-                    .WithMany()
-                    .HasForeignKey(fsa => fsa.AcademicLevelId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(fsa => fsa.AcademicYear)
-                    .WithMany()
-                    .HasForeignKey(fsa => fsa.AcademicYearId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(fsa => fsa.Group)
-                    .WithMany()
-                    .HasForeignKey(fsa => fsa.GroupId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(fsa => fsa.Section)
-                    .WithMany()
-                    .HasForeignKey(fsa => fsa.SectionId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(fsa => fsa.Subject)
-                    .WithMany()
-                    .HasForeignKey(fsa => fsa.SubjectId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-            #endregion
-
-            #region Faculty
-            modelBuilder.Entity<Faculty>(entity =>
-            {
-                entity.HasKey(f => f.Id);
-                entity.HasIndex(f => f.EmployeeId).IsUnique();
-                entity.HasIndex(f => f.Email).IsUnique();
-                entity.HasIndex(f => f.Mobile).IsUnique();
-                entity.HasIndex(f => f.Aadhaar).IsUnique();
-                entity.HasIndex(f => f.Username).IsUnique();
-            });
-            #endregion
-
-            #region Timetable
-            modelBuilder.Entity<Models.Timetable.Timetable>(entity =>
-            {
-                entity.HasKey(t => t.Id);
-
-                // Anti-Clash Composite Unique Indexes
-                entity.HasIndex(t => new { t.AcademicYearId, t.SectionId, t.DayOfWeek, t.PeriodId })
-                    .IsUnique()
-                    .HasDatabaseName("IX_Timetable_Section_Slot");
-
-                entity.HasIndex(t => new { t.AcademicYearId, t.FacultyId, t.DayOfWeek, t.PeriodId })
-                    .IsUnique()
-                    .HasDatabaseName("IX_Timetable_Faculty_Slot");
-
-                entity.HasIndex(t => new { t.AcademicYearId, t.RoomId, t.DayOfWeek, t.PeriodId })
-                    .IsUnique()
-                    .HasDatabaseName("IX_Timetable_Room_Slot");
             });
             #endregion
         }
