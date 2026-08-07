@@ -91,6 +91,15 @@ builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAl
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 
+// Department & Section
+builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+builder.Services.AddScoped<ISectionRepository, SectionRepository>();
+
+// Timetable Master Repositories
+builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
+builder.Services.AddScoped<IRoomRepository, RoomRepository>();
+builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+
 #endregion
 
 #region Services
@@ -104,9 +113,18 @@ builder.Services.AddScoped<IBoardService, BoardService>();
 
 builder.Services.AddScoped<IFacultyService, FacultyService>();
 
+// Timetable Master Services
+builder.Services.AddScoped<IPeriodService, PeriodService>();
+builder.Services.AddScoped<IRoomService, RoomService>();
+builder.Services.AddScoped<ITimetableService, TimetableService>();
+
 // Group & Subject
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
+
+// Department & Section
+builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+builder.Services.AddScoped<ISectionService, SectionService>();
 
 #endregion
 

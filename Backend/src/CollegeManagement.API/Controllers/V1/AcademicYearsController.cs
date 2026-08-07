@@ -14,7 +14,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [Route("api/v1/academic-years")]
     [Produces("application/json")]
-    [Authorize]
+    //[Authorize]
     public class AcademicYearsController : ControllerBase
     {
         private readonly IAcademicYearService _service;

@@ -37,7 +37,7 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
 
             RuleFor(x => x.Mobile)
                 .NotEmpty().WithMessage("Mobile number is required.")
-                .Matches(@"^\d{10,15}$").WithMessage("Mobile number must be between 10 and 15 digits.");
+                .Matches(@"^\d{10,15}$").WithMessage("Mobile number must be between 10 and 10 to 15 digits.");
 
             RuleFor(x => x.Email)
                 .NotEmpty().WithMessage("Email address is required.")
@@ -52,9 +52,8 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
                 .NotEmpty().WithMessage("Designation is required.")
                 .MaximumLength(100).WithMessage("Designation cannot exceed 100 characters.");
 
-            RuleFor(x => x.Department)
-                .NotEmpty().WithMessage("Department is required.")
-                .MaximumLength(100).WithMessage("Department cannot exceed 100 characters.");
+            RuleFor(x => x.DepartmentId)
+                .GreaterThan(0).WithMessage("Valid Department ID is required.");
 
             RuleFor(x => x.JoiningDate)
                 .NotEmpty().WithMessage("Joining date is required.")

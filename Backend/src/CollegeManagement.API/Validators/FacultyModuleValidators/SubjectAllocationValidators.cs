@@ -10,29 +10,29 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
             RuleFor(x => x.FacultyId)
                 .GreaterThan(0).WithMessage("Valid Faculty ID is required.");
 
-            RuleFor(x => x.Board)
-                .NotEmpty().WithMessage("Board is required.")
-                .MaximumLength(100).WithMessage("Board cannot exceed 100 characters.");
+            RuleFor(x => x)
+                .Must(x => x.BoardId > 0 || !string.IsNullOrWhiteSpace(x.Board))
+                .WithMessage("Board (ID or Name) is required.");
 
-            RuleFor(x => x.AcademicYear)
-                .NotEmpty().WithMessage("Academic year is required.")
-                .MaximumLength(50).WithMessage("Academic year cannot exceed 50 characters.");
+            RuleFor(x => x)
+                .Must(x => x.AcademicLevelId > 0 || !string.IsNullOrWhiteSpace(x.AcademicLevel))
+                .WithMessage("Academic Level (ID or Name) is required.");
 
-            RuleFor(x => x.Group)
-                .NotEmpty().WithMessage("Group is required.")
-                .MaximumLength(100).WithMessage("Group cannot exceed 100 characters.");
+            RuleFor(x => x)
+                .Must(x => x.AcademicYearId > 0 || !string.IsNullOrWhiteSpace(x.AcademicYear))
+                .WithMessage("Academic Year (ID or Name) is required.");
 
-            RuleFor(x => x.AcademicLevel)
-                .NotEmpty().WithMessage("Academic level is required.")
-                .MaximumLength(50).WithMessage("Academic level cannot exceed 50 characters.");
+            RuleFor(x => x)
+                .Must(x => x.GroupId > 0 || !string.IsNullOrWhiteSpace(x.Group))
+                .WithMessage("Group (ID or Name) is required.");
 
-            RuleFor(x => x.Section)
-                .NotEmpty().WithMessage("Section is required.")
-                .MaximumLength(50).WithMessage("Section cannot exceed 50 characters.");
+            RuleFor(x => x)
+                .Must(x => x.SectionId > 0 || !string.IsNullOrWhiteSpace(x.Section))
+                .WithMessage("Section (ID or Name) is required.");
 
-            RuleFor(x => x.Subject)
-                .NotEmpty().WithMessage("Subject is required.")
-                .MaximumLength(100).WithMessage("Subject cannot exceed 100 characters.");
+            RuleFor(x => x)
+                .Must(x => x.SubjectId > 0 || !string.IsNullOrWhiteSpace(x.Subject))
+                .WithMessage("Subject (ID or Name) is required.");
         }
     }
 
@@ -40,29 +40,29 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
     {
         public UpdateSubjectAllocationDtoValidator()
         {
-            RuleFor(x => x.Board)
-                .NotEmpty().WithMessage("Board is required.")
-                .MaximumLength(100).WithMessage("Board cannot exceed 100 characters.");
+            RuleFor(x => x)
+                .Must(x => x.BoardId > 0 || !string.IsNullOrWhiteSpace(x.Board))
+                .WithMessage("Board (ID or Name) is required.");
 
-            RuleFor(x => x.AcademicYear)
-                .NotEmpty().WithMessage("Academic year is required.")
-                .MaximumLength(50).WithMessage("Academic year cannot exceed 50 characters.");
+            RuleFor(x => x)
+                .Must(x => x.AcademicLevelId > 0 || !string.IsNullOrWhiteSpace(x.AcademicLevel))
+                .WithMessage("Academic Level (ID or Name) is required.");
 
-            RuleFor(x => x.Group)
-                .NotEmpty().WithMessage("Group is required.")
-                .MaximumLength(100).WithMessage("Group cannot exceed 100 characters.");
+            RuleFor(x => x)
+                .Must(x => x.AcademicYearId > 0 || !string.IsNullOrWhiteSpace(x.AcademicYear))
+                .WithMessage("Academic Year (ID or Name) is required.");
 
-            RuleFor(x => x.AcademicLevel)
-                .NotEmpty().WithMessage("Academic level is required.")
-                .MaximumLength(50).WithMessage("Academic level cannot exceed 50 characters.");
+            RuleFor(x => x)
+                .Must(x => x.GroupId > 0 || !string.IsNullOrWhiteSpace(x.Group))
+                .WithMessage("Group (ID or Name) is required.");
 
-            RuleFor(x => x.Section)
-                .NotEmpty().WithMessage("Section is required.")
-                .MaximumLength(50).WithMessage("Section cannot exceed 50 characters.");
+            RuleFor(x => x)
+                .Must(x => x.SectionId > 0 || !string.IsNullOrWhiteSpace(x.Section))
+                .WithMessage("Section (ID or Name) is required.");
 
-            RuleFor(x => x.Subject)
-                .NotEmpty().WithMessage("Subject is required.")
-                .MaximumLength(100).WithMessage("Subject cannot exceed 100 characters.");
+            RuleFor(x => x)
+                .Must(x => x.SubjectId > 0 || !string.IsNullOrWhiteSpace(x.Subject))
+                .WithMessage("Subject (ID or Name) is required.");
         }
     }
 }

@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CollegeManagement.API.Models.Faculty
 {
@@ -50,8 +53,10 @@ namespace CollegeManagement.API.Models.Faculty
         [StringLength(100)]
         public string Designation { get; set; } = string.Empty;
 
-        [Required]
-        [StringLength(100)]
+        public int DepartmentId { get; set; }
+
+        // Populated via LEFT JOIN Departments d ON f.DepartmentId = d.DepartmentId (d.DepartmentName AS Department)
+        [NotMapped]
         public string Department { get; set; } = string.Empty;
 
         [Required]
