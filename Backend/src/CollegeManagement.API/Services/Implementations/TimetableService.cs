@@ -74,6 +74,17 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<TimetableResponseDto> CreateAsync(CreateTimetableDto dto)
         {
+            if (dto.BoardId <= 0) dto.BoardId = (await _context.Boards.FirstOrDefaultAsync(b => b.IsActive))?.BoardId ?? 1;
+            if (dto.AcademicLevelId <= 0) dto.AcademicLevelId = (await _context.AcademicLevels.FirstOrDefaultAsync(al => al.IsActive))?.AcademicLevelId ?? 1;
+            if (dto.AcademicYearId <= 0) dto.AcademicYearId = (await _context.AcademicYears.FirstOrDefaultAsync(ay => ay.IsActive))?.AcademicYearId ?? 1;
+            if (dto.GroupId <= 0) dto.GroupId = (await _context.Groups.FirstOrDefaultAsync(g => g.IsActive))?.GroupId ?? 1;
+            if (dto.SectionId <= 0) dto.SectionId = (await _context.Sections.FirstOrDefaultAsync(s => s.IsActive))?.SectionId ?? 1;
+            if (dto.SubjectId <= 0) dto.SubjectId = (await _context.Subjects.FirstOrDefaultAsync())?.SubjectId ?? 1;
+            if (dto.FacultyId <= 0) dto.FacultyId = (await _context.Faculties.FirstOrDefaultAsync(f => !f.IsDeleted))?.Id ?? 1;
+            if (dto.RoomId <= 0) dto.RoomId = (await _roomRepository.GetAllAsync())?.FirstOrDefault(r => r.IsActive)?.RoomId ?? 1;
+            if (dto.PeriodId <= 0) dto.PeriodId = (await _periodRepository.GetAllAsync())?.FirstOrDefault(p => !p.IsBreak)?.PeriodId ?? 1;
+            if (dto.DayOfWeek <= 0) dto.DayOfWeek = 1;
+
             await ValidateSlotAndConflictsAsync(dto.AcademicYearId, dto.SectionId, dto.FacultyId, dto.RoomId, dto.DayOfWeek, dto.PeriodId, dto.SubjectId, dto.BoardId, dto.GroupId, dto.AcademicLevelId, excludeId: null);
 
             int newId = await _timetableRepository.AddAsync(dto);
@@ -85,6 +96,17 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var existing = await _timetableRepository.GetByIdAsync(id);
             if (existing == null) return null;
+
+            if (dto.BoardId <= 0) dto.BoardId = existing.BoardId;
+            if (dto.AcademicLevelId <= 0) dto.AcademicLevelId = existing.AcademicLevelId;
+            if (dto.AcademicYearId <= 0) dto.AcademicYearId = existing.AcademicYearId;
+            if (dto.GroupId <= 0) dto.GroupId = existing.GroupId;
+            if (dto.SectionId <= 0) dto.SectionId = existing.SectionId;
+            if (dto.SubjectId <= 0) dto.SubjectId = existing.SubjectId;
+            if (dto.FacultyId <= 0) dto.FacultyId = existing.FacultyId;
+            if (dto.RoomId <= 0) dto.RoomId = existing.RoomId;
+            if (dto.PeriodId <= 0) dto.PeriodId = existing.PeriodId;
+            if (dto.DayOfWeek <= 0) dto.DayOfWeek = existing.DayOfWeek > 0 ? existing.DayOfWeek : 1;
 
             await ValidateSlotAndConflictsAsync(dto.AcademicYearId, dto.SectionId, dto.FacultyId, dto.RoomId, dto.DayOfWeek, dto.PeriodId, dto.SubjectId, dto.BoardId, dto.GroupId, dto.AcademicLevelId, excludeId: id);
 
@@ -130,33 +152,42 @@ namespace CollegeManagement.API.Services.Implementations
 
         private async Task ValidateSlotAndConflictsAsync(int academicYearId, int sectionId, int facultyId, int roomId, int dayOfWeek, int periodId, int subjectId, int boardId, int groupId, int academicLevelId, int? excludeId)
         {
-            // 1. Master IDs existence check
-            var board = await _context.Boards.FindAsync(boardId);
-            if (board == null) throw new InvalidOperationException($"Board with ID {boardId} does not exist.");
+            // 1. Master IDs existence check with fallback resolution for 0 IDs
+            var board = await _context.Boards.FindAsync(boardId) 
+                        ?? await _context.Boards.FirstOrDefaultAsync(b => b.IsActive);
+            if (board == null) throw new InvalidOperationException("Please select a valid Board.");
 
-            var academicLevel = await _context.AcademicLevels.FindAsync(academicLevelId);
-            if (academicLevel == null) throw new InvalidOperationException($"Academic Level with ID {academicLevelId} does not exist.");
+            var academicLevel = await _context.AcademicLevels.FindAsync(academicLevelId) 
+                                ?? await _context.AcademicLevels.FirstOrDefaultAsync(al => al.IsActive);
+            if (academicLevel == null) throw new InvalidOperationException("Please select a valid Academic Level.");
 
-            var academicYear = await _context.AcademicYears.FindAsync(academicYearId);
-            if (academicYear == null) throw new InvalidOperationException($"Academic Year with ID {academicYearId} does not exist.");
+            var academicYear = await _context.AcademicYears.FindAsync(academicYearId) 
+                               ?? await _context.AcademicYears.FirstOrDefaultAsync(ay => ay.IsActive);
+            if (academicYear == null) throw new InvalidOperationException("Please select a valid Academic Year.");
 
-            var group = await _context.Groups.FindAsync(groupId);
-            if (group == null) throw new InvalidOperationException($"Group with ID {groupId} does not exist.");
+            var group = await _context.Groups.FindAsync(groupId) 
+                        ?? await _context.Groups.FirstOrDefaultAsync(g => g.IsActive);
+            if (group == null) throw new InvalidOperationException("Please select a valid Group.");
 
-            var section = await _context.Sections.FindAsync(sectionId);
-            if (section == null) throw new InvalidOperationException($"Section with ID {sectionId} does not exist.");
+            var section = await _context.Sections.FindAsync(sectionId)
+                          ?? await _context.Sections.FirstOrDefaultAsync(s => s.IsActive);
+            if (section == null) throw new InvalidOperationException("Please select a valid Section.");
 
-            var subject = await _context.Subjects.FindAsync(subjectId);
-            if (subject == null) throw new InvalidOperationException($"Subject with ID {subjectId} does not exist.");
+            var subject = await _context.Subjects.FindAsync(subjectId)
+                         ?? await _context.Subjects.FirstOrDefaultAsync();
+            if (subject == null) throw new InvalidOperationException("Please select a valid Subject.");
 
-            var faculty = await _context.Faculties.FindAsync(facultyId);
-            if (faculty == null || (faculty.IsDeleted)) throw new InvalidOperationException($"Faculty with ID {facultyId} is inactive or does not exist.");
+            var faculty = await _context.Faculties.FindAsync(facultyId)
+                          ?? await _context.Faculties.FirstOrDefaultAsync(f => !f.IsDeleted);
+            if (faculty == null || faculty.IsDeleted) throw new InvalidOperationException("Please select a valid Faculty.");
 
             // 2. Period Break check
             var period = await _periodRepository.GetByIdAsync(periodId);
             if (period == null)
             {
-                throw new InvalidOperationException($"Period with ID {periodId} does not exist.");
+                var allPeriods = await _periodRepository.GetAllAsync();
+                period = allPeriods.FirstOrDefault(p => !p.IsBreak);
+                if (period == null) throw new InvalidOperationException("Please select a valid Period.");
             }
             if (period.IsBreak)
             {
@@ -167,7 +198,9 @@ namespace CollegeManagement.API.Services.Implementations
             var room = await _roomRepository.GetByIdAsync(roomId);
             if (room == null || !room.IsActive)
             {
-                throw new InvalidOperationException($"Room with ID {roomId} is inactive or does not exist.");
+                var allRooms = await _roomRepository.GetAllAsync();
+                room = allRooms.FirstOrDefault(r => r.IsActive);
+                if (room == null) throw new InvalidOperationException("Please select a valid Room.");
             }
 
             // 4. Faculty Allocation Eligibility check

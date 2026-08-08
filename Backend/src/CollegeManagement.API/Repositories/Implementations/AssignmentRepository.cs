@@ -37,6 +37,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             var result = await _context.Assignments
                 .FromSqlRaw(
                     "CALL sp_CreateAssignment({0},{1},{2},{3},{4},{5},{6},{7},{8},{9})",
+
                     assignment.Title,
 assignment.AcademicYearId,
 assignment.AcademicLevel,
@@ -53,6 +54,7 @@ assignment.MaximumMarks)
         public async Task UpdateAsync(Assignment assignment)
         {
             await _context.Database.ExecuteSqlRawAsync(
+
                 "CALL sp_UpdateAssignment({0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10})",
                 assignment.AssignmentId,
 assignment.Title,
@@ -65,6 +67,7 @@ assignment.Description,
 assignment.DueDate,
 assignment.Attachment,
 assignment.MaximumMarks);
+
         }
         public async Task DeleteAsync(Assignment assignment)
         {

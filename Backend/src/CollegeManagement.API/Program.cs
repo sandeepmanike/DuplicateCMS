@@ -52,11 +52,13 @@ builder.Services.AddCors(options =>
 #region Database
 
 // EF Core
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var serverVersion = new MySqlServerVersion(new Version(8, 0, 30));
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        ServerVersion.AutoDetect(
-            builder.Configuration.GetConnectionString("DefaultConnection")),
+        connectionString,
+        serverVersion,
         mySqlOptions => mySqlOptions.CommandTimeout(120)));
 
 // Dapper
@@ -102,9 +104,10 @@ builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 builder.Services.AddScoped<IStudentAdmissionRepository, StudentAdmissionRepository>();
 
-// Assignments, Exams, Results, Promotions
+// Assignments, Exams, Marks, Results, Promotions
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
+builder.Services.AddScoped<IMarksRepository, MarksRepository>();
 builder.Services.AddScoped<IResultRepository, ResultRepository>();
 builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 
@@ -142,9 +145,10 @@ builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.AddScoped<IStudentAdmissionService, StudentAdmissionService>();
 
-// Assignments, Exams, Results, Promotions, Fee
+// Assignments, Exams, Marks, Results, Promotions, Fee
 builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<IExaminationService, ExaminationService>();
+builder.Services.AddScoped<IMarksService, MarksService>();
 builder.Services.AddScoped<IResultService, ResultService>();
 builder.Services.AddScoped<IPromotionService, PromotionService>();
 builder.Services.AddScoped<IFeeService, FeeService>();
