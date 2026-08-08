@@ -1,13 +1,23 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CollegeManagement.API.Models
 {
+    [Table("Examinations")]
     public class Examination
     {
         [Key]
+        [Column("ExamId")]
         public int ExaminationId { get; set; }
+
+        [NotMapped]
+        public int ExamId
+        {
+            get => ExaminationId;
+            set => ExaminationId = value;
+        }
 
         [Required]
         [StringLength(150)]
