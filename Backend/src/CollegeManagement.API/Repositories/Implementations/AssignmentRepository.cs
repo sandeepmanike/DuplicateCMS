@@ -1,4 +1,6 @@
 using CollegeManagement.API.Data;
+using CollegeManagement.API.DTOs.Assignment;
+using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -34,33 +36,36 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             var result = await _context.Assignments
                 .FromSqlRaw(
-                    "CALL sp_CreateAssignment({0},{1},{2},{3},{4},{5},{6})",
+                    "CALL sp_CreateAssignment({0},{1},{2},{3},{4},{5},{6},{7},{8},{9})",
                     assignment.Title,
-                    assignment.AcademicYearId,
-                    assignment.AcademicLevel,
-                    assignment.SubjectId,
-                    assignment.FacultyId,
-                    assignment.Description,
-                    assignment.DueDate,
-                    assignment.Attachment,
-                    assignment.MaximumMarks)
+assignment.AcademicYearId,
+assignment.AcademicLevel,
+assignment.GroupId,
+assignment.SubjectId,
+assignment.FacultyId,
+assignment.Description,
+assignment.DueDate,
+assignment.Attachment,
+assignment.MaximumMarks)
                 .ToListAsync();
         }
 
         public async Task UpdateAsync(Assignment assignment)
         {
             await _context.Database.ExecuteSqlRawAsync(
-                "CALL sp_UpdateAssignment({0},{1},{2},{3},{4},{5},{6},{7})",
+                "CALL sp_UpdateAssignment({0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10})",
                 assignment.AssignmentId,
-                assignment.Title,
-                assignment.SubjectId,
-                assignment.FacultyId,
-                assignment.Description,
-                assignment.DueDate,
-                assignment.Attachment,
-                assignment.MaximumMarks);
+assignment.Title,
+assignment.AcademicYearId,
+assignment.AcademicLevel,
+assignment.GroupId,
+assignment.SubjectId,
+assignment.FacultyId,
+assignment.Description,
+assignment.DueDate,
+assignment.Attachment,
+assignment.MaximumMarks);
         }
-
         public async Task DeleteAsync(Assignment assignment)
         {
             await _context.Database.ExecuteSqlRawAsync(
@@ -84,6 +89,68 @@ namespace CollegeManagement.API.Repositories.Implementations
             return await _context.AssignmentSubmissions
                 .FromSqlRaw("CALL sp_GetAssignmentSubmissions({0})", assignmentId)
                 .ToListAsync();
+        }
+
+        public async Task<IEnumerable<SubjectDropdownDto>>
+GetSubjectsByGroupAsync(int groupId)
+        {
+            var groupName = await _context.Groups
+                .Where(x => x.GroupId == groupId)
+                .Select(x => x.GroupName)
+                .FirstOrDefaultAsync();
+
+            if (string.IsNullOrEmpty(groupName))
+                return new List<SubjectDropdownDto>();
+
+            return await _context.Subjects
+                .Where(x => x.Group == groupName)
+                .Select(x => new SubjectDropdownDto
+                {
+                    SubjectId = x.SubjectId,
+                    SubjectName = x.SubjectName
+                })
+                .ToListAsync();
+        }
+
+        
+
+        public async Task<IEnumerable<FacultyDropdownDto>>
+GetFacultyBySubjectAsync(
+    int subjectId,
+    int groupId,
+    int academicYearId,
+    string academicLevel)
+        {
+            var groupName = await _context.Groups
+                .Where(x => x.GroupId == groupId)
+                .Select(x => x.GroupName)
+                .FirstOrDefaultAsync();
+
+            var academicYear = await _context.AcademicYears
+                .Where(x => x.AcademicYearId == academicYearId)
+                .Select(x => x.AcademicYearName)
+                .FirstOrDefaultAsync();
+
+            var subjectName = await _context.Subjects
+                .Where(x => x.SubjectId == subjectId)
+                .Select(x => x.SubjectName)
+                .FirstOrDefaultAsync();
+
+            return await
+            (
+                from allocation in _context.FacultySubjectAllocations
+                join faculty in _context.Faculties
+                    on allocation.FacultyId equals faculty.Id
+                where allocation.Group == groupName
+                   && allocation.Subject == subjectName
+                   && allocation.AcademicYear == academicYear
+                   && allocation.AcademicLevel == academicLevel
+                select new FacultyDropdownDto
+                {
+                    Id = faculty.Id,
+                    FullName = faculty.FirstName + " " + faculty.LastName
+                }
+            ).ToListAsync();
         }
     }
 }

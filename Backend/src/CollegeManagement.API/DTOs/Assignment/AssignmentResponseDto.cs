@@ -6,19 +6,29 @@
 
         public string Title { get; set; } = string.Empty;
 
+        public int AcademicYearId { get; set; }
+
+        public string AcademicYearName { get; set; } = string.Empty;
+
+        public string AcademicLevel { get; set; } = string.Empty;
+
         public int SubjectId { get; set; }
+
+        public string SubjectName { get; set; } = string.Empty;
 
         public int FacultyId { get; set; }
 
-        public int AcademicYearId { get; set; }
-
-        public string AcademicLevel { get; set; } = string.Empty;
+        public string FacultyName { get; set; } = string.Empty;
 
         public string? Description { get; set; }
 
         public DateOnly DueDate { get; set; }
 
-        public string? Attachment { get; set; }
+        public int GroupId { get; set; }
+
+        public string GroupName { get; set; } = string.Empty;
+
+        public string? AttachmentPath { get; set; }
 
         public int MaximumMarks { get; set; }
     }

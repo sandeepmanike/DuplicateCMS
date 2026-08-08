@@ -1,4 +1,5 @@
 using CollegeManagement.API.DTOs.Assignment;
+using CollegeManagement.API.DTOs.Faculty;
 
 namespace CollegeManagement.API.Services.Interfaces
 {
@@ -17,5 +18,15 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<bool> SubmitAssignmentAsync(int assignmentId, SubmitAssignmentDto dto);
 
         Task<IEnumerable<AssignmentSubmissionResponseDto>> GetSubmissionsAsync(int assignmentId);
+
+        Task<IEnumerable<SubjectDropdownDto>>
+GetSubjectsByGroupAsync(int groupId);
+
+        Task<IEnumerable<FacultyDropdownDto>>
+        GetFacultyDropdownAsync(
+            int subjectId,
+            int groupId,
+            int academicYearId,
+            string academicLevel);
     }
 }

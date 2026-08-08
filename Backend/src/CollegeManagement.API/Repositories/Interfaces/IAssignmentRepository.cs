@@ -1,3 +1,4 @@
+using CollegeManagement.API.DTOs.Assignment;
 using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.Models;
 
@@ -18,5 +19,15 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task SubmitAssignmentAsync(AssignmentSubmission submission);
 
         Task<IEnumerable<AssignmentSubmission>> GetSubmissionsAsync(int assignmentId);
+
+        Task<IEnumerable<SubjectDropdownDto>>
+GetSubjectsByGroupAsync(int groupId);
+
+        Task<IEnumerable<FacultyDropdownDto>>
+        GetFacultyBySubjectAsync(
+            int subjectId,
+            int groupId,
+            int academicYearId,
+            string academicLevel);
     }
 }

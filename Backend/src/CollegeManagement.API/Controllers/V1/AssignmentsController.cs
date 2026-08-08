@@ -57,17 +57,18 @@ namespace CollegeManagement.API.Controllers.V1
             if (dto.Attachment != null)
             {
                 string uploadsFolder = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "uploads",
-                    "assignments");
+    Directory.GetCurrentDirectory(),
+    "wwwroot",
+    "uploads",
+    "assignments");
 
                 if (!Directory.Exists(uploadsFolder))
                 {
                     Directory.CreateDirectory(uploadsFolder);
                 }
 
-                string fileName = Guid.NewGuid().ToString()
-                    + Path.GetExtension(dto.Attachment.FileName);
+                string fileName = Guid.NewGuid().ToString() +
+                                  Path.GetExtension(dto.Attachment!.FileName);
 
                 string filePath = Path.Combine(uploadsFolder, fileName);
 
@@ -190,6 +191,31 @@ namespace CollegeManagement.API.Controllers.V1
                 Status = true,
                 Message = "Assignment submitted successfully."
             });
+        }
+
+        [HttpGet("groups/{groupId}/subjects")]
+        public async Task<IActionResult> GetSubjects(int groupId)
+        {
+            var data = await _service.GetSubjectsByGroupAsync(groupId);
+
+            return Ok(data);
+        }
+
+
+        [HttpGet("faculty-dropdown")]
+        public async Task<IActionResult> GetFaculty(
+    int subjectId,
+    int groupId,
+    int academicYearId,
+    string academicLevel)
+        {
+            var data = await _service.GetFacultyDropdownAsync(
+                subjectId,
+                groupId,
+                academicYearId,
+                academicLevel);
+
+            return Ok(data);
         }
 
         [HttpGet("{id}/submissions")]

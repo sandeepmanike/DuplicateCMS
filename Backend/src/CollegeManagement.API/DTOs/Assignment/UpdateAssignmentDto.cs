@@ -21,6 +21,8 @@ namespace CollegeManagement.API.DTOs.Assignment
 
         public DateOnly DueDate { get; set; }
 
+        public int GroupId { get; set; }
+
         public IFormFile? Attachment { get; set; }
 
         public string AttachmentPath { get; set; } = string.Empty;

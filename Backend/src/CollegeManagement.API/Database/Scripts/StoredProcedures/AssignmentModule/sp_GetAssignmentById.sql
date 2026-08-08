@@ -1,8 +1,11 @@
-DROP PROCEDURE IF EXISTS sp_GetAllAssignments;
+﻿DROP PROCEDURE IF EXISTS sp_GetAssignmentById;
 
 DELIMITER $$
 
-CREATE PROCEDURE sp_GetAllAssignments()
+CREATE PROCEDURE sp_GetAssignmentById
+(
+IN p_AssignmentId INT
+)
 BEGIN
 
 SELECT
@@ -47,7 +50,7 @@ ON s.SubjectId=a.SubjectId
 INNER JOIN Faculties f
 ON f.Id=a.FacultyId
 
-ORDER BY a.AssignmentId DESC;
+WHERE a.AssignmentId=p_AssignmentId;
 
 END$$
 

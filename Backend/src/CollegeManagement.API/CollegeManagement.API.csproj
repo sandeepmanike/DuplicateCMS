@@ -35,6 +35,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Database\Scripts\StoredProcedures\BoardManagement\" />
+	  <Folder Include="wwwroot\uploads\Submissions\" />
 	</ItemGroup>
 
 </Project>

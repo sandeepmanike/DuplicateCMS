@@ -1,4 +1,5 @@
 using CollegeManagement.API.DTOs.Assignment;
+using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
@@ -42,6 +43,7 @@ namespace CollegeManagement.API.Services.Implementations
                 FacultyId = dto.FacultyId,
                 Description = dto.Description,
                 DueDate = dto.DueDate,
+                GroupId = dto.GroupId,
                 Attachment = dto.AttachmentPath,
                 MaximumMarks = dto.MaximumMarks
             };
@@ -65,6 +67,7 @@ namespace CollegeManagement.API.Services.Implementations
             assignment.FacultyId = dto.FacultyId;
             assignment.Description = dto.Description;
             assignment.DueDate = dto.DueDate;
+            assignment.GroupId = dto.GroupId;
             assignment.MaximumMarks = dto.MaximumMarks;
 
             if (!string.IsNullOrEmpty(dto.AttachmentPath))
@@ -96,9 +99,11 @@ namespace CollegeManagement.API.Services.Implementations
             if (assignment == null)
                 return false;
 
-            string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(),
-                                                "uploads",
-                                                "submissions");
+            string uploadsFolder = Path.Combine(
+    Directory.GetCurrentDirectory(),
+    "wwwroot",
+    "uploads",
+    "submissions");
 
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
@@ -144,16 +149,51 @@ namespace CollegeManagement.API.Services.Implementations
             return new AssignmentResponseDto
             {
                 AssignmentId = assignment.AssignmentId,
+
                 Title = assignment.Title,
+
                 AcademicYearId = assignment.AcademicYearId,
+                AcademicYearName = assignment.AcademicYearName,
+
                 AcademicLevel = assignment.AcademicLevel,
+
+                GroupId = assignment.GroupId,
+                GroupName = assignment.GroupName,
+
                 SubjectId = assignment.SubjectId,
+                SubjectName = assignment.SubjectName,
+
                 FacultyId = assignment.FacultyId,
+                FacultyName = assignment.FacultyName,
+
                 Description = assignment.Description,
+
                 DueDate = assignment.DueDate,
-                Attachment = assignment.Attachment,
+
+                AttachmentPath = assignment.Attachment,
+
                 MaximumMarks = assignment.MaximumMarks
             };
+        }
+
+        public async Task<IEnumerable<SubjectDropdownDto>>
+GetSubjectsByGroupAsync(int groupId)
+        {
+            return await _repository.GetSubjectsByGroupAsync(groupId);
+        }
+
+        public async Task<IEnumerable<FacultyDropdownDto>>
+        GetFacultyDropdownAsync(
+            int subjectId,
+            int groupId,
+            int academicYearId,
+            string academicLevel)
+        {
+            return await _repository.GetFacultyBySubjectAsync(
+                subjectId,
+                groupId,
+                academicYearId,
+                academicLevel);
         }
     }
 }

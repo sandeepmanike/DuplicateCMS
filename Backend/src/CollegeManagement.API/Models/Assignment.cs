@@ -1,47 +1,61 @@
+using CollegeManagement.API.Models;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace CollegeManagement.API.Models
+[Table("Assignments")]
+public class Assignment
 {
-    [Table("Assignments")]
-    public class Assignment
-    {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public int AssignmentId { get; set; }
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public int AssignmentId { get; set; }
 
-        [Required]
-        [MaxLength(200)]
-        public string Title { get; set; } = string.Empty;
+    [Required]
+    public string Title { get; set; } = string.Empty;
 
-        [Required]
-        public int SubjectId { get; set; }
+    [Required]
+    public int AcademicYearId { get; set; }
 
-        [Required]
-        public int FacultyId { get; set; }
+    [Required]
+    public string AcademicLevel { get; set; } = string.Empty;
 
-        [Required]
-        public int AcademicYearId { get; set; }
+    [Required]
+    public int GroupId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string AcademicLevel { get; set; } = string.Empty;
+    [Required]
+    public int SubjectId { get; set; }
 
-        [MaxLength(1000)]
-        public string? Description { get; set; }
+    [Required]
+    public int FacultyId { get; set; }
 
-        public DateOnly DueDate { get; set; }
+    public string? Description { get; set; }
 
-        [Required]
-        [MaxLength(500)]
-        public string Attachment { get; set; } = string.Empty;
+    public DateOnly DueDate { get; set; }
 
-        public int MaximumMarks { get; set; }
+    public string Attachment { get; set; } = string.Empty;
 
-        public Subject? Subject { get; set; }
+    public int MaximumMarks { get; set; }
 
-        public AcademicYear? AcademicYear { get; set; }
+    [ForeignKey(nameof(AcademicYearId))]
+    public AcademicYear? AcademicYear { get; set; }
 
-        public CollegeManagement.API.Models.Faculty.Faculty? Faculty { get; set; }
-    }
+    [ForeignKey(nameof(GroupId))]
+    public Group? Group { get; set; }
+
+    [ForeignKey(nameof(SubjectId))]
+    public Subject? Subject { get; set; }
+
+    [ForeignKey(nameof(FacultyId))]
+    public CollegeManagement.API.Models.Faculty.Faculty? Faculty { get; set; }
+
+    [NotMapped]
+    public string AcademicYearName { get; set; } = string.Empty;
+
+    [NotMapped]
+    public string GroupName { get; set; } = string.Empty;
+
+    [NotMapped]
+    public string SubjectName { get; set; } = string.Empty;
+
+    [NotMapped]
+    public string FacultyName { get; set; } = string.Empty;
 }
