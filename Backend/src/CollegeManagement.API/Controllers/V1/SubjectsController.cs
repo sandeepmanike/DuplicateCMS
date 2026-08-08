@@ -1,11 +1,14 @@
 using CollegeManagement.API.DTOs;
 using CollegeManagement.API.DTOs.Subject;
 using CollegeManagement.API.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers
 {
+    /// <summary>
+    /// API controller for Subject management, handling creation, retrieval, updates, and deletion of subjects.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
@@ -21,6 +24,9 @@ namespace CollegeManagement.API.Controllers
         // ==========================
         // GET ALL SUBJECTS
         // ==========================
+        /// <summary>
+        /// Retrieves all subjects.
+        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetAllSubjects()
         {
@@ -31,6 +37,10 @@ namespace CollegeManagement.API.Controllers
         // ==========================
         // GET SUBJECT BY ID
         // ==========================
+        /// <summary>
+        /// Retrieves a specific subject by its identifier.
+        /// </summary>
+        /// <param name="id">The subject identifier.</param>
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetSubjectById(int id)
         {
@@ -48,6 +58,10 @@ namespace CollegeManagement.API.Controllers
         // ==========================
         // GET SUBJECTS BY GROUP
         // ==========================
+        /// <summary>
+        /// Retrieves subjects associated with a specific academic group name.
+        /// </summary>
+        /// <param name="group">The group name.</param>
         [HttpGet("group/{group}")]
         public async Task<IActionResult> GetSubjectsByGroup(string group)
         {
@@ -59,6 +73,10 @@ namespace CollegeManagement.API.Controllers
         // ==========================
         // CREATE SUBJECT
         // ==========================
+        /// <summary>
+        /// Creates a new subject.
+        /// </summary>
+        /// <param name="dto">The subject details to create.</param>
         [HttpPost]
         public async Task<IActionResult> CreateSubject(CreateSubjectDto dto)
         {
@@ -73,6 +91,11 @@ namespace CollegeManagement.API.Controllers
         // ==========================
         // UPDATE SUBJECT
         // ==========================
+        /// <summary>
+        /// Updates an existing subject.
+        /// </summary>
+        /// <param name="id">The subject identifier to update.</param>
+        /// <param name="dto">The updated subject details.</param>
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateSubject(int id, UpdateSubjectDto dto)
         {
@@ -92,6 +115,10 @@ namespace CollegeManagement.API.Controllers
         // ==========================
         // DELETE SUBJECT
         // ==========================
+        /// <summary>
+        /// Deletes a specific subject by its identifier.
+        /// </summary>
+        /// <param name="id">The subject identifier to delete.</param>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteSubject(int id)
         {

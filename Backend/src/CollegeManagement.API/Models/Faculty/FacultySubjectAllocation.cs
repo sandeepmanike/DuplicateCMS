@@ -4,58 +4,44 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CollegeManagement.API.Models.Faculty
 {
-    [Table("FacultySubjectAllocations")]
     public class FacultySubjectAllocation
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
         public int FacultyId { get; set; }
 
         [Required]
-        public int BoardId { get; set; }
+        [StringLength(100)]
+        public string Board { get; set; } = string.Empty;
 
         [Required]
-        public int AcademicLevelId { get; set; }
+        [StringLength(50)]
+        public string AcademicYear { get; set; } = string.Empty;
 
         [Required]
-        public int AcademicYearId { get; set; }
+        [StringLength(100)]
+        public string Group { get; set; } = string.Empty;
 
         [Required]
-        public int GroupId { get; set; }
+        [StringLength(50)]
+        public string AcademicLevel { get; set; } = string.Empty;
 
         [Required]
-        public int SectionId { get; set; }
+        [StringLength(50)]
+        public string Section { get; set; } = string.Empty;
 
         [Required]
-        public int SubjectId { get; set; }
+        [StringLength(100)]
+        public string Subject { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
 
-        // Navigation Properties
+        // Navigation Property
         [ForeignKey(nameof(FacultyId))]
-        public virtual Faculty Faculty { get; set; } = null!;
-
-        [ForeignKey(nameof(BoardId))]
-        public virtual Board Board { get; set; } = null!;
-
-        [ForeignKey(nameof(AcademicLevelId))]
-        public virtual AcademicLevel AcademicLevel { get; set; } = null!;
-
-        [ForeignKey(nameof(AcademicYearId))]
-        public virtual AcademicYear AcademicYear { get; set; } = null!;
-
-        [ForeignKey(nameof(GroupId))]
-        public virtual Group Group { get; set; } = null!;
-
-        [ForeignKey(nameof(SectionId))]
-        public virtual Section Section { get; set; } = null!;
-
-        [ForeignKey(nameof(SubjectId))]
-        public virtual Subject Subject { get; set; } = null!;
+        public Faculty Faculty { get; set; } = null!;
     }
 }

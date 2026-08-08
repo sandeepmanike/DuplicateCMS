@@ -45,13 +45,7 @@ namespace CollegeManagement.API.Profiles
 
             // FacultySubjectAllocation Entity -> FacultySubjectAllocationResponseDto
             CreateMap<FacultySubjectAllocation, FacultySubjectAllocationResponseDto>()
-                .ForMember(dest => dest.FacultyName, opt => opt.MapFrom(src => src.Faculty != null ? $"{src.Faculty.FirstName} {src.Faculty.LastName}".Trim() : string.Empty))
-                .ForMember(dest => dest.BoardName, opt => opt.MapFrom(src => src.Board != null ? src.Board.BoardName : string.Empty))
-                .ForMember(dest => dest.AcademicLevelName, opt => opt.MapFrom(src => src.AcademicLevel != null ? src.AcademicLevel.LevelName : string.Empty))
-                .ForMember(dest => dest.AcademicYearName, opt => opt.MapFrom(src => src.AcademicYear != null ? src.AcademicYear.AcademicYearName : string.Empty))
-                .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Group != null ? src.Group.GroupName : string.Empty))
-                .ForMember(dest => dest.SectionName, opt => opt.MapFrom(src => src.Section != null ? src.Section.SectionName : string.Empty))
-                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectName : string.Empty));
+                .ForMember(dest => dest.FacultyName, opt => opt.MapFrom(src => src.Faculty != null ? $"{src.Faculty.FirstName} {src.Faculty.LastName}".Trim() : string.Empty));
         }
     }
 }

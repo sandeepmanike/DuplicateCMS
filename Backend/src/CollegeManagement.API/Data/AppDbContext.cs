@@ -1,7 +1,9 @@
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
-using CollegeManagement.API.Models.Timetable;
+using CollegeManagement.API.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
+
+using CollegeManagement.API.Models.Timetable;
 
 namespace CollegeManagement.API.Data
 {
@@ -27,12 +29,27 @@ namespace CollegeManagement.API.Data
         public DbSet<Board> Boards { get; set; }
         public DbSet<BoardAcademicLevel> BoardAcademicLevels { get; set; }
         public DbSet<BoardAssessment> BoardAssessments { get; set; }
-        public DbSet<Section> Sections { get; set; }
-        public DbSet<Admin> Admins { get; set; }
+        public DbSet<Attendance> Attendances { get; set; }
         public DbSet<Student> Students { get; set; }
+        public DbSet<StudentAdmission> StudentAdmissions { get; set; }
         public DbSet<Faculty> Faculties { get; set; }
         public DbSet<FacultySubjectAllocation> FacultySubjectAllocations { get; set; }
+        public DbSet<Assignment> Assignments { get; set; }
+        public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
+        public DbSet<Examination> Examinations { get; set; }
+        public DbSet<ExamSchedule> ExamSchedules { get; set; }
+        public DbSet<HallTicket> HallTickets { get; set; }
+        public DbSet<InvigilatorAssignment> InvigilatorAssignments { get; set; }
+        public DbSet<Mark> Marks { get; set; }
+        public DbSet<Result> Results { get; set; }
+        public DbSet<Revaluation> Revaluations { get; set; }
+        public DbSet<Admin> Admins { get; set; }
         public DbSet<Department> Departments { get; set; }
+        public DbSet<StudyMaterial> StudyMaterials { get; set; }
+        public DbSet<Section> Sections { get; set; }
+        public DbSet<FeeStructure> FeeStructures { get; set; }
+        public DbSet<FeeCollection> FeeCollections { get; set; }
+        public DbSet<StudentFee> StudentFees { get; set; }
         public DbSet<Period> Periods { get; set; }
         public DbSet<Room> Rooms { get; set; }
         public DbSet<Timetable> Timetables { get; set; }
@@ -44,12 +61,6 @@ namespace CollegeManagement.API.Data
             #region User
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
-                .IsUnique();
-            #endregion
-
-            #region Admin
-            modelBuilder.Entity<Admin>()
-                .HasIndex(a => a.Email)
                 .IsUnique();
             #endregion
 
@@ -477,6 +488,10 @@ namespace CollegeManagement.API.Data
                     .HasForeignKey(ba => ba.AssessmentTypeId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+            #endregion
+
+            #region Attendance
+            modelBuilder.ApplyConfiguration(new Configurations.AttendanceConfiguration());
             #endregion
         }
     }

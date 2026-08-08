@@ -1,0 +1,102 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using CollegeManagement.API.DTOs.Attendance.Requests;
+using CollegeManagement.API.DTOs.Attendance.Responses;
+using CollegeManagement.API.Models;
+
+namespace CollegeManagement.API.Repositories.Interfaces
+{
+    /// <summary>
+    /// Repository interface for Attendance database operations.
+    /// </summary>
+    public interface IAttendanceRepository
+    {
+        /// <summary>
+        /// Creates a new attendance record in the database.
+        /// </summary>
+        /// <param name="attendance">The attendance entity to create.</param>
+        /// <returns>The ID of the newly created attendance record, or a status code.</returns>
+        Task<int> CreateAttendanceAsync(Attendance attendance);
+
+        /// <summary>
+        /// Creates multiple student attendance records in bulk.
+        /// </summary>
+        /// <param name="attendances">The bulk attendance request details.</param>
+        /// <returns>The number of records successfully created.</returns>
+        Task<int> CreateBulkAttendanceAsync(IEnumerable<Attendance> attendances);
+
+        /// <summary>
+        /// Updates an existing attendance record in the database.
+        /// </summary>
+        /// <param name="attendance">The attendance entity containing updated values.</param>
+        /// <returns>The number of affected rows, or a status code.</returns>
+        Task<int> UpdateAttendanceAsync(Attendance attendance);
+
+        /// <summary>
+        /// Retrieves a single detailed attendance response by its unique identifier.
+        /// </summary>
+        /// <param name="attendanceId">The attendance identifier.</param>
+        /// <returns>The matching attendance response DTO, or null if not found.</returns>
+        Task<AttendanceResponse?> GetAttendanceByIdAsync(int attendanceId);
+
+        /// <summary>
+        /// Retrieves a filtered list of attendance records.
+        /// </summary>
+        /// <param name="request">The search and filter parameters.</param>
+        /// <returns>A collection of attendance list response DTOs.</returns>
+        Task<IEnumerable<AttendanceListResponse>> GetAttendancesAsync(AttendanceSearchRequest request);
+
+        /// <summary>
+        /// Retrieves statistical summary metrics (present, absent, leave counts) for the specified filters.
+        /// </summary>
+        /// <param name="request">The search and filter parameters.</param>
+        /// <returns>An attendance summary response DTO.</returns>
+        Task<AttendanceSummaryResponse> GetAttendanceSummaryAsync(AttendanceSearchRequest request);
+
+        /// <summary>
+        /// Retrieves attendance percentages and class counts per student for the specified filters.
+        /// </summary>
+        /// <param name="request">The search and filter parameters.</param>
+        /// <returns>A collection of student attendance percentage DTOs.</returns>
+        Task<IEnumerable<AttendancePercentageResponse>> GetAttendancePercentageAsync(AttendanceSearchRequest request);
+
+        /// <summary>
+        /// Generates a flat report listing attendance details for the specified filters.
+        /// </summary>
+        /// <param name="request">The search and filter parameters.</param>
+        /// <returns>A collection of attendance report DTOs.</returns>
+        Task<IEnumerable<AttendanceReportResponse>> GetAttendanceReportAsync(AttendanceSearchRequest request);
+
+        /// <summary>
+        /// Checks if an active attendance record already exists for a student, subject, and date.
+        /// </summary>
+        /// <param name="studentId">The student identifier.</param>
+        /// <param name="subjectId">The subject identifier.</param>
+        /// <param name="attendanceDate">The date of the class.</param>
+        /// <returns>True if a record exists; otherwise, false.</returns>
+        Task<bool> AttendanceExistsAsync(
+            int studentId,
+            int subjectId,
+            DateTime attendanceDate);
+
+        /// <summary>
+        /// Changes the active/inactive status of an attendance record.
+        /// </summary>
+        /// <param name="attendanceId">The attendance identifier.</param>
+        /// <param name="isActive">The new active status flag.</param>
+        /// <returns>The number of affected rows, or a status code.</returns>
+        Task<int> ChangeAttendanceActiveStatusAsync(
+            int attendanceId,
+            bool isActive);
+
+        /// <summary>
+        /// Retrieves students available to mark attendance for the specified criteria.
+        /// </summary>
+        /// <param name="request">The search and filter parameters.</param>
+        /// <returns>A collection of student attendance DTOs.</returns>
+        Task<IEnumerable<StudentAttendanceResponse>> GetStudentsForAttendanceAsync(AttendanceSearchRequest request);
+
+
+    }
+}

@@ -19,17 +19,52 @@ namespace CollegeManagement.API.Repositories
             _context = context;
         }
 
-
-        public async Task<List<GroupListItemDto>> GetAllAsync()
+        public async Task<PagedGroupResponse> GetAllAsync(
+            int pageNumber,
+            int pageSize,
+            string? search,
+            string? board,
+            int? academicYearId,
+            string? academicLevel,
+            bool? isActive)
         {
+            var response = new PagedGroupResponse
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            };
+
             var connection = _context.Database.GetDbConnection();
 
-            var result = await connection.QueryAsync<GroupListItemDto>(
+            using var multi = await connection.QueryMultipleAsync(
                 "sp_GetAllGroups",
+                new
+                {
+                    p_PageNumber = pageNumber,
+                    p_PageSize = pageSize,
+                    p_Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
+                    p_Board = string.IsNullOrWhiteSpace(board) ? null : board.Trim(),
+                    p_AcademicYearId = academicYearId,
+                    p_AcademicLevel = string.IsNullOrWhiteSpace(academicLevel) ? null : academicLevel.Trim(),
+                    p_IsActive = isActive
+                },
                 commandType: CommandType.StoredProcedure);
 
-            return result.ToList();
+            var items = (await multi.ReadAsync<GroupListItemDto>()).ToList();
+            response.Items = items;
+
+            if (!multi.IsConsumed)
+            {
+                response.TotalCount = await multi.ReadFirstOrDefaultAsync<int>();
+            }
+            else
+            {
+                response.TotalCount = items.Count;
+            }
+
+            return response;
         }
+
         public async Task<GroupResponse?> GetByIdAsync(
             int groupId)
         {

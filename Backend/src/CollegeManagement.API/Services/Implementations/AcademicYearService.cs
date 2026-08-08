@@ -1,4 +1,4 @@
-using CollegeManagement.API.Services.Interfaces;
+﻿using CollegeManagement.API.Services.Interfaces;
 using CollegeManagement.API.DTOs.Authentication;
 using CollegeManagement.API.DTOs.AcademicYear;
 using CollegeManagement.API.Models;
@@ -29,11 +29,6 @@ namespace CollegeManagement.API.Services.Implementations
         public async Task<AcademicYearResponseDto?> GetByIdAsync(int id)
         {
             var year = await _repository.GetByIdAsync(id);
-            return year == null ? null : MapToResponseDto(year);
-        }
-        public async Task<AcademicYearResponseDto?> GetActiveAsync()
-        {
-            var year = await _repository.GetActiveAsync();
             return year == null ? null : MapToResponseDto(year);
         }
 

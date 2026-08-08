@@ -21,6 +21,5 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<bool> DeleteSubjectAllocationAsync(int id);
 
         Task<FacultyWorkloadResponseDto?> GetFacultyWorkloadAsync(int facultyId);
-        Task<List<FacultyDropdownDto>> GetFacultyDropdownAsync();
     }
 }

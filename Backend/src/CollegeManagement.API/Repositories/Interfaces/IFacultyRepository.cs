@@ -27,6 +27,5 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task UpdateAsync(Faculty faculty);
         Task UpdatePhotoPathAsync(int id, string photoPath);
         Task SoftDeleteAsync(Faculty faculty);
-        Task<List<FacultyDropdownDto>> GetFacultyDropdownAsync();
     }
 }

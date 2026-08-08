@@ -1,12 +1,15 @@
 using CollegeManagement.API.DTOs.Groups;
 using CollegeManagement.API.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CollegeManagement.API.Exceptions;
 using MySqlConnector;
-using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers
 {
+    /// <summary>
+    /// API controller for Group management, handling creation, retrieval, updates, and deletion of academic groups.
+    /// </summary>
     [ApiController]
     [Route("api/v1/groups")]
     [Authorize]
@@ -20,12 +23,45 @@ namespace CollegeManagement.API.Controllers
             _groupRepository = groupRepository;
         }
 
+        /// <summary>
+        /// Retrieves a paginated, filtered, and searched list of academic groups.
+        /// </summary>
         [HttpGet]
-        public async Task<IActionResult> GetGroups()
+        public async Task<IActionResult> GetGroups(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? board = null,
+            [FromQuery] int? academicYearId = null,
+            [FromQuery] string? academicLevel = null,
+            [FromQuery] bool? isActive = null)
         {
-            var result = await _groupRepository.GetAllAsync();
+            if (pageNumber < 1)
+            {
+                pageNumber = 1;
+            }
+
+            if (pageSize < 1 || pageSize > 100)
+            {
+                pageSize = 20;
+            }
+
+            var result = await _groupRepository.GetAllAsync(
+                pageNumber,
+                pageSize,
+                search,
+                board,
+                academicYearId,
+                academicLevel,
+                isActive);
+
             return Ok(result);
         }
+
+        /// <summary>
+        /// Retrieves detailed information for a specific academic group by ID.
+        /// </summary>
+        /// <param name="groupId">The group identifier.</param>
         [HttpGet("{groupId:int}")]
         public async Task<IActionResult> GetGroup(
             int groupId)
@@ -46,6 +82,10 @@ namespace CollegeManagement.API.Controllers
             return Ok(group);
         }
 
+        /// <summary>
+        /// Retrieves academic groups filtered by board name.
+        /// </summary>
+        /// <param name="board">The board name.</param>
         [HttpGet("board/{board}")]
         public async Task<IActionResult> GetGroupsByBoard(
             string board)
@@ -61,6 +101,10 @@ namespace CollegeManagement.API.Controllers
             return Ok(groups);
         }
 
+        /// <summary>
+        /// Creates a new academic group.
+        /// </summary>
+        /// <param name="request">The group details to create.</param>
         [HttpPost]
         public async Task<IActionResult> CreateGroup(
             [FromBody] CreateGroupRequest request)
@@ -94,6 +138,11 @@ namespace CollegeManagement.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Updates an existing academic group.
+        /// </summary>
+        /// <param name="groupId">The group identifier to update.</param>
+        /// <param name="request">The updated group configuration values.</param>
         [HttpPut("{groupId:int}")]
         public async Task<IActionResult> UpdateGroup(
             int groupId,
@@ -134,6 +183,10 @@ namespace CollegeManagement.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Deletes a specific academic group by ID.
+        /// </summary>
+        /// <param name="groupId">The group identifier to delete.</param>
         [HttpDelete("{groupId:int}")]
         public async Task<IActionResult> DeleteGroup(
             int groupId)
@@ -165,6 +218,11 @@ namespace CollegeManagement.API.Controllers
             }
         }
 
+        /// <summary>
+        /// Validates if a group code is available for use.
+        /// </summary>
+        /// <param name="groupCode">The group code to validate.</param>
+        /// <param name="excludeGroupId">An optional group ID to exclude from validation.</param>
         [HttpGet("validate-code")]
         public async Task<IActionResult> ValidateGroupCode(
             [FromQuery] string groupCode,

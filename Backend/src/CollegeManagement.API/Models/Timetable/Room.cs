@@ -11,12 +11,24 @@ namespace CollegeManagement.API.Models.Timetable
         public int RoomId { get; set; }
 
         [Required]
-        [MaxLength(30)]
-        public string RoomCode { get; set; } = string.Empty;
+        [Column("RoomNumber")]
+        [MaxLength(50)]
+        public string RoomNumber { get; set; } = string.Empty;
 
-        [Required]
+        [NotMapped]
+        public string RoomCode { get => RoomNumber; set => RoomNumber = value; }
+
+        [NotMapped]
+        public string RoomName { get => RoomNumber; set => RoomNumber = value; }
+
+        [Column("BuildingName")]
         [MaxLength(100)]
-        public string RoomName { get; set; } = string.Empty;
+        public string? BuildingName { get; set; }
+
+        [NotMapped]
+        public string? Building { get => BuildingName; set => BuildingName = value; }
+
+        public int? Floor { get; set; }
 
         [Required]
         public int Capacity { get; set; } = 60;
@@ -24,12 +36,6 @@ namespace CollegeManagement.API.Models.Timetable
         [Required]
         [MaxLength(50)]
         public string RoomType { get; set; } = "Classroom";
-
-        [MaxLength(100)]
-        public string? Building { get; set; }
-
-        [MaxLength(50)]
-        public string? Floor { get; set; }
 
         public bool IsActive { get; set; } = true;
 

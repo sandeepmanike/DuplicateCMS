@@ -4,6 +4,14 @@ namespace CollegeManagement.API.Services
 {
     public interface IGroupService
     {
+        Task<PagedGroupResponse> GetAllAsync(
+            int pageNumber,
+            int pageSize,
+            string? search,
+            string? board,
+            int? academicYearId,
+            string? academicLevel,
+            bool? isActive);
 
         Task<GroupResponse?> GetByIdAsync(int groupId);
 

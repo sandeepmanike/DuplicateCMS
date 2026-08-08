@@ -177,7 +177,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_BloodGroup = faculty.BloodGroup,
                     p_Qualification = faculty.Qualification,
                     p_Designation = faculty.Designation,
-                    p_DepartmentId = faculty.DepartmentId,
+                    p_Department = faculty.Department,
                     p_JoiningDate = faculty.JoiningDate,
                     p_Experience = faculty.Experience,
                     p_Username = faculty.Username,
@@ -208,7 +208,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_BloodGroup = faculty.BloodGroup,
                     p_Qualification = faculty.Qualification,
                     p_Designation = faculty.Designation,
-                    p_DepartmentId = faculty.DepartmentId,
+                    p_Department = faculty.Department,
                     p_JoiningDate = faculty.JoiningDate,
                     p_Experience = faculty.Experience,
                     p_Status = faculty.Status,
@@ -235,14 +235,6 @@ namespace CollegeManagement.API.Repositories.Implementations
                 "sp_SoftDeleteFaculty",
                 new { p_Id = faculty.Id },
                 commandType: CommandType.StoredProcedure);
-        }
-
-        public async Task<List<FacultyDropdownDto>> GetFacultyDropdownAsync()
-        {
-            var list = await Connection.QueryAsync<FacultyDropdownDto>(
-                "sp_GetFacultyDropdown",
-                commandType: CommandType.StoredProcedure);
-            return list.ToList();
         }
     }
 }

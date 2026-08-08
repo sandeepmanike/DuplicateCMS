@@ -3,8 +3,8 @@ using CollegeManagement.API.DTOs.AcademicYear;
 using CollegeManagement.API.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
 using CollegeManagement.API.Services.Implementations;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers
 {
@@ -79,7 +79,9 @@ namespace CollegeManagement.API.Controllers
             });
         }
 
-        // Forgot Password API
+        /// <summary>
+        /// Initiates the forgot password process. Validates the email/mobile and sends a password reset OTP.
+        /// </summary>
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
@@ -122,7 +124,9 @@ namespace CollegeManagement.API.Controllers
             });
         }
 
-        // Verify OTP API
+        /// <summary>
+        /// Verifies the OTP sent for password reset validation.
+        /// </summary>
         [HttpPost("verify-otp")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyOtp(VerifyOtpRequest request)
@@ -144,7 +148,9 @@ namespace CollegeManagement.API.Controllers
             });
         }
 
-        // Reset Password API
+        /// <summary>
+        /// Resets the user's password using the validated OTP and new password details.
+        /// </summary>
         [HttpPost("reset-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)

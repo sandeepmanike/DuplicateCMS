@@ -172,19 +172,10 @@ namespace CollegeManagement.API.Services.Implementations
 
             // 4. Faculty Allocation Eligibility check
             var isAllocated = await _context.FacultySubjectAllocations
-                .AnyAsync(fsa => fsa.FacultyId == facultyId 
-                              && fsa.SubjectId == subjectId
-                              && (fsa.BoardId == boardId || fsa.BoardId == 0)
-                              && (fsa.GroupId == groupId || fsa.GroupId == 0)
-                              && (fsa.SectionId == sectionId || fsa.SectionId == 0));
+                .AnyAsync(fsa => fsa.FacultyId == facultyId);
             if (!isAllocated)
             {
-                // Fallback check if faculty is allocated to subject
-                bool hasAnyAllocation = await _context.FacultySubjectAllocations.AnyAsync(fsa => fsa.FacultyId == facultyId && fsa.SubjectId == subjectId);
-                if (!hasAnyAllocation)
-                {
-                    throw new InvalidOperationException($"Faculty '{faculty.FirstName} {faculty.LastName}' is not allocated to teach subject '{subject.SubjectName}'.");
-                }
+                throw new InvalidOperationException($"Faculty '{faculty.FirstName} {faculty.LastName}' is not allocated to teach subject '{subject.SubjectName}'.");
             }
 
             // 5. Section Slot Conflict check

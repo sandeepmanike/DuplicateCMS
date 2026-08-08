@@ -24,6 +24,9 @@ namespace CollegeManagement.API.Controllers.V1
             _service = service;
         }
 
+        /// <summary>
+        /// Retrieves all academic years.
+        /// </summary>
         [HttpGet]
         public async Task<ActionResult> GetAll()
         {
@@ -36,26 +39,10 @@ namespace CollegeManagement.API.Controllers.V1
             });
         }
 
-        [HttpGet("active")]
-        public async Task<ActionResult> GetActive()
-        {
-            var result = await _service.GetActiveAsync();
-            if (result == null)
-            {
-                return NotFound(new
-                {
-                    Status = false,
-                    Message = "No active academic year found."
-                });
-            }
-            return Ok(new
-            {
-                Status = true,
-                Message = "Active academic year retrieved successfully.",
-                Data = result
-            });
-        }
-
+        /// <summary>
+        /// Retrieves an academic year by its unique identifier.
+        /// </summary>
+        /// <param name="id">The academic year identifier.</param>
         [HttpGet("{id}")]
         public async Task<ActionResult> GetById(int id)
         {
@@ -76,6 +63,10 @@ namespace CollegeManagement.API.Controllers.V1
             });
         }
 
+        /// <summary>
+        /// Creates a new academic year.
+        /// </summary>
+        /// <param name="dto">The academic year details to create.</param>
         [HttpPost]
         public async Task<ActionResult> Create(CreateAcademicYearDto dto)
         {
@@ -99,6 +90,11 @@ namespace CollegeManagement.API.Controllers.V1
             }
         }
 
+        /// <summary>
+        /// Updates an existing academic year.
+        /// </summary>
+        /// <param name="id">The academic year identifier to update.</param>
+        /// <param name="dto">The updated academic year values.</param>
         [HttpPut("{id}")]
         public async Task<ActionResult> Update(int id, UpdateAcademicYearDto dto)
         {
@@ -130,6 +126,10 @@ namespace CollegeManagement.API.Controllers.V1
             }
         }
 
+        /// <summary>
+        /// Deletes an academic year by its unique identifier.
+        /// </summary>
+        /// <param name="id">The academic year identifier to delete.</param>
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -149,6 +149,10 @@ namespace CollegeManagement.API.Controllers.V1
             });
         }
 
+        /// <summary>
+        /// Activates a specific academic year by its identifier.
+        /// </summary>
+        /// <param name="id">The academic year identifier to activate.</param>
         [HttpPatch("{id}/activate")]
         public async Task<IActionResult> Activate(int id)
         {

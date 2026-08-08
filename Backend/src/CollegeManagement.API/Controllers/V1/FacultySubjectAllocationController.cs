@@ -4,15 +4,15 @@ using CollegeManagement.API.DTOs.Faculty.Response;
 using CollegeManagement.API.Services;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers
 {
     [ApiController]
     [Route("api/v1/faculty")]
-    [Produces("application/json")]
     [Authorize]
+    [Produces("application/json")]
     public class FacultySubjectAllocationController : ControllerBase
     {
         private readonly IFacultyService _facultyService;

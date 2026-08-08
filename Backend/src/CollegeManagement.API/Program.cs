@@ -56,7 +56,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         ServerVersion.AutoDetect(
-            builder.Configuration.GetConnectionString("DefaultConnection"))));
+            builder.Configuration.GetConnectionString("DefaultConnection")),
+        mySqlOptions => mySqlOptions.CommandTimeout(120)));
 
 // Dapper
 builder.Services.AddSingleton<DatabaseContext>();
@@ -65,7 +66,7 @@ builder.Services.AddSingleton<DatabaseContext>();
 
 #region AutoMapper & FluentValidation
 
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddAutoMapper(typeof(FacultyMappingProfile));
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>();
 
@@ -76,6 +77,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>(
 // Authentication
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 
 // Academic Year
 builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
@@ -86,24 +88,33 @@ builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 // Faculty
 builder.Services.AddScoped<IFacultyRepository, FacultyRepository>();
 builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAllocationRepository>();
-
-// Department
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
-// Group & Subject
+// Group, Section & Subject
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 
-// Section
-builder.Services.AddScoped<ISectionRepository, SectionRepository>();
+// Attendance (Dapper)
+builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 
-// Timetable, Period & Room
+// Student & Student Admissions
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<IStudentAdmissionRepository, StudentAdmissionRepository>();
+
+// Assignments, Exams, Results, Promotions
+builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
+builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
+builder.Services.AddScoped<IResultRepository, ResultRepository>();
+builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
+
+// Timetable, Period, Room
+builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
-builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
 
-// Admin
-builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+// Study Materials
+builder.Services.AddScoped<IStudyMaterialRepository, StudyMaterialRepository>();
 
 #endregion
 
@@ -111,29 +122,40 @@ builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 
 builder.Services.AddScoped<IAcademicYearService, AcademicYearService>();
 
 builder.Services.AddScoped<IBoardService, BoardService>();
 
 builder.Services.AddScoped<IFacultyService, FacultyService>();
-
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
-// Group & Subject
+// Group, Section & Subject
 builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 
-// Section
-builder.Services.AddScoped<ISectionService, SectionService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 
-// Timetable, Period & Room
+// Student & Student Admissions
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<IStudentAdmissionService, StudentAdmissionService>();
+
+// Assignments, Exams, Results, Promotions, Fee
+builder.Services.AddScoped<IAssignmentService, AssignmentService>();
+builder.Services.AddScoped<IExaminationService, ExaminationService>();
+builder.Services.AddScoped<IResultService, ResultService>();
+builder.Services.AddScoped<IPromotionService, PromotionService>();
+builder.Services.AddScoped<IFeeService, FeeService>();
+
+// Timetable, Period, Room
+builder.Services.AddScoped<ITimetableService, TimetableService>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
-builder.Services.AddScoped<ITimetableService, TimetableService>();
 
-// Admin
-builder.Services.AddScoped<IAdminService, AdminService>();
+// Study Materials
+builder.Services.AddScoped<IStudyMaterialService, StudyMaterialService>();
 
 #endregion
 
@@ -294,28 +316,22 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 #region Database Migration
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-
-    try
-    {
-        var context =
-            services.GetRequiredService<AppDbContext>();
-
-        context.Database.Migrate();
-
-       
-    }
-    catch (Exception ex)
-    {
-        var logger =
-            services.GetRequiredService<ILogger<Program>>();
-
-        logger.LogError(ex,
-            "An error occurred while migrating the database.");
-    }
-}
+// NOTE: Automatic EF Core migration on startup is disabled so it doesn't execute automatically every time.
+// To run migrations manually, use: dotnet ef database update
+// using (var scope = app.Services.CreateScope())
+// {
+//     var services = scope.ServiceProvider;
+//     try
+//     {
+//         var context = services.GetRequiredService<AppDbContext>();
+//         // context.Database.Migrate();
+//     }
+//     catch (Exception ex)
+//     {
+//         var logger = services.GetRequiredService<ILogger<Program>>();
+//         logger.LogError(ex, "An error occurred while migrating the database.");
+//     }
+// }
 
 #endregion
 

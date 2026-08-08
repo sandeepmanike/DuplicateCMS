@@ -5,9 +5,9 @@ using CollegeManagement.API.DTOs.Board.Requests;
 using CollegeManagement.API.DTOs.Board.Responses;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers.V1
 {
@@ -17,8 +17,8 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/boards")]
-    [Produces("application/json")]
     [Authorize]
+    [Produces("application/json")]
     public class BoardController : ControllerBase
     {
         private readonly IBoardService _boardService;
@@ -144,7 +144,7 @@ namespace CollegeManagement.API.Controllers.V1
         public async Task<IActionResult> DeleteBoard(int boardId)
         {
             _logger.LogInformation("Deleting board with ID: {BoardId}", boardId);
-           var deleted = await _boardService.DeleteBoardAsync(boardId);
+            var deleted = await _boardService.DeleteBoardAsync(boardId);
 
             if (!deleted)
             {
@@ -178,7 +178,6 @@ namespace CollegeManagement.API.Controllers.V1
             {
                 return NotFound();
             }
-        
             return Ok();
         }
 

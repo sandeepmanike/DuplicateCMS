@@ -55,7 +55,7 @@ namespace CollegeManagement.API.Middleware
 
             ForbiddenException => (HttpStatusCode.Forbidden, exception.Message),
 
-            _ => (HttpStatusCode.InternalServerError, exception.Message)
+            _ => (HttpStatusCode.InternalServerError, "An unexpected server error occurred.")   
         };
 
             context.Response.StatusCode = (int)statusCode;
