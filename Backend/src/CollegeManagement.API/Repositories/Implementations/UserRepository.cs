@@ -1,10 +1,13 @@
-﻿using CollegeManagement.API.Repositories.Interfaces;
+using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Dapper;
+
 namespace CollegeManagement.API.Repositories.Implementations
 {
     public class UserRepository : IUserRepository
@@ -14,71 +17,97 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             _context = context;
         }
+
+        private IDbConnection Connection => _context.Database.GetDbConnection();
+
         public async Task<User?> GetByEmailOrPhoneAsync(string emailOrPhone)
         {
-            var result = await _context.Users
-                .FromSqlRaw("CALL usp_GetUserByEmailOrPhone({0})", emailOrPhone)
-                .ToListAsync();
-            var user = result.FirstOrDefault();
+            var user = await Connection.QueryFirstOrDefaultAsync<User>(
+                "usp_GetUserByEmailOrPhone",
+                new { p_EmailOrPhone = emailOrPhone },
+                commandType: CommandType.StoredProcedure);
             if (user != null)
             {
-                await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+                user.Role = await _context.Roles.FindAsync(user.RoleId) ?? null!;
             }
             return user;
         }
+
         public async Task<User?> GetByEmailAsync(string email)
         {
-            var result = await _context.Users
-                .FromSqlRaw("CALL usp_GetUserByEmail({0})", email)
-                .ToListAsync();
-            var user = result.FirstOrDefault();
+            var user = await Connection.QueryFirstOrDefaultAsync<User>(
+                "usp_GetUserByEmail",
+                new { p_Email = email },
+                commandType: CommandType.StoredProcedure);
             if (user != null)
             {
-                await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+                user.Role = await _context.Roles.FindAsync(user.RoleId) ?? null!;
             }
             return user;
         }
+
         public async Task AddAsync(User user)
         {
-            var result = await _context.Database
-                .SqlQueryRaw<long>("CALL usp_AddUser({0}, {1}, {2}, {3}, {4})",
-                    user.FullName, user.Email, user.PhoneNumber, user.PasswordHash, user.RoleId)
-                .ToListAsync();
-            user.UserId = (int)result.FirstOrDefault();
+            var id = await Connection.ExecuteScalarAsync<int>(
+                "usp_AddUser",
+                new
+                {
+                    p_FullName = user.FullName,
+                    p_Email = user.Email,
+                    p_PhoneNumber = user.PhoneNumber,
+                    p_PasswordHash = user.PasswordHash,
+                    p_RoleId = user.RoleId
+                },
+                commandType: CommandType.StoredProcedure);
+            user.UserId = id;
         }
+
         public async Task UpdateAsync(User user)
         {
-            await _context.Database.ExecuteSqlRawAsync(
-                "CALL usp_UpdateUser({0}, {1}, {2}, {3}, {4}, {5})",
-                user.UserId, user.FullName, user.Email, user.PhoneNumber, user.PasswordHash, user.RoleId);
+            await Connection.ExecuteAsync(
+                "usp_UpdateUser",
+                new
+                {
+                    p_UserId = user.UserId,
+                    p_FullName = user.FullName,
+                    p_Email = user.Email,
+                    p_PhoneNumber = user.PhoneNumber,
+                    p_PasswordHash = user.PasswordHash,
+                    p_RoleId = user.RoleId
+                },
+                commandType: CommandType.StoredProcedure);
         }
+
         public async Task<Role?> GetRoleByNameAsync(string roleName)
         {
-            var result = await _context.Roles
-                .FromSqlRaw("CALL usp_GetRoleByName({0})", roleName)
-                .ToListAsync();
-            return result.FirstOrDefault();
+            return await Connection.QueryFirstOrDefaultAsync<Role>(
+                "usp_GetRoleByName",
+                new { p_RoleName = roleName },
+                commandType: CommandType.StoredProcedure);
         }
+
         public async Task<List<User>> GetAllUsersAsync()
         {
-            var users = await _context.Users
-                .FromSqlRaw("CALL usp_GetAllUsers()")
-                .ToListAsync();
-            foreach (var user in users)
+            var users = await Connection.QueryAsync<User>(
+                "usp_GetAllUsers",
+                commandType: CommandType.StoredProcedure);
+            var userList = users.ToList();
+            foreach (var user in userList)
             {
-                await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+                user.Role = await _context.Roles.FindAsync(user.RoleId) ?? null!;
             }
-            return users;
+            return userList;
         }
+
         public async Task<User?> GetByIdAsync(int id)
         {
-            var result = await _context.Users
-                .FromSqlRaw("CALL usp_GetUserById({0})", id)
-                .ToListAsync();
-            var user = result.FirstOrDefault();
+            var user = await Connection.QueryFirstOrDefaultAsync<User>(
+                "usp_GetUserById",
+                new { p_UserId = id },
+                commandType: CommandType.StoredProcedure);
             if (user != null)
             {
-                await _context.Entry(user).Reference(u => u.Role).LoadAsync();
+                user.Role = await _context.Roles.FindAsync(user.RoleId) ?? null!;
             }
             return user;
         }

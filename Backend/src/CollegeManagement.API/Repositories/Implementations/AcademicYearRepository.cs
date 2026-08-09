@@ -1,55 +1,110 @@
-﻿using CollegeManagement.API.Repositories.Interfaces;
+using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
+using Dapper;
+
 namespace CollegeManagement.API.Repositories.Implementations
 {
     public class AcademicYearRepository : IAcademicYearRepository
     {
+        static AcademicYearRepository()
+        {
+            SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
+        }
+
         private readonly AppDbContext _context;
         public AcademicYearRepository(AppDbContext context)
         {
             _context = context;
         }
+
+        private IDbConnection Connection => _context.Database.GetDbConnection();
+
         public async Task<IEnumerable<AcademicYear>> GetAllAsync()
         {
-            return await _context.AcademicYears
-                .FromSqlRaw("CALL usp_GetAllAcademicYears()")
-                .ToListAsync();
+            return await Connection.QueryAsync<AcademicYear>(
+                "usp_GetAllAcademicYears",
+                commandType: CommandType.StoredProcedure);
         }
+
         public async Task<AcademicYear?> GetByIdAsync(int id)
         {
-            var result = await _context.AcademicYears
-                .FromSqlRaw("CALL usp_GetAcademicYearById({0})", id)
-                .ToListAsync();
-            return result.FirstOrDefault();
+            return await Connection.QueryFirstOrDefaultAsync<AcademicYear>(
+                "usp_GetAcademicYearById",
+                new { p_Id = id },
+                commandType: CommandType.StoredProcedure);
         }
+
         public async Task AddAsync(AcademicYear academicYear)
         {
-            var result = await _context.Database
-                .SqlQueryRaw<long>("CALL usp_AddAcademicYear({0}, {1}, {2}, {3}, {4}, {5})",
-                    academicYear.AcademicYearName, academicYear.StartDate, academicYear.EndDate,
-                    academicYear.AdmissionStartDate, academicYear.AdmissionEndDate, academicYear.IsActive)
-                .ToListAsync();
-            academicYear.AcademicYearId = (int)result.FirstOrDefault();
+            var id = await Connection.ExecuteScalarAsync<int>(
+                "usp_AddAcademicYear",
+                new
+                {
+                    p_AcademicYearName = academicYear.AcademicYearName,
+                    p_StartDate = academicYear.StartDate,
+                    p_EndDate = academicYear.EndDate,
+                    p_AdmissionStartDate = academicYear.AdmissionStartDate,
+                    p_AdmissionEndDate = academicYear.AdmissionEndDate,
+                    p_IsActive = academicYear.IsActive
+                },
+                commandType: CommandType.StoredProcedure);
+            academicYear.AcademicYearId = id;
         }
+
         public async Task UpdateAsync(AcademicYear academicYear)
         {
-            await _context.Database.ExecuteSqlRawAsync(
-                "CALL usp_UpdateAcademicYear({0}, {1}, {2}, {3}, {4}, {5}, {6})",
-                academicYear.AcademicYearId, academicYear.AcademicYearName, academicYear.StartDate, academicYear.EndDate,
-                academicYear.AdmissionStartDate, academicYear.AdmissionEndDate, academicYear.IsActive);
+            await Connection.ExecuteAsync(
+                "usp_UpdateAcademicYear",
+                new
+                {
+                    p_AcademicYearId = academicYear.AcademicYearId,
+                    p_AcademicYearName = academicYear.AcademicYearName,
+                    p_StartDate = academicYear.StartDate,
+                    p_EndDate = academicYear.EndDate,
+                    p_AdmissionStartDate = academicYear.AdmissionStartDate,
+                    p_AdmissionEndDate = academicYear.AdmissionEndDate,
+                    p_IsActive = academicYear.IsActive
+                },
+                commandType: CommandType.StoredProcedure);
         }
+
         public async Task DeleteAsync(AcademicYear academicYear)
         {
-            await _context.Database.ExecuteSqlRawAsync("CALL usp_DeleteAcademicYear({0})", academicYear.AcademicYearId);
+            await Connection.ExecuteAsync(
+                "usp_DeleteAcademicYear",
+                new { p_AcademicYearId = academicYear.AcademicYearId },
+                commandType: CommandType.StoredProcedure);
         }
+
         public async Task DeactivateAllExceptAsync(int activeId)
         {
-            await _context.Database.ExecuteSqlRawAsync("CALL usp_DeactivateAllExcept({0})", activeId);
+            await Connection.ExecuteAsync(
+                "usp_DeactivateAllExcept",
+                new { p_ActiveId = activeId },
+                commandType: CommandType.StoredProcedure);
+        }
+    }
+
+    public class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
+    {
+        public override void SetValue(IDbDataParameter parameter, DateOnly value)
+        {
+            parameter.Value = value.ToDateTime(TimeOnly.MinValue);
+        }
+
+        public override DateOnly Parse(object value)
+        {
+            if (value is DateTime dateTime)
+            {
+                return DateOnly.FromDateTime(dateTime);
+            }
+            return DateOnly.FromDateTime(Convert.ToDateTime(value));
         }
     }
 }
