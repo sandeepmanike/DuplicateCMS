@@ -123,14 +123,7 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new NotFoundException($"Section with ID {id} not found.");
             }
 
-            try
-            {
-                return await _sectionRepository.DeleteSectionAsync(id);
-            }
-            catch (MySqlConnector.MySqlException ex) when (ex.Number == 1451)
-            {
-                throw new ConflictException("Cannot delete this section because it is referenced by other active records (such as students, attendance, or timetable entries). Please re-allocate or delete those references first.");
-            }
+            return await _sectionRepository.DeleteSectionAsync(id);
         }
 
         public async Task<IEnumerable<SectionResponse>> GetSectionsByGroupAsync(int groupId)

@@ -103,7 +103,7 @@ CALL sp_UpdateSubject
         public async Task<bool> DeleteAsync(int subjectId)
         {
             await _context.Database.ExecuteSqlInterpolatedAsync(
-                $"CALL sp_DeleteSubject({subjectId})");
+                $"CALL sp_DeleteSubject {subjectId}");
 
             return true;
         }
@@ -114,7 +114,7 @@ CALL sp_UpdateSubject
         public async Task<IEnumerable<Subject>> GetByGroupAsync(string group)
         {
             return await _context.Subjects
-                .FromSqlInterpolated($"CALL sp_GetSubjectsByGroup({group})")
+                .FromSqlInterpolated($"CALL sp_GetSubjectsByGroup {group}")
                 .AsNoTracking()
                 .ToListAsync();
         }
