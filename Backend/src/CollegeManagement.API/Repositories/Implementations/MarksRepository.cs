@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,7 +43,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_AcademicLevel = mark.AcademicLevel,
                     p_GroupId = mark.GroupId,
                     p_SectionId = mark.SectionId,
-                    p_ExamId = mark.ExaminationId,
+                    p_ExaminationId = mark.ExaminationId,
                     p_SubjectId = mark.SubjectId,
                     p_StudentId = mark.StudentId,
                     p_RollNo = mark.RollNo,
