@@ -8,7 +8,6 @@ using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.DTOs.Faculty.Request;
 using CollegeManagement.API.DTOs.Faculty.Response;
 using CollegeManagement.API.Exceptions;
-using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
@@ -20,7 +19,6 @@ namespace CollegeManagement.API.Services.Implementations
     {
         private readonly IFacultyRepository _facultyRepository;
         private readonly IFacultySubjectAllocationRepository _allocationRepository;
-        private readonly IDepartmentRepository _departmentRepository;
         private readonly IMapper _mapper;
         private readonly IWebHostEnvironment _environment;
 
@@ -32,13 +30,11 @@ namespace CollegeManagement.API.Services.Implementations
         public FacultyService(
             IFacultyRepository facultyRepository,
             IFacultySubjectAllocationRepository allocationRepository,
-            IDepartmentRepository departmentRepository,
             IMapper mapper,
             IWebHostEnvironment environment)
         {
             _facultyRepository = facultyRepository;
             _allocationRepository = allocationRepository;
-            _departmentRepository = departmentRepository;
             _mapper = mapper;
             _environment = environment;
         }
@@ -93,15 +89,13 @@ namespace CollegeManagement.API.Services.Implementations
             if (!await _facultyRepository.IsUsernameUniqueAsync(dto.Username))
                 throw new ConflictException($"Username '{dto.Username}' is already taken.");
 
-            // 2. Map & Resolve DepartmentId & Hash Password
+            // 2. Map & Hash Password
             var faculty = _mapper.Map<Faculty>(dto);
             faculty.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-            faculty.DepartmentId = await ResolveDepartmentIdAsync(dto.DepartmentId, dto.Department);
 
             // 3. Persist Entity
             var createdFaculty = await _facultyRepository.AddAsync(faculty);
-            var reloadedFaculty = await _facultyRepository.GetByIdAsync(createdFaculty.Id);
-            return _mapper.Map<FacultyResponseDto>(reloadedFaculty ?? createdFaculty);
+            return _mapper.Map<FacultyResponseDto>(createdFaculty);
         }
 
         public async Task<FacultyResponseDto> UpdateFacultyAsync(int id, UpdateFacultyDto dto)
@@ -122,46 +116,9 @@ namespace CollegeManagement.API.Services.Implementations
 
             // Update allowed fields via AutoMapper
             _mapper.Map(dto, existingFaculty);
-            existingFaculty.DepartmentId = await ResolveDepartmentIdAsync(dto.DepartmentId, dto.Department);
 
             await _facultyRepository.UpdateAsync(existingFaculty);
-            var reloadedFaculty = await _facultyRepository.GetByIdAsync(id);
-            return _mapper.Map<FacultyResponseDto>(reloadedFaculty ?? existingFaculty);
-        }
-
-        private async Task<int> ResolveDepartmentIdAsync(int? departmentId, string? departmentInput)
-        {
-            // 1. Direct numeric DepartmentId supplied in payload
-            if (departmentId.HasValue && departmentId.Value > 0)
-            {
-                return departmentId.Value;
-            }
-
-            if (string.IsNullOrWhiteSpace(departmentInput))
-            {
-                throw new ValidationException("Department is required.");
-            }
-
-            var trimmedInput = departmentInput.Trim();
-
-            // 2. Check if departmentInput string itself is an integer ID
-            if (int.TryParse(trimmedInput, out int parsedId) && parsedId > 0)
-            {
-                return parsedId;
-            }
-
-            // 3. Look up by DepartmentName or DepartmentCode in database
-            var activeDepartments = (await _departmentRepository.GetActiveDepartmentsAsync())?.ToList() ?? new List<Department>();
-            var matchedDept = activeDepartments.FirstOrDefault(d =>
-                string.Equals(d.DepartmentName?.Trim(), trimmedInput, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(d.DepartmentCode?.Trim(), trimmedInput, StringComparison.OrdinalIgnoreCase));
-
-            if (matchedDept != null)
-            {
-                return matchedDept.DepartmentId;
-            }
-
-            throw new ValidationException($"Invalid department '{departmentInput}'. Please specify a valid department name, code, or ID.");
+            return _mapper.Map<FacultyResponseDto>(existingFaculty);
         }
 
         public async Task<bool> DeleteFacultyAsync(int id)

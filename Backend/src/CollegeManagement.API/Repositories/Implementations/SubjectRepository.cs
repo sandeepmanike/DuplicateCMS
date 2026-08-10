@@ -47,7 +47,7 @@ namespace CollegeManagement.API.Repositories
         {
             var result = await _context.Subjects
                 .FromSqlInterpolated($@"
-CALL sp_CreateSubject
+CALL sp_AddSubject
     {subject.Board},
     {subject.Group},
     {subject.AcademicLevel},

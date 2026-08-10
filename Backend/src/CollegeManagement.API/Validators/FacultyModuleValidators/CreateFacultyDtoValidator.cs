@@ -52,9 +52,9 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
                 .NotEmpty().WithMessage("Designation is required.")
                 .MaximumLength(100).WithMessage("Designation cannot exceed 100 characters.");
 
-            RuleFor(x => x)
-                .Must(x => (x.DepartmentId.HasValue && x.DepartmentId.Value > 0) || !string.IsNullOrWhiteSpace(x.Department))
-                .WithMessage("Department is required.");
+            RuleFor(x => x.Department)
+                .NotEmpty().WithMessage("Department is required.")
+                .MaximumLength(100).WithMessage("Department cannot exceed 100 characters.");
 
             RuleFor(x => x.JoiningDate)
                 .NotEmpty().WithMessage("Joining date is required.")

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
@@ -79,11 +79,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<bool> RestoreAsync(int markId)
         {
-            var affected = await Connection.ExecuteAsync(
-                "sp_RestoreMark",
-                new { p_MarkId = markId },
-                commandType: CommandType.StoredProcedure
-            );
+            var affected = await Connection.ExecuteAsync("sp_RestoreMark", new { p_MarkId = markId }, commandType: CommandType.StoredProcedure);
             return affected > 0;
         }
 
@@ -101,18 +97,18 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<List<Mark>> GetByExamAsync(int examinationId)
         {
-            var result = await Connection.QueryAsync<Mark>("sp_GetMarksByExam", new { p_ExamId = examinationId }, commandType: CommandType.StoredProcedure);
+            var result = await Connection.QueryAsync<Mark>("sp_GetMarksByExam", new { p_ExaminationId = examinationId }, commandType: CommandType.StoredProcedure);
             return result.ToList();
         }
 
         public async Task<int> VerifyMarksAsync(int examinationId, int? subjectId, int? sectionId, string verifiedBy)
         {
-            return await Connection.ExecuteScalarAsync<int>("sp_VerifyMarks", new { p_ExamId = examinationId, p_SubjectId = subjectId, p_SectionId = sectionId, p_VerifiedBy = verifiedBy }, commandType: CommandType.StoredProcedure);
+            return await Connection.ExecuteScalarAsync<int>("sp_VerifyMarks", new { p_ExaminationId = examinationId, p_SubjectId = subjectId, p_SectionId = sectionId, p_VerifiedBy = verifiedBy }, commandType: CommandType.StoredProcedure);
         }
 
         public async Task<int> PublishMarksAsync(int examinationId, int? subjectId, int? sectionId)
         {
-            return await Connection.ExecuteScalarAsync<int>("sp_PublishMarks", new { p_ExamId = examinationId, p_SubjectId = subjectId, p_SectionId = sectionId }, commandType: CommandType.StoredProcedure);
+            return await Connection.ExecuteScalarAsync<int>("sp_PublishMarks", new { p_ExaminationId = examinationId, p_SubjectId = subjectId, p_SectionId = sectionId }, commandType: CommandType.StoredProcedure);
         }
     }
 }

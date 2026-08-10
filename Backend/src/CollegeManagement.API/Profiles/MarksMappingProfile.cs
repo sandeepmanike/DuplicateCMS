@@ -9,21 +9,34 @@ namespace CollegeManagement.API.Profiles
     {
         public MarksMappingProfile()
         {
+<<<<<<< HEAD
+=======
+            CreateMap<Mark, MarkResponseDto>()
+                .ForMember(dest => dest.TotalMarks, opt => opt.MapFrom(src => src.TotalMarks > 0 ? src.TotalMarks : (src.InternalMarks + src.PracticalMarks + src.TheoryMarks)))
+                .ForMember(dest => dest.IsPass, opt => opt.MapFrom(src => (src.InternalMarks + src.PracticalMarks + src.TheoryMarks) >= src.PassingMarks));
+
+>>>>>>> 2221fe5 (Updated Marks module)
             CreateMap<SaveMarkDto, Mark>()
                 .ForMember(dest => dest.TotalMarks, opt => opt.MapFrom(src => src.InternalMarks + src.PracticalMarks + src.TheoryMarks))
                 .ForMember(dest => dest.IsVerified, opt => opt.MapFrom(_ => false))
                 .ForMember(dest => dest.IsPublished, opt => opt.MapFrom(_ => false))
+<<<<<<< HEAD
                 .ForMember(dest => dest.VerifiedBy, opt => opt.Ignore())
                 .ForMember(dest => dest.VerifiedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.PublishedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+=======
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(_ => true))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+>>>>>>> 2221fe5 (Updated Marks module)
                 .ForMember(dest => dest.MarkId, opt => opt.Ignore());
 
             CreateMap<UpdateMarkDto, Mark>()
                 .ForMember(dest => dest.TotalMarks, opt => opt.MapFrom(src => src.InternalMarks + src.PracticalMarks + src.TheoryMarks))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow))
+<<<<<<< HEAD
                 .ForMember(dest => dest.MarkId, opt => opt.Ignore())
                 .ForMember(dest => dest.Board, opt => opt.Ignore())
                 .ForMember(dest => dest.AcademicYearId, opt => opt.Ignore())
@@ -44,6 +57,9 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
             CreateMap<Mark, MarkResponseDto>();
+=======
+                .ForMember(dest => dest.MarkId, opt => opt.Ignore());
+>>>>>>> 2221fe5 (Updated Marks module)
         }
     }
 }
