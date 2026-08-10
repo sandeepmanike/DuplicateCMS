@@ -52,24 +52,19 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<bool> ExistsAllocationAsync(int facultyId, string board, string academicYear, string group, string academicLevel, string section, string subject, int? excludeId = null)
         {
-            int.TryParse(board, out int boardId);
-            int.TryParse(academicYear, out int academicYearId);
-            int.TryParse(group, out int groupId);
-            int.TryParse(academicLevel, out int academicLevelId);
-            int.TryParse(section, out int sectionId);
-            int.TryParse(subject, out int subjectId);
+            var ids = await ResolveIdsAsync(board, academicYear, group, academicLevel, section, subject);
 
             var count = await Connection.ExecuteScalarAsync<int>(
                 "sp_CheckDuplicateSubjectAllocation",
                 new
                 {
                     p_FacultyId = facultyId,
-                    p_BoardId = boardId,
-                    p_AcademicYearId = academicYearId,
-                    p_GroupId = groupId,
-                    p_AcademicLevelId = academicLevelId,
-                    p_SectionId = sectionId,
-                    p_SubjectId = subjectId,
+                    p_BoardId = ids.boardId,
+                    p_AcademicYearId = ids.academicYearId,
+                    p_GroupId = ids.groupId,
+                    p_AcademicLevelId = ids.academicLevelId,
+                    p_SectionId = ids.sectionId,
+                    p_SubjectId = ids.subjectId,
                     p_ExcludeId = excludeId
                 },
                 commandType: CommandType.StoredProcedure);
@@ -79,24 +74,19 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<FacultySubjectAllocation> AddAsync(FacultySubjectAllocation allocation)
         {
-            int.TryParse(allocation.Board, out int boardId);
-            int.TryParse(allocation.AcademicYear, out int academicYearId);
-            int.TryParse(allocation.Group, out int groupId);
-            int.TryParse(allocation.AcademicLevel, out int academicLevelId);
-            int.TryParse(allocation.Section, out int sectionId);
-            int.TryParse(allocation.Subject, out int subjectId);
+            var ids = await ResolveIdsAsync(allocation.Board, allocation.AcademicYear, allocation.Group, allocation.AcademicLevel, allocation.Section, allocation.Subject);
 
             var id = await Connection.ExecuteScalarAsync<int>(
                 "sp_CreateSubjectAllocation",
                 new
                 {
                     p_FacultyId = allocation.FacultyId,
-                    p_BoardId = boardId,
-                    p_AcademicYearId = academicYearId,
-                    p_GroupId = groupId,
-                    p_AcademicLevelId = academicLevelId,
-                    p_SectionId = sectionId,
-                    p_SubjectId = subjectId
+                    p_BoardId = ids.boardId,
+                    p_AcademicLevelId = ids.academicLevelId,
+                    p_AcademicYearId = ids.academicYearId,
+                    p_GroupId = ids.groupId,
+                    p_SectionId = ids.sectionId,
+                    p_SubjectId = ids.subjectId
                 },
                 commandType: CommandType.StoredProcedure);
 
@@ -106,26 +96,75 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task UpdateAsync(FacultySubjectAllocation allocation)
         {
-            int.TryParse(allocation.Board, out int boardId);
-            int.TryParse(allocation.AcademicYear, out int academicYearId);
-            int.TryParse(allocation.Group, out int groupId);
-            int.TryParse(allocation.AcademicLevel, out int academicLevelId);
-            int.TryParse(allocation.Section, out int sectionId);
-            int.TryParse(allocation.Subject, out int subjectId);
+            var ids = await ResolveIdsAsync(allocation.Board, allocation.AcademicYear, allocation.Group, allocation.AcademicLevel, allocation.Section, allocation.Subject);
 
             await Connection.ExecuteAsync(
                 "sp_UpdateSubjectAllocation",
                 new
                 {
                     p_Id = allocation.Id,
-                    p_BoardId = boardId,
-                    p_AcademicYearId = academicYearId,
-                    p_GroupId = groupId,
-                    p_AcademicLevelId = academicLevelId,
-                    p_SectionId = sectionId,
-                    p_SubjectId = subjectId
+                    p_BoardId = ids.boardId,
+                    p_AcademicYearId = ids.academicYearId,
+                    p_GroupId = ids.groupId,
+                    p_AcademicLevelId = ids.academicLevelId,
+                    p_SectionId = ids.sectionId,
+                    p_SubjectId = ids.subjectId
                 },
                 commandType: CommandType.StoredProcedure);
+        }
+
+        private async Task<(int boardId, int academicYearId, int groupId, int academicLevelId, int sectionId, int subjectId)> ResolveIdsAsync(
+            string board, string academicYear, string group, string academicLevel, string section, string subject)
+        {
+            if (!int.TryParse(board, out int boardId) || boardId == 0)
+            {
+                boardId = await Connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT BoardId FROM Boards WHERE BoardCode = @val OR BoardName = @val LIMIT 1",
+                    new { val = board });
+            }
+
+            if (!int.TryParse(academicYear, out int academicYearId) || academicYearId == 0)
+            {
+                academicYearId = await Connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT AcademicYearId FROM AcademicYears WHERE AcademicYearName = @val LIMIT 1",
+                    new { val = academicYear });
+            }
+
+            if (!int.TryParse(group, out int groupId) || groupId == 0)
+            {
+                groupId = await Connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT GroupId FROM `Groups` WHERE GroupCode = @val OR GroupName = @val LIMIT 1",
+                    new { val = group });
+            }
+
+            if (!int.TryParse(academicLevel, out int academicLevelId) || academicLevelId == 0)
+            {
+                academicLevelId = await Connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT AcademicLevelId FROM AcademicLevels WHERE LevelCode = @val OR LevelName = @val LIMIT 1",
+                    new { val = academicLevel });
+            }
+
+            if (!int.TryParse(section, out int sectionId) || sectionId == 0)
+            {
+                sectionId = await Connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT SectionId FROM Sections WHERE SectionName = @val AND GroupId = @gId LIMIT 1",
+                    new { val = section, gId = groupId });
+                if (sectionId == 0)
+                {
+                    sectionId = await Connection.QueryFirstOrDefaultAsync<int>(
+                        "SELECT SectionId FROM Sections WHERE SectionName = @val LIMIT 1",
+                        new { val = section });
+                }
+            }
+
+            if (!int.TryParse(subject, out int subjectId) || subjectId == 0)
+            {
+                subjectId = await Connection.QueryFirstOrDefaultAsync<int>(
+                    "SELECT SubjectId FROM Subjects WHERE SubjectCode = @val OR SubjectName = @val LIMIT 1",
+                    new { val = subject });
+            }
+
+            return (boardId, academicYearId, groupId, academicLevelId, sectionId, subjectId);
         }
 
         public async Task DeleteAsync(FacultySubjectAllocation allocation)

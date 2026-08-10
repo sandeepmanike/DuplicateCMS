@@ -96,7 +96,10 @@ namespace CollegeManagement.API.Services.Implementations
             // 2. Map & Resolve DepartmentId & Hash Password
             var faculty = _mapper.Map<Faculty>(dto);
             faculty.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-            faculty.DepartmentId = await ResolveDepartmentIdAsync(dto.DepartmentId, dto.Department);
+            if (int.TryParse(dto.Department, out int deptId))
+            {
+                faculty.DepartmentId = deptId;
+            }
 
             // 3. Persist Entity
             var createdFaculty = await _facultyRepository.AddAsync(faculty);
@@ -122,7 +125,10 @@ namespace CollegeManagement.API.Services.Implementations
 
             // Update allowed fields via AutoMapper
             _mapper.Map(dto, existingFaculty);
-            existingFaculty.DepartmentId = await ResolveDepartmentIdAsync(dto.DepartmentId, dto.Department);
+            if (int.TryParse(dto.Department, out int deptId))
+            {
+                existingFaculty.DepartmentId = deptId;
+            }
 
             await _facultyRepository.UpdateAsync(existingFaculty);
             var reloadedFaculty = await _facultyRepository.GetByIdAsync(id);
