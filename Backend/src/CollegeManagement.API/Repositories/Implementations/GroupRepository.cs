@@ -1,11 +1,8 @@
 using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Groups;
+using CollegeManagement.API.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Threading.Tasks;
 using Dapper;
 
 namespace CollegeManagement.API.Repositories
@@ -13,160 +10,406 @@ namespace CollegeManagement.API.Repositories
     public class GroupRepository : IGroupRepository
     {
         private readonly AppDbContext _context;
+        public GroupRepository(AppDbContext context) => _context = context;
 
-        public GroupRepository(AppDbContext context)
+        public async Task<List<GroupListItemDto>> GetAllAsync(string? search, int? boardId, int? academicYearId, int? academicLevelId, bool? isActive)
         {
-            _context = context;
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryAsync<GroupListItemDto>("sp_GetAllGroups", new
+                {
+                    p_Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
+                    p_BoardId = boardId,
+                    p_AcademicYearId = academicYearId,
+                    p_AcademicLevelId = academicLevelId,
+                    p_IsActive = isActive
+                }, commandType: CommandType.StoredProcedure);
+                return result.ToList();
+            }
+            catch
+            {
+                var query = _context.Groups.AsNoTracking().AsQueryable();
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var term = search.Trim().ToLower();
+                    query = query.Where(g => g.GroupName.ToLower().Contains(term) || g.GroupCode.ToLower().Contains(term));
+                }
+
+                if (boardId.HasValue)
+                    query = query.Where(g => g.BoardId == boardId.Value);
+
+                if (academicYearId.HasValue)
+                    query = query.Where(g => g.AcademicYearId == academicYearId.Value);
+
+                if (academicLevelId.HasValue)
+                    query = query.Where(g => g.AcademicLevelId == academicLevelId.Value);
+
+                if (isActive.HasValue)
+                    query = query.Where(g => g.IsActive == isActive.Value);
+
+                var groups = await query
+                    .Include(g => g.BoardNavigation)
+                    .Include(g => g.AcademicYear)
+                    .Include(g => g.AcademicLevelNavigation)
+                    .OrderByDescending(g => g.GroupId)
+                    .ToListAsync();
+
+                var groupIds = groups.Select(g => g.GroupId).ToList();
+                var subjectCounts = await _context.Subjects
+                    .Where(s => s.GroupId.HasValue && groupIds.Contains(s.GroupId.Value) && s.IsActive)
+                    .GroupBy(s => s.GroupId!.Value)
+                    .Select(g => new { GroupId = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.GroupId, x => x.Count);
+
+                return groups.Select(g => new GroupListItemDto
+                {
+                    GroupId = g.GroupId,
+                    BoardId = g.BoardId,
+                    BoardName = g.BoardNavigation != null ? g.BoardNavigation.BoardName : string.Empty,
+                    AcademicYearId = g.AcademicYearId,
+                    AcademicYearName = g.AcademicYear != null ? g.AcademicYear.AcademicYearName : string.Empty,
+                    AcademicLevelId = g.AcademicLevelId,
+                    AcademicLevelName = g.AcademicLevelNavigation != null ? g.AcademicLevelNavigation.LevelName : string.Empty,
+                    GroupName = g.GroupName,
+                    GroupCode = g.GroupCode,
+                    Description = g.Description,
+                    TotalSubjects = subjectCounts.TryGetValue(g.GroupId, out var cnt) ? cnt : 0,
+                    IsActive = g.IsActive,
+                    Status = g.IsActive ? "Active" : "Inactive",
+                    CreatedAt = g.CreatedAt,
+                    UpdatedAt = g.UpdatedAt
+                }).ToList();
+            }
         }
 
-        public async Task<PagedGroupResponse> GetAllAsync(
-            int pageNumber,
-            int pageSize,
-            string? search,
-            string? board,
-            int? academicYearId,
-            string? academicLevel,
-            bool? isActive)
+        public async Task<GroupResponse?> GetByIdAsync(int groupId)
         {
-            var response = new PagedGroupResponse
+            try
             {
-                PageNumber = pageNumber,
-                PageSize = pageSize
+                var connection = _context.Database.GetDbConnection();
+                return await connection.QueryFirstOrDefaultAsync<GroupResponse>("sp_GetGroupById", new { p_GroupId = groupId }, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                var g = await _context.Groups.AsNoTracking()
+                    .Include(x => x.BoardNavigation)
+                    .Include(x => x.AcademicYear)
+                    .Include(x => x.AcademicLevelNavigation)
+                    .FirstOrDefaultAsync(x => x.GroupId == groupId);
+
+                if (g == null) return null;
+
+                var totalSubjects = await _context.Subjects.CountAsync(s => s.GroupId == groupId && s.IsActive);
+
+                return new GroupResponse
+                {
+                    GroupId = g.GroupId,
+                    BoardId = g.BoardId,
+                    BoardName = g.BoardNavigation != null ? g.BoardNavigation.BoardName : string.Empty,
+                    AcademicYearId = g.AcademicYearId,
+                    AcademicYearName = g.AcademicYear != null ? g.AcademicYear.AcademicYearName : string.Empty,
+                    AcademicLevelId = g.AcademicLevelId,
+                    AcademicLevelName = g.AcademicLevelNavigation != null ? g.AcademicLevelNavigation.LevelName : string.Empty,
+                    GroupName = g.GroupName,
+                    GroupCode = g.GroupCode,
+                    Description = g.Description,
+                    TotalSubjects = totalSubjects,
+                    IsActive = g.IsActive,
+                    Status = g.IsActive ? "Active" : "Inactive",
+                    CreatedAt = g.CreatedAt,
+                    UpdatedAt = g.UpdatedAt
+                };
+            }
+        }
+
+        public async Task<List<GroupListItemDto>> GetByBoardAsync(int boardId)
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryAsync<GroupListItemDto>("sp_GetGroupsByBoard", new { p_BoardId = boardId }, commandType: CommandType.StoredProcedure);
+                return result.ToList();
+            }
+            catch
+            {
+                var groups = await _context.Groups.AsNoTracking()
+                    .Where(g => g.BoardId == boardId && g.IsActive)
+                    .Include(g => g.BoardNavigation)
+                    .Include(g => g.AcademicYear)
+                    .Include(g => g.AcademicLevelNavigation)
+                    .OrderByDescending(g => g.GroupId)
+                    .ToListAsync();
+
+                var groupIds = groups.Select(g => g.GroupId).ToList();
+                var subjectCounts = await _context.Subjects
+                    .Where(s => s.GroupId.HasValue && groupIds.Contains(s.GroupId.Value) && s.IsActive)
+                    .GroupBy(s => s.GroupId!.Value)
+                    .Select(g => new { GroupId = g.Key, Count = g.Count() })
+                    .ToDictionaryAsync(x => x.GroupId, x => x.Count);
+
+                return groups.Select(g => new GroupListItemDto
+                {
+                    GroupId = g.GroupId,
+                    BoardId = g.BoardId,
+                    BoardName = g.BoardNavigation != null ? g.BoardNavigation.BoardName : string.Empty,
+                    AcademicYearId = g.AcademicYearId,
+                    AcademicYearName = g.AcademicYear != null ? g.AcademicYear.AcademicYearName : string.Empty,
+                    AcademicLevelId = g.AcademicLevelId,
+                    AcademicLevelName = g.AcademicLevelNavigation != null ? g.AcademicLevelNavigation.LevelName : string.Empty,
+                    GroupName = g.GroupName,
+                    GroupCode = g.GroupCode,
+                    Description = g.Description,
+                    TotalSubjects = subjectCounts.TryGetValue(g.GroupId, out var cnt) ? cnt : 0,
+                    IsActive = g.IsActive,
+                    Status = g.IsActive ? "Active" : "Inactive",
+                    CreatedAt = g.CreatedAt,
+                    UpdatedAt = g.UpdatedAt
+                }).ToList();
+            }
+        }
+
+        public async Task<GroupResponse> CreateAsync(CreateGroupRequest request)
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryFirstOrDefaultAsync<GroupResponse>("sp_CreateGroup", new
+                {
+                    p_BoardId = request.BoardId,
+                    p_AcademicYearId = request.AcademicYearId,
+                    p_AcademicLevelId = request.AcademicLevelId,
+                    p_GroupName = request.GroupName,
+                    p_GroupCode = request.GroupCode,
+                    p_Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    p_IsActive = request.IsActive
+                }, commandType: CommandType.StoredProcedure);
+                if (result != null) return result;
+            }
+            catch { }
+
+            var entity = new Group
+            {
+                BoardId = request.BoardId,
+                AcademicYearId = request.AcademicYearId,
+                AcademicLevelId = request.AcademicLevelId,
+                GroupName = request.GroupName,
+                GroupCode = request.GroupCode,
+                Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                IsActive = request.IsActive,
+                CreatedAt = DateTime.UtcNow
             };
 
-            var connection = _context.Database.GetDbConnection();
+            _context.Groups.Add(entity);
+            await _context.SaveChangesAsync();
 
-            using var multi = await connection.QueryMultipleAsync(
-                "sp_GetAllGroups",
-                new
-                {
-                    p_PageNumber = pageNumber,
-                    p_PageSize = pageSize,
-                    p_Search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
-                    p_Board = string.IsNullOrWhiteSpace(board) ? null : board.Trim(),
-                    p_AcademicYearId = academicYearId,
-                    p_AcademicLevel = string.IsNullOrWhiteSpace(academicLevel) ? null : academicLevel.Trim(),
-                    p_IsActive = isActive
-                },
-                commandType: CommandType.StoredProcedure);
+            return (await GetByIdAsync(entity.GroupId))!;
+        }
 
-            var items = (await multi.ReadAsync<GroupListItemDto>()).ToList();
-            response.Items = items;
-
-            if (!multi.IsConsumed)
+        public async Task<GroupResponse?> UpdateAsync(int groupId, UpdateGroupRequest request)
+        {
+            try
             {
-                response.TotalCount = await multi.ReadFirstOrDefaultAsync<int>();
-            }
-            else
-            {
-                response.TotalCount = items.Count;
-            }
-
-            return response;
-        }
-
-        public async Task<GroupResponse?> GetByIdAsync(
-            int groupId)
-        {
-            var connection = _context.Database.GetDbConnection();
-
-            return await connection.QueryFirstOrDefaultAsync<GroupResponse>(
-                "sp_GetGroupById",
-                new { p_GroupId = groupId },
-                commandType: CommandType.StoredProcedure);
-        }
-
-        public async Task<List<GroupListItemDto>> GetByBoardAsync(
-            string board)
-        {
-            var connection = _context.Database.GetDbConnection();
-
-            var result = await connection.QueryAsync<GroupListItemDto>(
-                "sp_GetGroupsByBoard",
-                new { p_Board = string.IsNullOrWhiteSpace(board) ? null : board.Trim() },
-                commandType: CommandType.StoredProcedure);
-
-            return result.ToList();
-        }
-
-        public async Task<GroupResponse> CreateAsync(
-            CreateGroupRequest request)
-        {
-            var connection = _context.Database.GetDbConnection();
-
-            var result = await connection.QueryFirstOrDefaultAsync<GroupResponse>(
-                "sp_CreateGroup",
-                new
-                {
-                    p_Board = request.Board,
-                    p_AcademicYearId = request.AcademicYearId,
-                    p_AcademicLevel = request.AcademicLevel,
-                    p_GroupName = request.GroupName,
-                    p_GroupCode = request.GroupCode,
-                    p_Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
-                    p_IsActive = request.IsActive
-                },
-                commandType: CommandType.StoredProcedure);
-
-            if (result == null)
-            {
-                throw new InvalidOperationException("Group was created, but no response was returned.");
-            }
-
-            return result;
-        }
-
-        public async Task<GroupResponse?> UpdateAsync(
-            int groupId,
-            UpdateGroupRequest request)
-        {
-            var connection = _context.Database.GetDbConnection();
-
-            return await connection.QueryFirstOrDefaultAsync<GroupResponse>(
-                "sp_UpdateGroup",
-                new
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryFirstOrDefaultAsync<GroupResponse>("sp_UpdateGroup", new
                 {
                     p_GroupId = groupId,
-                    p_Board = request.Board,
+                    p_BoardId = request.BoardId,
                     p_AcademicYearId = request.AcademicYearId,
-                    p_AcademicLevel = request.AcademicLevel,
+                    p_AcademicLevelId = request.AcademicLevelId,
                     p_GroupName = request.GroupName,
                     p_GroupCode = request.GroupCode,
                     p_Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
                     p_IsActive = request.IsActive
-                },
-                commandType: CommandType.StoredProcedure);
+                }, commandType: CommandType.StoredProcedure);
+                if (result != null) return result;
+            }
+            catch { }
+
+            var existing = await _context.Groups.FindAsync(groupId);
+            if (existing == null) return null;
+
+            existing.BoardId = request.BoardId;
+            existing.AcademicYearId = request.AcademicYearId;
+            existing.AcademicLevelId = request.AcademicLevelId;
+            existing.GroupName = request.GroupName;
+            existing.GroupCode = request.GroupCode;
+            existing.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+            existing.IsActive = request.IsActive;
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return await GetByIdAsync(groupId);
         }
 
-        public async Task<bool> DeleteAsync(
-            int groupId)
+        public async Task<bool> DeleteAsync(int groupId)
         {
-            var connection = _context.Database.GetDbConnection();
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var affected = await connection.ExecuteScalarAsync<int>("sp_DeleteGroup", new { p_GroupId = groupId }, commandType: CommandType.StoredProcedure);
+                if (affected > 0) return true;
+            }
+            catch { }
 
-            var result = await connection.ExecuteScalarAsync<int>(
-                "sp_DeleteGroup",
-                new { p_GroupId = groupId },
-                commandType: CommandType.StoredProcedure);
+            var entity = await _context.Groups.FindAsync(groupId);
+            if (entity == null) return false;
 
-            return result > 0;
+            _context.Groups.Remove(entity);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
-        public async Task<bool> GroupCodeExistsAsync(
-            string groupCode,
-            int? excludeGroupId = null)
+        public async Task<bool> ActivateAsync(int groupId, bool isActive = true)
         {
-            var connection = _context.Database.GetDbConnection();
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var affected = await connection.ExecuteAsync(
+                    "UPDATE Groups SET IsActive = @IsActive, UpdatedAt = @UpdatedAt WHERE GroupId = @GroupId",
+                    new { GroupId = groupId, IsActive = isActive, UpdatedAt = DateTime.UtcNow });
+                if (affected > 0) return true;
+            }
+            catch { }
 
-            var exists = await connection.ExecuteScalarAsync<int>(
-                "sp_ValidateGroupCode",
-                new
+            var entity = await _context.Groups.FindAsync(groupId);
+            if (entity == null) return false;
+
+            entity.IsActive = isActive;
+            entity.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> GroupCodeExistsAsync(string groupCode, int? excludeGroupId = null)
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                return await connection.ExecuteScalarAsync<int>("sp_ValidateGroupCode", new { p_GroupCode = groupCode, p_ExcludeGroupId = excludeGroupId }, commandType: CommandType.StoredProcedure) > 0;
+            }
+            catch
+            {
+                var query = _context.Groups.Where(g => g.GroupCode == groupCode);
+                if (excludeGroupId.HasValue)
+                    query = query.Where(g => g.GroupId != excludeGroupId.Value);
+                return await query.AnyAsync();
+            }
+        }
+
+        public async Task<List<CollegeManagement.API.DTOs.Students.StudentListItemDto>> GetStudentsAsync(int groupId)
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryAsync<CollegeManagement.API.DTOs.Students.StudentListItemDto>("sp_GetGroupStudents", new { p_GroupId = groupId }, commandType: CommandType.StoredProcedure);
+                return result.ToList();
+            }
+            catch
+            {
+                return await _context.Students.AsNoTracking()
+                    .Where(s => s.GroupId == groupId)
+                    .Select(s => new CollegeManagement.API.DTOs.Students.StudentListItemDto
+                    {
+                        StudentId = s.StudentId,
+                        AdmissionNo = s.AdmissionNo,
+                        RollNo = s.RollNo,
+                        StudentName = s.StudentName,
+                        Gender = s.Gender,
+                        MobileNumber = s.MobileNumber,
+                        Email = s.Email,
+                        IsActive = s.IsActive
+                    }).ToListAsync();
+            }
+        }
+
+        public async Task<List<Subject>> GetSubjectsAsync(int groupId)
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryAsync<Subject>("sp_GetGroupSubjects", new { p_GroupId = groupId }, commandType: CommandType.StoredProcedure);
+                return result.ToList();
+            }
+            catch
+            {
+                return await _context.Subjects.AsNoTracking()
+                    .Where(s => s.GroupId == groupId && s.IsActive)
+                    .ToListAsync();
+            }
+        }
+
+        public async Task<GroupSummaryDto?> GetSummaryAsync(int groupId)
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                return await connection.QueryFirstOrDefaultAsync<GroupSummaryDto>("sp_GetGroupSummary", new { p_GroupId = groupId }, commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                var g = await _context.Groups.AsNoTracking()
+                    .Include(x => x.BoardNavigation)
+                    .Include(x => x.AcademicYear)
+                    .Include(x => x.AcademicLevelNavigation)
+                    .FirstOrDefaultAsync(x => x.GroupId == groupId);
+
+                if (g == null) return null;
+
+                var totalStudents = await _context.Students.CountAsync(s => s.GroupId == groupId);
+                var activeStudents = await _context.Students.CountAsync(s => s.GroupId == groupId && s.IsActive);
+                var totalSubjects = await _context.Subjects.CountAsync(s => s.GroupId == groupId);
+                var activeSubjects = await _context.Subjects.CountAsync(s => s.GroupId == groupId && s.IsActive);
+
+                return new GroupSummaryDto
                 {
-                    p_GroupCode = groupCode,
-                    p_ExcludeGroupId = excludeGroupId
-                },
-                commandType: CommandType.StoredProcedure);
+                    GroupId = g.GroupId,
+                    GroupName = g.GroupName,
+                    GroupCode = g.GroupCode,
+                    BoardId = g.BoardId,
+                    BoardName = g.BoardNavigation != null ? g.BoardNavigation.BoardName : string.Empty,
+                    AcademicLevelId = g.AcademicLevelId,
+                    AcademicLevelName = g.AcademicLevelNavigation != null ? g.AcademicLevelNavigation.LevelName : string.Empty,
+                    AcademicYearId = g.AcademicYearId,
+                    AcademicYearName = g.AcademicYear != null ? g.AcademicYear.AcademicYearName : string.Empty,
+                    TotalStudents = totalStudents,
+                    ActiveStudents = activeStudents,
+                    TotalSubjects = totalSubjects,
+                    ActiveSubjects = activeSubjects
+                };
+            }
+        }
 
-            return exists > 0;
+        public async Task<List<GroupDropdownDto>> GetDropdownAsync()
+        {
+            try
+            {
+                var connection = _context.Database.GetDbConnection();
+                var result = await connection.QueryAsync<GroupDropdownDto>("sp_GetGroupDropdown", commandType: CommandType.StoredProcedure);
+                return result.ToList();
+            }
+            catch
+            {
+                return await _context.Groups.AsNoTracking()
+                    .Where(g => g.IsActive)
+                    .Include(g => g.BoardNavigation)
+                    .Include(g => g.AcademicYear)
+                    .Include(g => g.AcademicLevelNavigation)
+                    .OrderBy(g => g.GroupName)
+                    .Select(g => new GroupDropdownDto
+                    {
+                        GroupId = g.GroupId,
+                        GroupName = g.GroupName,
+                        GroupCode = g.GroupCode,
+                        BoardId = g.BoardId,
+                        BoardName = g.BoardNavigation != null ? g.BoardNavigation.BoardName : string.Empty,
+                        AcademicYearId = g.AcademicYearId,
+                        AcademicYearName = g.AcademicYear != null ? g.AcademicYear.AcademicYearName : string.Empty,
+                        AcademicLevelId = g.AcademicLevelId,
+                        AcademicLevelName = g.AcademicLevelNavigation != null ? g.AcademicLevelNavigation.LevelName : string.Empty
+                    }).ToListAsync();
+            }
         }
     }
 }

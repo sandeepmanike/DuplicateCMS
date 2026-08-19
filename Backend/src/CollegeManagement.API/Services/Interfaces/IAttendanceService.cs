@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Attendance.Requests;
 using CollegeManagement.API.DTOs.Attendance.Responses;
 
+using CollegeManagement.API.DTOs.Common;
+
 namespace CollegeManagement.API.Services.Interfaces
 {
     /// <summary>
@@ -14,22 +16,37 @@ namespace CollegeManagement.API.Services.Interfaces
         /// Creates a new attendance record after performing business validations.
         /// </summary>
         /// <param name="request">The creation details.</param>
+        /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
+        /// <param name="userName">The username of the caller.</param>
         /// <returns>The ID of the newly created attendance record.</returns>
-        Task<int> CreateAttendanceAsync(CreateAttendanceRequest request);
+        Task<int> CreateAttendanceAsync(CreateAttendanceRequest request, bool isAdmin, string userName);
 
         /// <summary>
         /// Creates student attendance records in bulk after performing business validations.
         /// </summary>
         /// <param name="request">The bulk attendance details.</param>
+        /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
+        /// <param name="userName">The username of the caller.</param>
         /// <returns>The number of records successfully created.</returns>
-        Task<int> CreateBulkAttendanceAsync(BulkAttendanceRequest request);
+        Task<int> CreateBulkAttendanceAsync(BulkAttendanceRequest request, bool isAdmin, string userName);
 
         /// <summary>
         /// Updates an existing attendance record after performing business validations.
         /// </summary>
         /// <param name="request">The update details.</param>
+        /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
+        /// <param name="userName">The username of the caller.</param>
         /// <returns>The number of affected records.</returns>
-        Task<int> UpdateAttendanceAsync(UpdateAttendanceRequest request);
+        Task<int> UpdateAttendanceAsync(UpdateAttendanceRequest request, bool isAdmin, string userName);
+
+        /// <summary>
+        /// Updates multiple existing student attendance records in one bulk operation.
+        /// </summary>
+        /// <param name="request">The bulk update details.</param>
+        /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
+        /// <param name="userName">The username of the caller.</param>
+        /// <returns>The number of records successfully updated.</returns>
+        Task<int> BulkUpdateAttendanceAsync(BulkUpdateAttendanceRequest request, bool isAdmin, string userName);
 
         /// <summary>
         /// Retrieves a single detailed attendance record by its ID.
@@ -39,11 +56,11 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<AttendanceResponse?> GetAttendanceByIdAsync(int attendanceId);
 
         /// <summary>
-        /// Retrieves a filtered list of attendance records.
+        /// Retrieves a filtered list of attendance records with pagination metadata.
         /// </summary>
         /// <param name="request">The search and filter parameters.</param>
-        /// <returns>A collection of attendance list response DTOs.</returns>
-        Task<IEnumerable<AttendanceListResponse>> GetAttendancesAsync(AttendanceSearchRequest request);
+        /// <returns>A paginated response containing items and metadata.</returns>
+        Task<PagedResponse<AttendanceListResponse>> GetAttendancesAsync(AttendanceSearchRequest request);
 
         /// <summary>
         /// Retrieves students available to mark attendance for the specified search criteria.
@@ -78,7 +95,35 @@ namespace CollegeManagement.API.Services.Interfaces
         /// </summary>
         /// <param name="attendanceId">The attendance identifier.</param>
         /// <param name="isActive">The new active status flag.</param>
+        /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
+        /// <param name="userName">The username of the caller.</param>
         /// <returns>The number of affected records.</returns>
-        Task<int> ChangeAttendanceActiveStatusAsync(int attendanceId, bool isActive);
+        Task<int> ChangeAttendanceActiveStatusAsync(int attendanceId, bool isActive, bool isAdmin, string userName);
+
+        /// <summary>
+        /// Locks an attendance session, preventing further modifications by Faculty members.
+        /// </summary>
+        /// <param name="sessionId">The attendance session identifier.</param>
+        /// <param name="lockedByUserId">The user identifier of who locked the session.</param>
+        /// <param name="userName">The username of the caller.</param>
+        /// <returns>True if the session was successfully locked.</returns>
+        Task<bool> LockSessionAsync(int sessionId, int lockedByUserId, string userName);
+
+        /// <summary>
+        /// Unlocks an attendance session, allowing modifications.
+        /// </summary>
+        /// <param name="sessionId">The attendance session identifier.</param>
+        /// <param name="userName">The username of the caller.</param>
+        /// <returns>True if the session was successfully unlocked.</returns>
+        Task<bool> UnlockSessionAsync(int sessionId, string userName);
+
+        /// <summary>
+        /// Soft deletes an existing attendance record.
+        /// </summary>
+        /// <param name="attendanceId">The attendance identifier.</param>
+        /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
+        /// <param name="userName">The username of the caller.</param>
+        /// <returns>True if the record was successfully soft deleted.</returns>
+        Task<bool> DeleteAttendanceAsync(int attendanceId, bool isAdmin, string userName);
     }
 }

@@ -14,6 +14,11 @@ namespace CollegeManagement.API.DTOs.Attendance.Responses
         public int AttendanceId { get; set; }
 
         /// <summary>
+        /// Gets or sets the unique identifier of the attendance session.
+        /// </summary>
+        public int AttendanceSessionId { get; set; }
+
+        /// <summary>
         /// Gets or sets the date and time of the attendance.
         /// </summary>
         public DateTime AttendanceDate { get; set; }
@@ -123,6 +128,25 @@ namespace CollegeManagement.API.DTOs.Attendance.Responses
         /// </summary>
         public DateTime? UpdatedAt { get; set; }
 
-        
+        /// <summary>
+        /// Gets or sets a value indicating whether the attendance record is active.
+        /// </summary>
+        public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the attendance session is locked.
+        /// </summary>
+        public bool IsLocked { get; set; }
+
+        /// <summary>
+        /// Gets or sets the user ID who locked the session.
+        /// </summary>
+        public int? LockedBy { get; set; }
+
+        /// <summary>
+        /// Gets or sets the date and time when the session was locked.
+        /// </summary>
+        public DateTime? LockedAt { get; set; }
+
     }
 }

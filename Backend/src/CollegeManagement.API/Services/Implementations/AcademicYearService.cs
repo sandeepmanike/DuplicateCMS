@@ -1,4 +1,4 @@
-﻿using CollegeManagement.API.Services.Interfaces;
+using CollegeManagement.API.Services.Interfaces;
 using CollegeManagement.API.DTOs.Authentication;
 using CollegeManagement.API.DTOs.AcademicYear;
 using CollegeManagement.API.Models;
@@ -26,6 +26,12 @@ namespace CollegeManagement.API.Services.Implementations
             return years.Select(MapToResponseDto);
         }
 
+        public async Task<IEnumerable<AcademicYearResponseDto>> GetActiveAsync()
+        {
+            var years = await _repository.GetAllAsync();
+            return years.Where(y => y.IsActive).Select(MapToResponseDto);
+        }
+
         public async Task<AcademicYearResponseDto?> GetByIdAsync(int id)
         {
             var year = await _repository.GetByIdAsync(id);
@@ -35,6 +41,15 @@ namespace CollegeManagement.API.Services.Implementations
         public async Task<AcademicYearResponseDto> CreateAsync(CreateAcademicYearDto dto)
         {
             ValidateDates(dto.StartDate, dto.EndDate, dto.AdmissionStartDate, dto.AdmissionEndDate);
+
+            if (dto.IsActive)
+            {
+                var activeYears = (await _repository.GetAllAsync()).Where(y => y.IsActive).ToList();
+                if (activeYears.Count >= 2)
+                {
+                    throw new ArgumentException("A maximum of 2 Academic Years can be active concurrently in an Intermediate College (e.g., 1st Year batch & 2nd Year batch). Please deactivate an existing academic year first.");
+                }
+            }
 
             var academicYear = new AcademicYear
             {
@@ -47,14 +62,6 @@ namespace CollegeManagement.API.Services.Implementations
             };
 
             await _repository.AddAsync(academicYear);
-
-            if (academicYear.IsActive)
-            {
-                await _repository.DeactivateAllExceptAsync(academicYear.AcademicYearId);
-                // Reload entity
-                academicYear = await _repository.GetByIdAsync(academicYear.AcademicYearId) ?? academicYear;
-            }
-
             return MapToResponseDto(academicYear);
         }
 
@@ -68,6 +75,15 @@ namespace CollegeManagement.API.Services.Implementations
                 return null;
             }
 
+            if (dto.IsActive && !academicYear.IsActive)
+            {
+                var otherActiveYears = (await _repository.GetAllAsync()).Where(y => y.IsActive && y.AcademicYearId != id).ToList();
+                if (otherActiveYears.Count >= 2)
+                {
+                    throw new ArgumentException("A maximum of 2 Academic Years can be active concurrently in an Intermediate College. Please deactivate an existing academic year first.");
+                }
+            }
+
             academicYear.AcademicYearName = dto.AcademicYearName;
             academicYear.StartDate = dto.StartDate;
             academicYear.EndDate = dto.EndDate;
@@ -76,14 +92,6 @@ namespace CollegeManagement.API.Services.Implementations
             academicYear.IsActive = dto.IsActive;
 
             await _repository.UpdateAsync(academicYear);
-
-            if (academicYear.IsActive)
-            {
-                await _repository.DeactivateAllExceptAsync(academicYear.AcademicYearId);
-                // Reload entity
-                academicYear = await _repository.GetByIdAsync(academicYear.AcademicYearId) ?? academicYear;
-            }
-
             return MapToResponseDto(academicYear);
         }
 
@@ -107,10 +115,32 @@ namespace CollegeManagement.API.Services.Implementations
                 return false;
             }
 
+            if (academicYear.IsActive)
+            {
+                return true;
+            }
+
+            var otherActiveYears = (await _repository.GetAllAsync()).Where(y => y.IsActive && y.AcademicYearId != id).ToList();
+            if (otherActiveYears.Count >= 2)
+            {
+                throw new ArgumentException("A maximum of 2 Academic Years can be active concurrently in an Intermediate College (e.g., 1st Year batch & 2nd Year batch). Please deactivate an existing active year before activating another.");
+            }
+
             academicYear.IsActive = true;
             await _repository.UpdateAsync(academicYear);
-            await _repository.DeactivateAllExceptAsync(academicYear.AcademicYearId);
+            return true;
+        }
 
+        public async Task<bool> DeactivateAsync(int id)
+        {
+            var academicYear = await _repository.GetByIdAsync(id);
+            if (academicYear == null)
+            {
+                return false;
+            }
+
+            academicYear.IsActive = false;
+            await _repository.UpdateAsync(academicYear);
             return true;
         }
 

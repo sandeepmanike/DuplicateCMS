@@ -1,8 +1,10 @@
 using CollegeManagement.API.DTOs.Assignment;
 using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.Models;
+using CollegeManagement.API.Exceptions;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
+using CollegeManagement.API.DTOs.Assignment.Admin;
 
 namespace CollegeManagement.API.Services.Implementations
 {
@@ -42,10 +44,13 @@ namespace CollegeManagement.API.Services.Implementations
                 SubjectId = dto.SubjectId,
                 FacultyId = dto.FacultyId,
                 Description = dto.Description,
+                StartDate = dto.StartDate,
                 DueDate = dto.DueDate,
                 GroupId = dto.GroupId,
                 Attachment = dto.AttachmentPath,
-                MaximumMarks = dto.MaximumMarks
+                MaximumMarks = dto.MaximumMarks,
+
+                CreatedByType = "Faculty"
             };
 
             await _repository.AddAsync(assignment);
@@ -66,6 +71,7 @@ namespace CollegeManagement.API.Services.Implementations
             assignment.SubjectId = dto.SubjectId;
             assignment.FacultyId = dto.FacultyId;
             assignment.Description = dto.Description;
+            assignment.StartDate = dto.StartDate;
             assignment.DueDate = dto.DueDate;
             assignment.GroupId = dto.GroupId;
             assignment.MaximumMarks = dto.MaximumMarks;
@@ -92,56 +98,33 @@ namespace CollegeManagement.API.Services.Implementations
             return true;
         }
 
-        public async Task<bool> SubmitAssignmentAsync(int assignmentId, SubmitAssignmentDto dto)
+        public async Task<bool> PublishAssignmentAsync(int assignmentId)
         {
-            var assignment = await _repository.GetByIdAsync(assignmentId);
-
-            if (assignment == null)
-                return false;
-
-            string uploadsFolder = Path.Combine(
-    Directory.GetCurrentDirectory(),
-    "wwwroot",
-    "uploads",
-    "submissions");
-
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            string fileName = Guid.NewGuid() +
-                              Path.GetExtension(dto.SubmissionFile.FileName);
-
-            string filePath = Path.Combine(uploadsFolder, fileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await dto.SubmissionFile.CopyToAsync(stream);
-            }
-
-            var submission = new AssignmentSubmission
-            {
-                AssignmentId = assignmentId,
-                StudentName = dto.StudentName,
-                SubmissionFile = fileName
-            };
-
-            await _repository.SubmitAssignmentAsync(submission);
-
-            return true;
+            return await _repository.PublishAssignmentAsync(assignmentId);
         }
 
-        public async Task<IEnumerable<AssignmentSubmissionResponseDto>> GetSubmissionsAsync(int assignmentId)
+        public async Task<bool> PublishAssignmentsAsync(List<int> assignmentIds)
         {
-            var submissions = await _repository.GetSubmissionsAsync(assignmentId);
+            if (assignmentIds == null || assignmentIds.Count == 0)
+                return false;
 
-            return submissions.Select(x => new AssignmentSubmissionResponseDto
+            bool allSuccess = true;
+            foreach (var id in assignmentIds)
             {
-                AssignmentSubmissionId = x.AssignmentSubmissionId,
-                AssignmentId = x.AssignmentId,
-                StudentName = x.StudentName,
-                SubmissionFile = x.SubmissionFile,
-                SubmittedAt = x.SubmittedAt
-            });
+                var success = await _repository.PublishAssignmentAsync(id);
+                if (!success)
+                {
+                    allSuccess = false;
+                }
+            }
+
+            return allSuccess;
+        }
+
+        public async Task<IEnumerable<AssignmentResponseDto>> GetPublishedAssignmentsAsync()
+        {
+            var assignments = await _repository.GetPublishedAssignmentsAsync();
+            return assignments.Select(MapToResponseDto);
         }
 
         private AssignmentResponseDto MapToResponseDto(Assignment assignment)
@@ -163,17 +146,160 @@ namespace CollegeManagement.API.Services.Implementations
                 SubjectId = assignment.SubjectId,
                 SubjectName = assignment.SubjectName,
 
-                FacultyId = assignment.FacultyId,
+                FacultyId = assignment.FacultyId ?? 0,
                 FacultyName = assignment.FacultyName,
 
                 Description = assignment.Description,
+                StartDate = assignment.StartDate,
+                DueDate = assignment.DueDate,
+
+                AttachmentPath = assignment.Attachment,
+
+                MaximumMarks = assignment.MaximumMarks,
+                CreatedByType = assignment.CreatedByType,
+                IsPublished = assignment.IsPublished,
+                PublishedAt = assignment.PublishedAt
+            };
+        }
+
+        public async Task<List<AdminAssignmentResponseDto>>
+    CreateAdminAssignmentAsync(CreateAdminAssignmentDto dto)
+        {
+            if (dto.SubjectIds == null || dto.SubjectIds.Count == 0)
+            {
+                throw new ValidationException(
+                    "Please select at least one subject.");
+            }
+
+            string? attachmentPath = null;
+
+            // ==========================================
+            // UPLOAD FILE ONLY ONCE
+            // ==========================================
+
+            if (dto.Attachment != null && dto.Attachment.Length > 0)
+            {
+                string uploadsFolder = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "wwwroot",
+                    "uploads",
+                    "assignments"
+                );
+
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                string fileName =
+                    Guid.NewGuid() +
+                    Path.GetExtension(dto.Attachment.FileName);
+
+                string filePath =
+                    Path.Combine(uploadsFolder, fileName);
+
+                using (var stream =
+                    new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.Attachment.CopyToAsync(stream);
+                }
+
+                attachmentPath =
+                    "/uploads/assignments/" + fileName;
+            }
+
+            // ==========================================
+            // CREATE ONE ASSIGNMENT PER SUBJECT
+            // ==========================================
+
+            var results = new List<AdminAssignmentResponseDto>();
+
+            foreach (var subjectId in dto.SubjectIds)
+            {
+                var assignment = new Assignment
+                {
+                    Title = dto.Title,
+                    AcademicYearId = dto.AcademicYearId,
+                    AcademicLevel = dto.AcademicLevel,
+                    GroupId = dto.GroupId,
+
+                    // One subject for this database row
+                    SubjectId = subjectId,
+
+                    Description = dto.Description,
+
+                    StartDate = dto.StartDate,
+                    DueDate = dto.DueDate,
+
+                    Attachment = attachmentPath ?? string.Empty,
+
+                    MaximumMarks = dto.MaximumMarks,
+
+                    CreatedByType = "Admin"
+                };
+
+                var created =
+                    await _repository.CreateAdminAssignmentAsync(
+                        assignment);
+
+                if (created == null)
+                {
+                    throw new Exception(
+                        $"Failed to create admin assignment for SubjectId {subjectId}.");
+                }
+
+                results.Add(MapToAdminResponseDto(created));
+            }
+
+            return results;
+        }
+
+
+        private AdminAssignmentResponseDto MapToAdminResponseDto(
+    Assignment assignment)
+        {
+            return new AdminAssignmentResponseDto
+            {
+                AssignmentId = assignment.AssignmentId,
+
+                Title = assignment.Title,
+
+                AcademicYearId = assignment.AcademicYearId,
+                AcademicYearName = assignment.AcademicYearName,
+
+                AcademicLevel = assignment.AcademicLevel,
+
+                GroupId = assignment.GroupId,
+                GroupName = assignment.GroupName,
+
+                SubjectId = assignment.SubjectId,
+                SubjectName = assignment.SubjectName,
+
+                Description = assignment.Description,
+
+                StartDate = assignment.StartDate,
 
                 DueDate = assignment.DueDate,
 
                 AttachmentPath = assignment.Attachment,
 
-                MaximumMarks = assignment.MaximumMarks
+                MaximumMarks = assignment.MaximumMarks,
+
+                CreatedByType = assignment.CreatedByType,
+
+                IsPublished = assignment.IsPublished,
+
+                PublishedAt = assignment.PublishedAt
             };
+        }
+
+        public async Task<IEnumerable<AdminAssignmentResponseDto>>
+    GetAdminAssignmentsAsync()
+        {
+            var assignments =
+                await _repository.GetAdminAssignmentsAsync();
+
+            return assignments.Select(MapToAdminResponseDto);
         }
 
         public async Task<IEnumerable<SubjectDropdownDto>>

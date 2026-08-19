@@ -21,6 +21,40 @@ namespace CollegeManagement.API.Controllers
             _service = service;
         }
 
+        [HttpGet("search")]
+        public async Task<IActionResult> Search(
+            [FromQuery] string? search = null,
+            [FromQuery] int? boardId = null,
+            [FromQuery] int? academicYearId = null,
+            [FromQuery] int? groupId = null,
+            [FromQuery] bool? isActive = null)
+            => Ok(await _service.SearchAsync(search, boardId, academicYearId, groupId, isActive));
+
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActive() => Ok(await _service.GetActiveAsync());
+
+        [HttpGet("board/{boardId:int}")]
+        public async Task<IActionResult> GetByBoard(int boardId)
+        {
+            if (boardId <= 0) return BadRequest(new { message = "Valid BoardId is required." });
+            return Ok(await _service.GetByBoardIdAsync(boardId));
+        }
+
+        [HttpGet("academic-year/{academicYearId:int}")]
+        public async Task<IActionResult> GetByAcademicYear(int academicYearId)
+        {
+            if (academicYearId <= 0) return BadRequest(new { message = "Valid AcademicYearId is required." });
+            return Ok(await _service.GetByAcademicYearIdAsync(academicYearId));
+        }
+
+        [HttpGet("check-code")]
+        public async Task<IActionResult> CheckCode([FromQuery] string subjectCode, [FromQuery] int? excludeSubjectId = null)
+        {
+            if (string.IsNullOrWhiteSpace(subjectCode)) return BadRequest(new { message = "Subject code is required." });
+            var exists = await _service.SubjectCodeExistsAsync(subjectCode, excludeSubjectId);
+            return Ok(new { subjectCode, exists, isAvailable = !exists });
+        }
+
         // ==========================
         // GET ALL SUBJECTS
         // ==========================
@@ -62,12 +96,13 @@ namespace CollegeManagement.API.Controllers
         /// Retrieves subjects associated with a specific academic group name.
         /// </summary>
         /// <param name="group">The group name.</param>
-        [HttpGet("group/{group}")]
-        public async Task<IActionResult> GetSubjectsByGroup(string group)
+        [HttpGet("group/{groupId:int}")]
+        public async Task<IActionResult> GetSubjectsByGroupId(int groupId)
         {
-            var subjects = await _service.GetByGroupAsync(group);
+            if (groupId <= 0)
+                return BadRequest(new { message = "Valid GroupId is required." });
 
-            return Ok(subjects);
+            return Ok(await _service.GetByGroupIdAsync(groupId));
         }
 
         // ==========================
@@ -78,8 +113,9 @@ namespace CollegeManagement.API.Controllers
         /// </summary>
         /// <param name="dto">The subject details to create.</param>
         [HttpPost]
-        public async Task<IActionResult> CreateSubject(CreateSubjectDto dto)
+        public async Task<IActionResult> CreateSubject([FromBody] CreateSubjectDto dto)
         {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
             var subject = await _service.CreateAsync(dto);
 
             return CreatedAtAction(
@@ -97,8 +133,9 @@ namespace CollegeManagement.API.Controllers
         /// <param name="id">The subject identifier to update.</param>
         /// <param name="dto">The updated subject details.</param>
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdateSubject(int id, UpdateSubjectDto dto)
+        public async Task<IActionResult> UpdateSubject(int id, [FromBody] UpdateSubjectDto dto)
         {
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
             var subject = await _service.UpdateAsync(id, dto);
 
             if (subject == null)

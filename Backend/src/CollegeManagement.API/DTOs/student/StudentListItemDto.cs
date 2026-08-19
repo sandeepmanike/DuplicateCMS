@@ -2,10 +2,6 @@
 {
     public class StudentListItemDto
     {
-        // ==========================
-        // Basic Information
-        // ==========================
-
         public int StudentId { get; set; }
 
         public string AdmissionNo { get; set; } = string.Empty;
@@ -16,66 +12,51 @@
 
         public string? Photo { get; set; }
 
-        public string Gender { get; set; } = string.Empty;
+        public string? Gender { get; set; }
 
-        // ==========================
-        // Academic Information
-        // ==========================
+        public DateTime DateOfBirth { get; set; }
 
-        public string Board { get; set; } = string.Empty;
+        public string? MobileNumber { get; set; }
+
+        public string? Email { get; set; }
+
+
+        // =========================================================
+        // ACADEMIC IDS
+        // =========================================================
+
+        public int BoardId { get; set; }
 
         public int AcademicYearId { get; set; }
 
-        public string AcademicYearName { get; set; } = string.Empty;
-
-        public string AcademicLevel { get; set; } = string.Empty;
+        public int AcademicLevelId { get; set; }
 
         public int GroupId { get; set; }
 
-        public string GroupName { get; set; } = string.Empty;
+        public int SectionId { get; set; }
 
-        public string Section { get; set; } = string.Empty;
 
-        public DateTime AdmissionDate { get; set; }
+        // =========================================================
+        // ACADEMIC NAMES
+        // =========================================================
 
-        // ==========================
-        // Contact Information
-        // ==========================
+        public string? BoardName { get; set; }
 
-        public string Email { get; set; } = string.Empty;
+        public string? AcademicYearName { get; set; }
 
-        public string MobileNumber { get; set; } = string.Empty;
+        public string? AcademicLevelName { get; set; }
 
-        public string? FatherName { get; set; }
+        public string? GroupName { get; set; }
 
-        public string? FatherMobile { get; set; }
+        public string? SectionName { get; set; }
 
-        // ==========================
-        // Fee & Attendance
-        // ==========================
 
-        public decimal FeeAmount { get; set; }
-
-        public decimal FeePaid { get; set; }
-
-        public decimal ScholarshipAmount { get; set; }
-
-        public string? FeeStatus { get; set; }
-
-        public decimal AttendancePercentage { get; set; }
-
-        public string? PerformanceGrade { get; set; }
-
-        // ==========================
-        // Status
-        // ==========================
+        // =========================================================
+        // STATUS
+        // =========================================================
 
         public bool IsActive { get; set; }
 
         public string Status { get; set; } = string.Empty;
-
-        public DateTime CreatedAt { get; set; }
-
-        public DateTime? UpdatedAt { get; set; }
     }
 }

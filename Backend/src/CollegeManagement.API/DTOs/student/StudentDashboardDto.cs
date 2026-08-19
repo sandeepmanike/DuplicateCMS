@@ -2,9 +2,9 @@
 {
     public class StudentDashboardDto
     {
-        // ==========================
-        // Basic Information
-        // ==========================
+        // =========================================================
+        // BASIC
+        // =========================================================
 
         public int StudentId { get; set; }
 
@@ -16,25 +16,47 @@
 
         public string? Photo { get; set; }
 
-        public string Board { get; set; } = string.Empty;
 
-        public string AcademicYearName { get; set; } = string.Empty;
+        // =========================================================
+        // ACADEMIC IDS
+        // =========================================================
 
-        public string AcademicLevel { get; set; } = string.Empty;
+        public int BoardId { get; set; }
 
-        public string GroupName { get; set; } = string.Empty;
+        public int AcademicYearId { get; set; }
 
-        public string Section { get; set; } = string.Empty;
+        public int AcademicLevelId { get; set; }
 
-        // ==========================
-        // Attendance
-        // ==========================
+        public int GroupId { get; set; }
+
+        public int SectionId { get; set; }
+
+
+        // =========================================================
+        // ACADEMIC NAMES
+        // =========================================================
+
+        public string? BoardName { get; set; }
+
+        public string? AcademicYearName { get; set; }
+
+        public string? AcademicLevelName { get; set; }
+
+        public string? GroupName { get; set; }
+
+        public string? SectionName { get; set; }
+
+
+        // =========================================================
+        // ATTENDANCE
+        // =========================================================
 
         public decimal AttendancePercentage { get; set; }
 
-        // ==========================
-        // Fee Summary
-        // ==========================
+
+        // =========================================================
+        // FEES
+        // =========================================================
 
         public decimal FeeAmount { get; set; }
 
@@ -42,13 +64,14 @@
 
         public decimal FeeDue { get; set; }
 
-        public decimal ScholarshipAmount { get; set; }
+        public decimal? ScholarshipAmount { get; set; }
 
         public string? FeeStatus { get; set; }
 
-        // ==========================
-        // Academic Performance
-        // ==========================
+
+        // =========================================================
+        // PERFORMANCE
+        // =========================================================
 
         public string? PerformanceGrade { get; set; }
 
@@ -56,9 +79,10 @@
 
         public int? Rank { get; set; }
 
-        // ==========================
-        // Subjects
-        // ==========================
+
+        // =========================================================
+        // SUBJECT SUMMARY
+        // =========================================================
 
         public int TotalSubjects { get; set; }
 
@@ -66,11 +90,14 @@
 
         public int PendingSubjects { get; set; }
 
-        // ==========================
-        // Status
-        // ==========================
+
+        // =========================================================
+        // STATUS
+        // =========================================================
 
         public bool IsActive { get; set; }
+
+        public string Status { get; set; } = string.Empty;
 
         public DateTime? LastLogin { get; set; }
     }

@@ -1,23 +1,11 @@
 -- =============================================================================
--- FIX TIMETABLES TABLE SCHEMA & STORED PROCEDURES
+-- SCRIPT TO ENSURE TIMETABLE STORED PROCEDURES & COLUMNS MATCH C# DOMAIN MODEL
 -- DATABASE: u819242402_CLM_System
 -- =============================================================================
 
 USE `u819242402_CLM_System`;
 
--- 1. Add missing columns to Timetables table if they do not exist
-SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Timetables' AND COLUMN_NAME = 'BoardId');
-SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Timetables` ADD COLUMN `BoardId` INT NOT NULL DEFAULT 1', 'SELECT 1');
-PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Timetables' AND COLUMN_NAME = 'AcademicLevelId');
-SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Timetables` ADD COLUMN `AcademicLevelId` INT NOT NULL DEFAULT 1', 'SELECT 1');
-PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Timetables' AND COLUMN_NAME = 'GroupId');
-SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Timetables` ADD COLUMN `GroupId` INT NOT NULL DEFAULT 1', 'SELECT 1');
-PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
+-- 1. Ensure IsPublished and Remarks columns exist on Timetables table
 SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Timetables' AND COLUMN_NAME = 'IsPublished');
 SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Timetables` ADD COLUMN `IsPublished` TINYINT(1) NOT NULL DEFAULT 0', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
@@ -42,8 +30,8 @@ CREATE PROCEDURE sp_GetTimetables(
 )
 BEGIN
     SELECT 
-        t.TimetableId AS Id,
-        t.TimetableId,
+        t.Id AS Id,
+        t.Id AS TimetableId,
         t.BoardId,
         COALESCE(b.BoardName, '') AS BoardName,
         t.AcademicLevelId,
@@ -108,8 +96,8 @@ DELIMITER //
 CREATE PROCEDURE sp_GetTimetableById(IN p_Id INT)
 BEGIN
     SELECT 
-        t.TimetableId AS Id,
-        t.TimetableId,
+        t.Id AS Id,
+        t.Id AS TimetableId,
         t.BoardId,
         COALESCE(b.BoardName, '') AS BoardName,
         t.AcademicLevelId,
@@ -155,6 +143,6 @@ BEGIN
     LEFT JOIN Subjects sub ON sub.SubjectId = t.SubjectId
     LEFT JOIN Faculties f ON f.Id = t.FacultyId
     LEFT JOIN Rooms r ON r.RoomId = t.RoomId
-    WHERE t.TimetableId = p_Id;
+    WHERE t.Id = p_Id;
 END //
 DELIMITER ;

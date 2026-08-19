@@ -66,7 +66,20 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 4. GET /api/v1/faculty/workload/{facultyId:int}
+        /// 4. GET /api/v1/faculty/{facultyId:int}/subject-allocations
+        /// Get all subject allocations for a specific faculty member.
+        /// </summary>
+        [HttpGet("{facultyId:int}/subject-allocations")]
+        [ProducesResponseType(typeof(System.Collections.Generic.List<FacultySubjectAllocationResponseDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetFacultySubjectAllocations(int facultyId)
+        {
+            var result = await _facultyService.GetFacultySubjectAllocationsAsync(facultyId);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 5. GET /api/v1/faculty/workload/{facultyId:int}
         /// Get summary workload details and subject allocations for a faculty member.
         /// </summary>
         [HttpGet("workload/{facultyId:int}")]

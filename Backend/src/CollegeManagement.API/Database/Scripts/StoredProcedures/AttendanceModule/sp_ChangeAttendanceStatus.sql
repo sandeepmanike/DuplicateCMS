@@ -22,7 +22,7 @@ BEGIN
 
     START TRANSACTION;
 
-    UPDATE Attendances
+    UPDATE attendances
     SET IsActive = p_IsActive,
         UpdatedAt = UTC_TIMESTAMP()
     WHERE AttendanceId = p_AttendanceId;

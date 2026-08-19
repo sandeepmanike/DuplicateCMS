@@ -18,8 +18,8 @@ namespace CollegeManagement.API.DTOs.Assignment
         public string AcademicLevel { get; set; } = string.Empty;
 
         public string? Description { get; set; }
-
-        public DateOnly DueDate { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime DueDate { get; set; }
 
         public int GroupId { get; set; }
 

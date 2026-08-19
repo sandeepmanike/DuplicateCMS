@@ -15,6 +15,8 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<IEnumerable<SectionResponse>> GetSectionsByGroupAsync(int groupId);
         Task<bool> IsSectionNameDuplicateAsync(string board, int academicYearId, string group, string academicLevel, string sectionName, int? excludeSectionId = null);
         Task<bool> AcademicYearExistsAsync(int academicYearId);
+        Task<AcademicYear?> GetAcademicYearByIdAsync(int academicYearId);
         Task<bool> FacultyExistsAsync(int facultyId);
+        Task<bool> RoomExistsAsync(int roomId);
     }
 }

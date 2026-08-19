@@ -22,14 +22,88 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<User?> GetByEmailOrPhoneAsync(string emailOrPhone)
         {
-            var user = await Connection.QueryFirstOrDefaultAsync<User>(
-                "usp_GetUserByEmailOrPhone",
-                new { p_EmailOrPhone = emailOrPhone },
-                commandType: CommandType.StoredProcedure);
-            if (user != null)
+            var term = emailOrPhone?.Trim() ?? string.Empty;
+            User? user = null;
+            try
             {
-                user.Role = await _context.Roles.FindAsync(user.RoleId) ?? null!;
+                user = await Connection.QueryFirstOrDefaultAsync<User>(
+                    "usp_GetUserByEmailOrPhone",
+                    new { p_EmailOrPhone = term },
+                    commandType: CommandType.StoredProcedure);
             }
+            catch
+            {
+                // Fallback to LINQ
+            }
+
+            if (user == null)
+            {
+                user = await _context.Users
+                    .Include(u => u.Role)
+                    .FirstOrDefaultAsync(u => u.Email == term || u.PhoneNumber == term);
+            }
+
+            if (user == null)
+            {
+                var admin = await _context.Admins.FirstOrDefaultAsync(a => a.Email == term);
+                if (admin != null)
+                {
+                    var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Admin") ?? new Role { RoleId = 1, RoleName = "Admin" };
+                    user = new User
+                    {
+                        UserId = admin.Id,
+                        FullName = admin.Email,
+                        Email = admin.Email,
+                        PasswordHash = admin.Password,
+                        RoleId = adminRole.RoleId,
+                        Role = adminRole
+                    };
+                }
+            }
+
+            if (user == null)
+            {
+                var faculty = await _context.Faculties.FirstOrDefaultAsync(f => (f.Email == term || f.Mobile == term || f.EmployeeId == term) && !f.IsDeleted);
+                if (faculty != null)
+                {
+                    var facultyRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Faculty") ?? new Role { RoleId = 2, RoleName = "Faculty" };
+                    user = new User
+                    {
+                        UserId = faculty.Id,
+                        FullName = $"{faculty.FirstName} {faculty.LastName}".Trim(),
+                        Email = faculty.Email,
+                        PhoneNumber = faculty.Mobile,
+                        PasswordHash = string.Empty,
+                        RoleId = facultyRole.RoleId,
+                        Role = facultyRole
+                    };
+                }
+            }
+
+            if (user == null)
+            {
+                var student = await _context.Students.FirstOrDefaultAsync(s => (s.Email == term || s.MobileNumber == term || s.AdmissionNo == term || s.RollNo == term) && s.IsActive);
+                if (student != null)
+                {
+                    var studentRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "Student") ?? new Role { RoleId = 3, RoleName = "Student" };
+                    user = new User
+                    {
+                        UserId = student.StudentId,
+                        FullName = student.StudentName,
+                        Email = student.Email,
+                        PhoneNumber = student.MobileNumber,
+                        PasswordHash = student.PasswordHash ?? string.Empty,
+                        RoleId = studentRole.RoleId,
+                        Role = studentRole
+                    };
+                }
+            }
+
+            if (user != null && user.Role == null)
+            {
+                user.Role = await _context.Roles.FindAsync(user.RoleId) ?? new Role { RoleId = user.RoleId, RoleName = "User" };
+            }
+
             return user;
         }
 

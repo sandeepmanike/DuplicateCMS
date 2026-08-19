@@ -61,6 +61,10 @@ namespace CollegeManagement.API.Models.Faculty
         [StringLength(100)]
         public string Designation { get; set; } = string.Empty;
 
+        [Required]
+        [StringLength(20)]
+        public string FacultyType { get; set; } = "Teaching";
+
         public int? DepartmentId { get; set; }
 
         [NotMapped]
@@ -71,14 +75,6 @@ namespace CollegeManagement.API.Models.Faculty
 
         [Required]
         public decimal Experience { get; set; }
-
-        [Required]
-        [StringLength(100)]
-        public string Username { get; set; } = string.Empty;
-
-        [Required]
-        [StringLength(255)]
-        public string Password { get; set; } = string.Empty;
 
         [Required]
         [StringLength(20)]

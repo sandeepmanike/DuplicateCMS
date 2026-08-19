@@ -1,4 +1,6 @@
-﻿namespace CollegeManagement.API.Models
+using CollegeManagement.API.Models.Fee;
+
+namespace CollegeManagement.API.Models
 {
     public class FeeCollection
     {

@@ -5,6 +5,7 @@ namespace CollegeManagement.API.DTOs.Students
     public class ChangeSectionRequest
     {
         [Required]
-        public string Section { get; set; } = string.Empty;
+        [Range(1, int.MaxValue)]
+        public int SectionId { get; set; }
     }
 }

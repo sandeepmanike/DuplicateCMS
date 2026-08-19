@@ -30,5 +30,7 @@ namespace CollegeManagement.API.DTOs.Board.Requests
         public bool RankCalculation { get; set; }
 
         public bool Status { get; set; }
+
+        public uint RowVersion { get; set; }
     }
 }

@@ -54,12 +54,11 @@ BEGIN
         f.BloodGroup,
         f.Qualification,
         f.Designation,
+        IFNULL(f.FacultyType, 'Teaching') AS FacultyType,
         f.DepartmentId,
         d.DepartmentName AS Department,
         f.JoiningDate,
         f.Experience,
-        f.Username,
-        f.Password,
         f.Status,
         f.PhotoPath,
         f.CreatedAt,
@@ -112,12 +111,11 @@ BEGIN
         f.BloodGroup,
         f.Qualification,
         f.Designation,
+        IFNULL(f.FacultyType, 'Teaching') AS FacultyType,
         f.DepartmentId,
         d.DepartmentName AS Department,
         f.JoiningDate,
         f.Experience,
-        f.Username,
-        f.Password,
         f.Status,
         f.PhotoPath,
         f.CreatedAt,
@@ -162,19 +160,18 @@ CREATE PROCEDURE sp_CreateFaculty(
     IN p_BloodGroup VARCHAR(10),
     IN p_Qualification VARCHAR(100),
     IN p_Designation VARCHAR(100),
+    IN p_FacultyType VARCHAR(20),
     IN p_DepartmentId INT,
     IN p_JoiningDate DATETIME(6),
     IN p_Experience DECIMAL(65,30),
-    IN p_Username VARCHAR(100),
-    IN p_Password VARCHAR(255),
     IN p_Status VARCHAR(20),
     IN p_PhotoPath VARCHAR(500)
 )
 BEGIN
     INSERT INTO Faculties (
-        EmployeeId, FirstName, LastName, Gender, DateOfBirth, Aadhaar, Mobile, Email, BloodGroup, Qualification, Designation, DepartmentId, JoiningDate, Experience, Username, Password, Status, PhotoPath, CreatedAt, IsDeleted
+        EmployeeId, FirstName, LastName, Gender, DateOfBirth, Aadhaar, Mobile, Email, BloodGroup, Qualification, Designation, FacultyType, DepartmentId, JoiningDate, Experience, Status, PhotoPath, CreatedAt, IsDeleted
     ) VALUES (
-        p_EmployeeId, p_FirstName, p_LastName, p_Gender, p_DateOfBirth, p_Aadhaar, p_Mobile, p_Email, p_BloodGroup, p_Qualification, p_Designation, p_DepartmentId, p_JoiningDate, p_Experience, p_Username, p_Password, IFNULL(p_Status, 'Active'), p_PhotoPath, NOW(), 0
+        p_EmployeeId, p_FirstName, p_LastName, p_Gender, p_DateOfBirth, p_Aadhaar, p_Mobile, p_Email, p_BloodGroup, p_Qualification, p_Designation, IFNULL(p_FacultyType, 'Teaching'), p_DepartmentId, p_JoiningDate, p_Experience, IFNULL(p_Status, 'Active'), p_PhotoPath, NOW(), 0
     );
     SELECT LAST_INSERT_ID() AS Id;
 END //
@@ -197,6 +194,7 @@ CREATE PROCEDURE sp_UpdateFaculty(
     IN p_BloodGroup VARCHAR(10),
     IN p_Qualification VARCHAR(100),
     IN p_Designation VARCHAR(100),
+    IN p_FacultyType VARCHAR(20),
     IN p_DepartmentId INT,
     IN p_JoiningDate DATETIME(6),
     IN p_Experience DECIMAL(65,30),
@@ -215,6 +213,7 @@ BEGIN
         BloodGroup = p_BloodGroup,
         Qualification = p_Qualification,
         Designation = p_Designation,
+        FacultyType = IFNULL(p_FacultyType, 'Teaching'),
         DepartmentId = p_DepartmentId,
         JoiningDate = p_JoiningDate,
         Experience = p_Experience,
@@ -307,18 +306,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- -----------------------------------------------------------------------------
--- 11. sp_GetFacultyByUsername
--- -----------------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS sp_GetFacultyByUsername;
-DELIMITER //
-CREATE PROCEDURE sp_GetFacultyByUsername(
-    IN p_Username VARCHAR(100)
-)
-BEGIN
-    SELECT * FROM Faculties WHERE Username = p_Username AND (IsDeleted = 0 OR IsDeleted IS NULL);
-END //
-DELIMITER ;
 
 -- -----------------------------------------------------------------------------
 -- 12. sp_GetFacultyPhotoPath
@@ -395,12 +383,3 @@ END //
 DELIMITER ;
 
 DROP PROCEDURE IF EXISTS sp_CheckUsernameUnique;
-DELIMITER //
-CREATE PROCEDURE sp_CheckUsernameUnique(
-    IN p_Username VARCHAR(100),
-    IN p_ExcludeId INT
-)
-BEGIN
-    SELECT COUNT(*) FROM Faculties WHERE Username = p_Username AND (p_ExcludeId IS NULL OR Id <> p_ExcludeId);
-END //
-DELIMITER ;

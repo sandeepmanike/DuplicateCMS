@@ -1,4 +1,6 @@
 using CollegeManagement.API.DTOs.Admin;
+using CollegeManagement.API.DTOs.Authentication;
+using CollegeManagement.API.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -16,10 +18,12 @@ namespace CollegeManagement.API.Controllers.V1
     public class AdminController : ControllerBase
     {
         private readonly IAdminService _adminService;
+        private readonly IEmailService _emailService;
 
-        public AdminController(IAdminService adminService)
+        public AdminController(IAdminService adminService, IEmailService emailService)
         {
             _adminService = adminService;
+            _emailService = emailService;
         }
 
         /// <summary>
@@ -182,6 +186,105 @@ namespace CollegeManagement.API.Controllers.V1
             {
                 Status = true,
                 Message = $"Admin status updated to {(request.IsActive ? "Active" : "Inactive")} successfully."
+            });
+        }
+
+        /// <summary>
+        /// Initiates the admin forgot password process. Sends a password reset OTP.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await _adminService.ForgotPasswordAsync(request);
+            if (!result.Status)
+            {
+                return BadRequest(new
+                {
+                    Status = result.Status,
+                    Message = result.Message
+                });
+            }
+
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    request.Email,
+                    "Admin Password Reset OTP",
+                    $@"
+                    <h2>College Management System - Admin</h2>
+                    <p>Your OTP for admin password reset is:</p>
+                    <h1>{result.Otp}</h1>
+                    <p>This OTP is valid for 5 minutes.</p>");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    Status = false,
+                    Message = "Failed to send email: " + ex.Message
+                });
+            }
+
+            return Ok(new
+            {
+                Status = true,
+                Message = "OTP has been sent to your registered email.",
+                Otp = result.Otp
+            });
+        }
+
+        /// <summary>
+        /// Verifies the OTP sent for admin password reset.
+        /// </summary>
+        [HttpPost("verify-otp")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await _adminService.VerifyOtpAsync(request);
+            if (!result.Status)
+            {
+                return BadRequest(new
+                {
+                    Status = result.Status,
+                    Message = result.Message
+                });
+            }
+
+            return Ok(new
+            {
+                Status = result.Status,
+                Message = result.Message
+            });
+        }
+
+        /// <summary>
+        /// Resets the admin password using a validated OTP.
+        /// </summary>
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await _adminService.ResetPasswordAsync(request);
+            if (!result.Status)
+            {
+                return BadRequest(new
+                {
+                    Status = result.Status,
+                    Message = result.Message
+                });
+            }
+
+            return Ok(new
+            {
+                Status = result.Status,
+                Message = result.Message
             });
         }
     }

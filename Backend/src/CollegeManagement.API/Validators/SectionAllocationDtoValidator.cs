@@ -1,15 +1,15 @@
-﻿using CollegeManagement.API.DTOs.Promotion;
+using CollegeManagement.API.DTOs.Promotion;
 using FluentValidation;
 
 namespace CollegeManagement.API.Validators.PromotionModuleValidators
 {
-    public class SectionAllocationDtoValidator
-        : AbstractValidator<SectionAllocationDto>
+    public class SectionAllocationRequestValidator
+        : AbstractValidator<SectionAllocationRequest>
     {
-        public SectionAllocationDtoValidator()
+        public SectionAllocationRequestValidator()
         {
-            RuleFor(x => x.SectionId)
-                .GreaterThan(0);
+            RuleFor(x => x.TargetSection)
+                .NotEmpty();
 
             RuleFor(x => x.StudentIds)
                 .NotEmpty();

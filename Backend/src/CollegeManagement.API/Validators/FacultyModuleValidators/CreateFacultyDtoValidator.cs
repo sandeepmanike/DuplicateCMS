@@ -52,9 +52,14 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
                 .NotEmpty().WithMessage("Designation is required.")
                 .MaximumLength(100).WithMessage("Designation cannot exceed 100 characters.");
 
-            RuleFor(x => x.Department)
-                .NotEmpty().WithMessage("Department is required.")
-                .MaximumLength(100).WithMessage("Department cannot exceed 100 characters.");
+            RuleFor(x => x.FacultyType)
+                .NotEmpty().WithMessage("Faculty type is required.")
+                .Must(x => string.Equals(x, "Teaching", StringComparison.OrdinalIgnoreCase) || string.Equals(x, "Non-Teaching", StringComparison.OrdinalIgnoreCase))
+                .WithMessage("FacultyType must be 'Teaching' or 'Non-Teaching'.");
+
+            RuleFor(x => x)
+                .Must(x => (x.DepartmentId.HasValue && x.DepartmentId.Value > 0) || !string.IsNullOrWhiteSpace(x.Department))
+                .WithMessage("Department is required.");
 
             RuleFor(x => x.JoiningDate)
                 .NotEmpty().WithMessage("Joining date is required.")
@@ -62,14 +67,6 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
 
             RuleFor(x => x.Experience)
                 .GreaterThanOrEqualTo(0).WithMessage("Experience cannot be negative.");
-
-            RuleFor(x => x.Username)
-                .NotEmpty().WithMessage("Username is required.")
-                .MaximumLength(100).WithMessage("Username cannot exceed 100 characters.");
-
-            RuleFor(x => x.Password)
-                .NotEmpty().WithMessage("Password is required.")
-                .MinimumLength(6).WithMessage("Password must be at least 6 characters long.");
 
             RuleFor(x => x.Status)
                 .Must(x => string.Equals(x, "Active", StringComparison.OrdinalIgnoreCase) || string.Equals(x, "Inactive", StringComparison.OrdinalIgnoreCase))

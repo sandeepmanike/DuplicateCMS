@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Asp.Versioning;
 using CollegeManagement.API.DTOs.Attendance.Requests;
 using CollegeManagement.API.DTOs.Attendance.Responses;
+using CollegeManagement.API.DTOs.Common;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -49,7 +50,9 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateAttendance([FromBody] CreateAttendanceRequest request)
         {
-            var id = await _attendanceService.CreateAttendanceAsync(request);
+            var isAdmin = IsCurrentUserAdmin();
+            var userName = GetCurrentUserName();
+            var id = await _attendanceService.CreateAttendanceAsync(request, isAdmin, userName);
             return CreatedAtAction(
                 nameof(GetAttendanceById),
                 new
@@ -78,7 +81,9 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateBulkAttendance([FromBody] BulkAttendanceRequest request)
         {
-            var affectedRows = await _attendanceService.CreateBulkAttendanceAsync(request);
+            var isAdmin = IsCurrentUserAdmin();
+            var userName = GetCurrentUserName();
+            var affectedRows = await _attendanceService.CreateBulkAttendanceAsync(request, isAdmin, userName);
             return Ok(affectedRows);
         }
 
@@ -100,7 +105,33 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> UpdateAttendance([FromBody] UpdateAttendanceRequest request)
         {
-            var affectedRows = await _attendanceService.UpdateAttendanceAsync(request);
+            var isAdmin = IsCurrentUserAdmin();
+            var userName = GetCurrentUserName();
+            var affectedRows = await _attendanceService.UpdateAttendanceAsync(request, isAdmin, userName);
+            return Ok(affectedRows);
+        }
+
+        /// <summary>
+        /// Updates multiple existing student attendance records in one bulk operation.
+        /// </summary>
+        /// <param name="request">The bulk update attendance record values.</param>
+        /// <returns>The number of updated records.</returns>
+        /// <response code="200">Bulk attendance updated successfully.</response>
+        /// <response code="400">Invalid request values.</response>
+        /// <response code="401">Unauthorized access.</response>
+        /// <response code="404">Target attendance session or record not found.</response>
+        /// <response code="500">Internal server error.</response>
+        [HttpPut("bulk-update")]
+        [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> BulkUpdateAttendance([FromBody] BulkUpdateAttendanceRequest request)
+        {
+            var isAdmin = IsCurrentUserAdmin();
+            var userName = GetCurrentUserName();
+            var affectedRows = await _attendanceService.BulkUpdateAttendanceAsync(request, isAdmin, userName);
             return Ok(affectedRows);
         }
 
@@ -121,20 +152,24 @@ namespace CollegeManagement.API.Controllers.V1
         public async Task<IActionResult> GetAttendanceById(int attendanceId)
         {
             var response = await _attendanceService.GetAttendanceByIdAsync(attendanceId);
+            if (response == null)
+            {
+                return NotFound();
+            }
             return Ok(response);
         }
 
         /// <summary>
-        /// Searches and filters attendance records.
+        /// Searches and filters attendance records with pagination metadata.
         /// </summary>
         /// <param name="request">The search filter criteria.</param>
-        /// <returns>A list of matching attendance records.</returns>
-        /// <response code="200">Filtered list retrieved successfully.</response>
+        /// <returns>A paginated response containing matching attendance records and metadata.</returns>
+        /// <response code="200">Filtered list with metadata retrieved successfully.</response>
         /// <response code="400">Invalid query filter parameters.</response>
         /// <response code="401">Unauthorized access.</response>
         /// <response code="500">Internal server error.</response>
         [HttpPost("search")]
-        [ProducesResponseType(typeof(IEnumerable<AttendanceListResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(PagedResponse<AttendanceListResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -243,8 +278,98 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ChangeStatus(int attendanceId, [FromQuery] bool isActive)
         {
-            var affectedRows = await _attendanceService.ChangeAttendanceActiveStatusAsync(attendanceId, isActive);
+            var isAdmin = IsCurrentUserAdmin();
+            var userName = GetCurrentUserName();
+            var affectedRows = await _attendanceService.ChangeAttendanceActiveStatusAsync(attendanceId, isActive, isAdmin, userName);
             return Ok(affectedRows);
+        }
+
+        /// <summary>
+        /// Locks an attendance session, preventing further modifications by Faculty members.
+        /// </summary>
+        /// <param name="sessionId">The session identifier.</param>
+        /// <returns>A success indicator.</returns>
+        [HttpPost("session/{sessionId}/lock")]
+        [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> LockSession(int sessionId)
+        {
+            var currentUserId = GetCurrentUserId();
+            var userName = GetCurrentUserName();
+            var result = await _attendanceService.LockSessionAsync(sessionId, currentUserId, userName);
+            return Ok(new { success = result, message = "Attendance session locked successfully." });
+        }
+
+        /// <summary>
+        /// Unlocks a locked attendance session (restricted to Super Admin and College Admin).
+        /// </summary>
+        /// <param name="sessionId">The session identifier.</param>
+        /// <returns>A success indicator.</returns>
+        [HttpPost("session/{sessionId}/unlock")]
+        [Authorize(Roles = "Super Admin,College Admin")]
+        [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UnlockSession(int sessionId)
+        {
+            var userName = GetCurrentUserName();
+            var result = await _attendanceService.UnlockSessionAsync(sessionId, userName);
+            return Ok(new { success = result, message = "Attendance session unlocked successfully." });
+        }
+
+        /// <summary>
+        /// Soft deletes an existing attendance record.
+        /// </summary>
+        /// <param name="attendanceId">The attendance identifier.</param>
+        /// <returns>A success indicator.</returns>
+        /// <response code="200">Attendance record deleted successfully.</response>
+        /// <response code="401">Unauthorized access.</response>
+        /// <response code="404">Attendance record not found.</response>
+        /// <response code="500">Internal server error.</response>
+        [HttpDelete("{attendanceId}")]
+        [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> DeleteAttendance(int attendanceId)
+        {
+            var isAdmin = IsCurrentUserAdmin();
+            var userName = GetCurrentUserName();
+            var result = await _attendanceService.DeleteAttendanceAsync(attendanceId, isAdmin, userName);
+            return Ok(new { success = result, message = "Attendance record soft deleted successfully." });
+        }
+
+        private bool IsCurrentUserAdmin()
+        {
+            return User.IsInRole("Super Admin") || User.IsInRole("College Admin");
+        }
+
+        private int GetCurrentUserId()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                throw new CollegeManagement.API.Exceptions.UnauthorizedException("User identification claim is missing or invalid.");
+            }
+            return userId;
+        }
+
+        private string GetCurrentUserName()
+        {
+            var userName = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+            if (string.IsNullOrEmpty(userName))
+            {
+                userName = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+            }
+            if (string.IsNullOrEmpty(userName))
+            {
+                throw new CollegeManagement.API.Exceptions.UnauthorizedException("User name claim is missing or invalid.");
+            }
+            return userName;
         }
     }
 }

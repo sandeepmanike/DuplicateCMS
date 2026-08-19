@@ -47,5 +47,15 @@ namespace CollegeManagement.API.DTOs.Attendance.Responses
         /// Gets or sets the attendance status.
         /// </summary>
         public AttendanceStatus Status { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the attendance record is active.
+        /// </summary>
+        public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the attendance session is locked.
+        /// </summary>
+        public bool IsLocked { get; set; }
     }
 }

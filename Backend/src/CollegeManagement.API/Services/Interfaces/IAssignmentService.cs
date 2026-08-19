@@ -1,5 +1,7 @@
 using CollegeManagement.API.DTOs.Assignment;
+using CollegeManagement.API.DTOs.Assignment.Admin;
 using CollegeManagement.API.DTOs.Faculty;
+using CollegeManagement.API.DTOs.AssignmentSubmission;
 
 namespace CollegeManagement.API.Services.Interfaces
 {
@@ -15,9 +17,19 @@ namespace CollegeManagement.API.Services.Interfaces
 
         Task<bool> DeleteAsync(int id);
 
-        Task<bool> SubmitAssignmentAsync(int assignmentId, SubmitAssignmentDto dto);
+        Task<bool> PublishAssignmentAsync(int assignmentId);
 
-        Task<IEnumerable<AssignmentSubmissionResponseDto>> GetSubmissionsAsync(int assignmentId);
+        Task<bool> PublishAssignmentsAsync(List<int> assignmentIds);
+
+        Task<IEnumerable<AssignmentResponseDto>> GetPublishedAssignmentsAsync();
+
+        Task<List<AdminAssignmentResponseDto>> CreateAdminAssignmentAsync(
+     CreateAdminAssignmentDto dto);
+
+        Task<IEnumerable<AdminAssignmentResponseDto>>
+        GetAdminAssignmentsAsync();
+
+
 
         Task<IEnumerable<SubjectDropdownDto>>
 GetSubjectsByGroupAsync(int groupId);

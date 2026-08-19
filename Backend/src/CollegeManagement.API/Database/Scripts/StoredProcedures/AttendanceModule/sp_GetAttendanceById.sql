@@ -5,8 +5,6 @@ DELIMITER $$
 -- =================================================================================
 -- Author:      Senior MySQL 8 Database Architect
 -- Purpose:     Retrieve detailed attendance response by unique identifier.
--- Input:       p_AttendanceId - Unique identifier of the attendance record
--- Return:      A result set representing the attendance details.
 -- =================================================================================
 CREATE PROCEDURE sp_GetAttendanceById(
     IN p_AttendanceId INT
@@ -14,37 +12,39 @@ CREATE PROCEDURE sp_GetAttendanceById(
 BEGIN
     SELECT 
         a.AttendanceId,
-        a.AttendanceDate,
+        a.AttendanceSessionId,
+        ses.AttendanceDate,
         a.StudentId,
         COALESCE(s.StudentName, '') AS StudentName,
-        COALESCE(s.RollNumber, '') AS RollNumber,
-        a.FacultyId,
+        COALESCE(s.RollNo, '') AS RollNumber,
+        ses.FacultyId,
         TRIM(CONCAT(COALESCE(f.FirstName, ''), ' ', COALESCE(f.LastName, ''))) AS FacultyName,
-        a.BoardId,
+        ses.BoardId,
         COALESCE(b.BoardName, '') AS BoardName,
-        a.AcademicYearId,
+        ses.AcademicYearId,
         COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
-        a.AcademicLevelId,
+        ses.AcademicLevelId,
         COALESCE(al.LevelName, '') AS AcademicLevelName,
-        a.GroupId,
+        ses.GroupId,
         COALESCE(g.GroupName, '') AS GroupName,
-        a.SectionId,
+        ses.SectionId,
         COALESCE(sec.SectionName, '') AS SectionName,
-        a.SubjectId,
+        ses.SubjectId,
         COALESCE(sub.SubjectName, '') AS SubjectName,
         a.Status,
         a.Remarks,
         a.CreatedAt,
         a.UpdatedAt
-    FROM Attendances a
-    INNER JOIN Students s ON a.StudentId = s.StudentId
-    INNER JOIN Faculties f ON a.FacultyId = f.Id
-    INNER JOIN Boards b ON a.BoardId = b.BoardId
-    INNER JOIN AcademicYears ay ON a.AcademicYearId = ay.AcademicYearId
-    INNER JOIN AcademicLevels al ON a.AcademicLevelId = al.AcademicLevelId
-    INNER JOIN Groups g ON a.GroupId = g.GroupId
-    INNER JOIN Sections sec ON a.SectionId = sec.SectionId
-    INNER JOIN Subjects sub ON a.SubjectId = sub.SubjectId
+    FROM attendances a
+    INNER JOIN attendance_sessions ses ON a.AttendanceSessionId = ses.AttendanceSessionId
+    INNER JOIN students s ON a.StudentId = s.StudentId
+    LEFT JOIN faculties f ON ses.FacultyId = f.Id
+    LEFT JOIN boards b ON ses.BoardId = b.BoardId
+    LEFT JOIN academicyears ay ON ses.AcademicYearId = ay.AcademicYearId
+    LEFT JOIN academiclevels al ON ses.AcademicLevelId = al.AcademicLevelId
+    LEFT JOIN `groups` g ON ses.GroupId = g.GroupId
+    LEFT JOIN sections sec ON ses.SectionId = sec.SectionId
+    LEFT JOIN subjects sub ON ses.SubjectId = sub.SubjectId
     WHERE a.AttendanceId = p_AttendanceId;
 END$$
 

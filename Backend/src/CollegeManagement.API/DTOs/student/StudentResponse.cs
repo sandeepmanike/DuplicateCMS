@@ -2,9 +2,9 @@
 {
     public class StudentResponse
     {
-        // ==========================
-        // Basic Information
-        // ==========================
+        // =========================================================
+        // BASIC
+        // =========================================================
 
         public int StudentId { get; set; }
 
@@ -16,9 +16,10 @@
 
         public string? Photo { get; set; }
 
-        // ==========================
-        // Personal Information
-        // ==========================
+
+        // =========================================================
+        // PERSONAL
+        // =========================================================
 
         public string Gender { get; set; } = string.Empty;
 
@@ -26,77 +27,149 @@
 
         public string? BloodGroup { get; set; }
 
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
-        public string MobileNumber { get; set; } = string.Empty;
+        public string? MobileNumber { get; set; }
 
         public string? AadhaarNumber { get; set; }
 
+        public string? Nationality { get; set; }
+
+        public string? Religion { get; set; }
+
+        public string? Category { get; set; }
+
+
+        // =========================================================
+        // ADDRESS
+        // =========================================================
+
         public string? Address { get; set; }
+        public string? City { get; set; }
 
-        // ==========================
-        // Academic Information
-        // ==========================
+        public string? District { get; set; }
 
-        public string Board { get; set; } = string.Empty;
+        public string? State { get; set; }
+
+        public string? Pincode { get; set; }
+
+
+        // =========================================================
+        // ACADEMIC IDS
+        // =========================================================
+
+        public int BoardId { get; set; }
 
         public int AcademicYearId { get; set; }
 
-        public string AcademicYearName { get; set; } = string.Empty;
-
-        public string AcademicLevel { get; set; } = string.Empty;
+        public int AcademicLevelId { get; set; }
 
         public int GroupId { get; set; }
 
-        public string GroupName { get; set; } = string.Empty;
+        public int SectionId { get; set; }
 
-        public string Section { get; set; } = string.Empty;
+
+        // =========================================================
+        // ACADEMIC NAMES
+        // =========================================================
+
+        public string? BoardName { get; set; }
+
+        public string? AcademicYearName { get; set; }
+
+        public string? AcademicLevelName { get; set; }
+
+        public string? GroupName { get; set; }
+
+        public string? SectionName { get; set; }
+
+
+        // =========================================================
+        // ADMISSION
+        // =========================================================
 
         public DateTime AdmissionDate { get; set; }
 
         public string? AdmissionType { get; set; }
 
+        public string? AdmissionQuota { get; set; }
+
         public string? Medium { get; set; }
+
+        public string? SecondLanguage { get; set; }
+
+
+        // =========================================================
+        // PREVIOUS EDUCATION
+        // =========================================================
 
         public string? PreviousSchool { get; set; }
 
         public string? PreviousHallTicketNumber { get; set; }
 
+        public string? PreviousBoard { get; set; }
+
+        public int? PreviousYearOfPassing { get; set; }
+
+        public decimal? PreviousPercentage { get; set; }
+
+
+        // =========================================================
+        // SCHOLARSHIP
+        // =========================================================
+
         public string? StudentCategory { get; set; }
 
         public string? ScholarshipStatus { get; set; }
 
-        // ==========================
-        // Parent Details
-        // ==========================
+        public decimal? ScholarshipAmount { get; set; }
+
+
+        // =========================================================
+        // PARENT DETAILS
+        // =========================================================
 
         public string? FatherName { get; set; }
 
+        public string? FatherOccupation { get; set; }
+
         public string? FatherMobile { get; set; }
+
+        public string? FatherEmail { get; set; }
 
         public string? MotherName { get; set; }
 
+        public string? MotherOccupation { get; set; }
+
         public string? MotherMobile { get; set; }
+
+        public string? MotherEmail { get; set; }
 
         public string? GuardianName { get; set; }
 
         public string? GuardianMobile { get; set; }
 
-        // ==========================
-        // Fee Information
-        // ==========================
+        public string? GuardianEmail { get; set; }
+
+        public decimal? AnnualIncome { get; set; }
+
+
+        // =========================================================
+        // FEES
+        // =========================================================
 
         public decimal FeeAmount { get; set; }
 
         public decimal FeePaid { get; set; }
 
-        public decimal ScholarshipAmount { get; set; }
+        public decimal? FeeDue { get; set; }
 
         public string? FeeStatus { get; set; }
 
-        // ==========================
-        // Attendance & Performance
-        // ==========================
+
+        // =========================================================
+        // PERFORMANCE
+        // =========================================================
 
         public decimal AttendancePercentage { get; set; }
 
@@ -106,23 +179,58 @@
 
         public int? Rank { get; set; }
 
+
+        // =========================================================
+        // DOCUMENTS
+        // =========================================================
+
+        public string? BirthCertificate { get; set; }
+
+        public string? TransferCertificate { get; set; }
+
+        public string? StudyCertificate { get; set; }
+
+        public string? AadhaarDocument { get; set; }
+
+        public string? CommunityCertificate { get; set; }
+
+        public string? IncomeCertificate { get; set; }
+
+        public string? CasteCertificate { get; set; }
+
+        public string? TenthCertificate { get; set; }
+
+        public string? MarksMemo { get; set; }
+
+
+        // =========================================================
+        // REMARKS
+        // =========================================================
+
         public string? Remarks { get; set; }
 
-        // ==========================
-        // Login Information
-        // ==========================
+
+        // =========================================================
+        // STATUS
+        // =========================================================
+
+        public bool IsActive { get; set; }
+
+        public string Status { get; set; } = string.Empty;
+
+
+        // =========================================================
+        // LOGIN
+        // =========================================================
 
         public bool IsFirstLogin { get; set; }
 
         public DateTime? LastLogin { get; set; }
 
-        // ==========================
-        // Status
-        // ==========================
 
-        public bool IsActive { get; set; }
-
-        public string Status { get; set; } = string.Empty;
+        // =========================================================
+        // AUDIT
+        // =========================================================
 
         public DateTime CreatedAt { get; set; }
 

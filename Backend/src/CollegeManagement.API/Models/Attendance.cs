@@ -2,14 +2,13 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CollegeManagement.API.Enums;
-using FacultyEntity = CollegeManagement.API.Models.Faculty.Faculty;
 
 namespace CollegeManagement.API.Models
 {
     /// <summary>
-    /// Represents an Attendance record in the College Management System.
+    /// Represents an Attendance detail record in the College Management System.
     /// </summary>
-    [Table("Attendances")]
+    [Table("attendances")]
     public class Attendance
     {
         /// <summary>
@@ -20,58 +19,16 @@ namespace CollegeManagement.API.Models
         public int AttendanceId { get; set; }
 
         /// <summary>
-        /// Gets or sets the date of the attendance.
+        /// Gets or sets the associated attendance session identifier.
         /// </summary>
         [Required]
-        public DateTime AttendanceDate { get; set; }
+        public int AttendanceSessionId { get; set; }
 
         /// <summary>
         /// Gets or sets the student identifier.
         /// </summary>
         [Required]
         public int StudentId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the faculty identifier.
-        /// </summary>
-        [Required]
-        public int FacultyId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the board identifier.
-        /// </summary>
-        [Required]
-        public int BoardId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the academic year identifier.
-        /// </summary>
-        [Required]
-        public int AcademicYearId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the academic level identifier.
-        /// </summary>
-        [Required]
-        public int AcademicLevelId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the group identifier.
-        /// </summary>
-        [Required]
-        public int GroupId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the section identifier.
-        /// </summary>
-        [Required]
-        public int SectionId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the subject identifier.
-        /// </summary>
-        [Required]
-        public int SubjectId { get; set; }
 
         /// <summary>
         /// Gets or sets the status of the attendance (1 = Present, 2 = Absent, 3 = Late, 4 = Leave).
@@ -109,46 +66,10 @@ namespace CollegeManagement.API.Models
         public virtual Student Student { get; set; } = null!;
 
         /// <summary>
-        /// Gets or sets the associated faculty member.
+        /// Gets or sets the associated attendance session.
         /// </summary>
-        [ForeignKey(nameof(FacultyId))]
-        public virtual FacultyEntity Faculty { get; set; } = null!;
-
-        /// <summary>
-        /// Gets or sets the associated board.
-        /// </summary>
-        [ForeignKey(nameof(BoardId))]
-        public virtual Board Board { get; set; } = null!;
-
-        /// <summary>
-        /// Gets or sets the associated academic year.
-        /// </summary>
-        [ForeignKey(nameof(AcademicYearId))]
-        public virtual AcademicYear AcademicYear { get; set; } = null!;
-
-        /// <summary>
-        /// Gets or sets the associated academic level.
-        /// </summary>
-        [ForeignKey(nameof(AcademicLevelId))]
-        public virtual AcademicLevel AcademicLevel { get; set; } = null!;
-
-        /// <summary>
-        /// Gets or sets the associated group.
-        /// </summary>
-        [ForeignKey(nameof(GroupId))]
-        public virtual Group Group { get; set; } = null!;
-
-        /// <summary>
-        /// Gets or sets the associated section.
-        /// </summary>
-        [ForeignKey(nameof(SectionId))]
-        public virtual Section Section { get; set; } = null!;
-
-        /// <summary>
-        /// Gets or sets the associated subject.
-        /// </summary>
-        [ForeignKey(nameof(SubjectId))]
-        public virtual Subject Subject { get; set; } = null!;
+        [ForeignKey(nameof(AttendanceSessionId))]
+        public virtual AttendanceSession AttendanceSession { get; set; } = null!;
 
         #endregion
     }

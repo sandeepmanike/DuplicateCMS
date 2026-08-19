@@ -92,6 +92,9 @@ namespace CollegeManagement.API.Profiles
             // GradingSystem -> GradingSystemResponse mapping configuration
             CreateMap<GradingSystem, GradingSystemResponse>();
 
+            // AuditLog -> BoardHistoryResponse mapping configuration
+            CreateMap<CollegeManagement.API.Models.Reports.AuditLog, BoardHistoryResponse>();
+
             #endregion
         }
     }

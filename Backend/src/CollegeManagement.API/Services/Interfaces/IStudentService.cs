@@ -4,35 +4,37 @@ namespace CollegeManagement.API.Services
 {
     public interface IStudentService
     {
-        // ==========================
-        // Student CRUD
-        // ==========================
+        // =========================================================
+        // STUDENT CRUD
+        // =========================================================
 
         Task<List<StudentListItemDto>> GetAllAsync();
 
-        Task<StudentResponse?> GetByIdAsync(int studentId);
-
-        Task<StudentResponse> CreateAsync(CreateStudentRequest request);
-
+        Task<StudentResponse?> GetByIdAsync(
+            int studentId);
         Task<StudentResponse?> UpdateAsync(
-            int studentId,
-            UpdateStudentRequest request);
+                    int studentId,
+                    UpdateStudentRequest request);
 
-        Task<bool> DeleteAsync(int studentId);
+        Task<bool> DeleteAsync(
+            int studentId);
 
-        // ==========================
-        // Student Profile
-        // ==========================
 
-        Task<StudentProfileDto?> GetProfileAsync(int studentId);
+        // =========================================================
+        // STUDENT PROFILE
+        // =========================================================
+
+        Task<StudentProfileDto?> GetProfileAsync(
+            int studentId);
 
         Task<StudentProfileDto?> UpdateProfileAsync(
             int studentId,
-            StudentProfileDto request);
+            UpdateStudentProfileRequest request);
 
-        // ==========================
-        // Academic Operations
-        // ==========================
+
+        // =========================================================
+        // ACADEMIC OPERATIONS
+        // =========================================================
 
         Task<bool> ChangeSectionAsync(
             int studentId,
@@ -46,26 +48,65 @@ namespace CollegeManagement.API.Services
             int studentId,
             TransferStudentRequest request);
 
-        // ==========================
-        // Student Status
-        // ==========================
+
+        // =========================================================
+        // STUDENT STATUS
+        // =========================================================
 
         Task<bool> SuspendAsync(
             int studentId,
             SuspendStudentRequest request);
 
-        Task<bool> ActivateAsync(int studentId);
+        Task<bool> ActivateAsync(
+            int studentId);
 
-        // ==========================
-        // Authentication
-        // ==========================
 
-        Task<bool> ResetPasswordAsync(int studentId);
+        // =========================================================
+        // AUTHENTICATION
+        // =========================================================
 
-        // ==========================
-        // Dashboard
-        // ==========================
+        Task<bool> ResetPasswordAsync(
+            int studentId);
 
-        Task<StudentDashboardDto?> GetDashboardAsync(int studentId);
+
+        // =========================================================
+        // DASHBOARD
+        // =========================================================
+
+        Task<StudentDashboardDto?> GetDashboardAsync(
+            int studentId);
+
+
+        // =========================================================
+        // SEARCH / FILTER
+        // =========================================================
+
+        Task<List<StudentListItemDto>> SearchAsync(
+            string? search,
+            int? groupId,
+            int? sectionId,
+            int? academicYearId,
+            bool? isActive);
+
+        Task<List<StudentListItemDto>> GetByGroupAsync(
+            int groupId);
+
+        Task<List<StudentListItemDto>> GetBySectionAsync(
+            int sectionId);
+
+        Task<List<StudentListItemDto>> GetActiveAsync();
+
+
+        // =========================================================
+        // DUPLICATE VALIDATION
+        // =========================================================
+
+        Task<bool> EmailExistsAsync(
+            string email,
+            int? excludeStudentId = null);
+
+        Task<bool> MobileExistsAsync(
+            string mobile,
+            int? excludeStudentId = null);
     }
 }

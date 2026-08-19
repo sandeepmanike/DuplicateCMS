@@ -38,16 +38,19 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<SectionResponse> CreateSectionAsync(CreateSectionRequest request)
         {
-            // 1. Validate AcademicYearId exists
-            if (!await _sectionRepository.AcademicYearExistsAsync(request.AcademicYearId))
-            {
-                throw new NotFoundException($"Academic Year with ID {request.AcademicYearId} does not exist.");
-            }
+            // 1. Validate AcademicYear exists, is active, and has not ended
+            await ValidateAcademicYearAsync(request.AcademicYearId);
 
             // 2. Validate ClassTeacherId exists (if provided)
             if (request.ClassTeacherId.HasValue && !await _sectionRepository.FacultyExistsAsync(request.ClassTeacherId.Value))
             {
                 throw new NotFoundException($"Faculty (Class Teacher) with ID {request.ClassTeacherId.Value} does not exist.");
+            }
+
+            // 2b. Validate RoomId exists (if provided)
+            if (request.RoomId.HasValue && !await _sectionRepository.RoomExistsAsync(request.RoomId.Value))
+            {
+                throw new NotFoundException($"Room with ID {request.RoomId.Value} does not exist.");
             }
 
             // 3. Validate duplicate Section Name in the same context
@@ -79,16 +82,19 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new NotFoundException($"Section with ID {id} not found.");
             }
 
-            // 2. Validate AcademicYearId exists
-            if (!await _sectionRepository.AcademicYearExistsAsync(request.AcademicYearId))
-            {
-                throw new NotFoundException($"Academic Year with ID {request.AcademicYearId} does not exist.");
-            }
+            // 2. Validate AcademicYear exists, is active, and has not ended
+            await ValidateAcademicYearAsync(request.AcademicYearId);
 
             // 3. Validate ClassTeacherId exists (if provided)
             if (request.ClassTeacherId.HasValue && !await _sectionRepository.FacultyExistsAsync(request.ClassTeacherId.Value))
             {
                 throw new NotFoundException($"Faculty (Class Teacher) with ID {request.ClassTeacherId.Value} does not exist.");
+            }
+
+            // 3b. Validate RoomId exists (if provided)
+            if (request.RoomId.HasValue && !await _sectionRepository.RoomExistsAsync(request.RoomId.Value))
+            {
+                throw new NotFoundException($"Room with ID {request.RoomId.Value} does not exist.");
             }
 
             // 4. Validate duplicate Section Name (excluding current Section)
@@ -130,6 +136,26 @@ namespace CollegeManagement.API.Services.Implementations
         {
             // Note: If needed, we can validate the Group exists here, but sp_GetSectionsByGroup handles checking matched groups
             return await _sectionRepository.GetSectionsByGroupAsync(groupId);
+        }
+
+        private async Task ValidateAcademicYearAsync(int academicYearId)
+        {
+            var academicYear = await _sectionRepository.GetAcademicYearByIdAsync(academicYearId);
+            if (academicYear == null)
+            {
+                throw new NotFoundException($"Academic Year with ID {academicYearId} does not exist.");
+            }
+
+            if (!academicYear.IsActive)
+            {
+                throw new ValidationException($"Academic Year '{academicYear.AcademicYearName}' is inactive and cannot be assigned to new sections.");
+            }
+
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (academicYear.EndDate < today)
+            {
+                throw new ValidationException($"Academic Year '{academicYear.AcademicYearName}' ended on {academicYear.EndDate:yyyy-MM-dd} and cannot be assigned to new sections.");
+            }
         }
     }
 }

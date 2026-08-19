@@ -1,55 +1,39 @@
-﻿using System;
-
-namespace CollegeManagement.API.DTOs.Result
+﻿namespace CollegeManagement.API.DTOs.Result
 {
     public class StudentResultDto
     {
         public int StudentId { get; set; }
 
-        public string AdmissionNumber { get; set; } = string.Empty;
-
-        public string RollNumber { get; set; } = string.Empty;
-
         public string StudentName { get; set; } = string.Empty;
 
-        public int BoardId { get; set; }
-
-        public string BoardName { get; set; } = string.Empty;
-
-        public int AcademicYearId { get; set; }
-
-        public string AcademicYear { get; set; } = string.Empty;
-
-        public int AcademicLevelId { get; set; }
-
-        public string AcademicLevel { get; set; } = string.Empty;
-
-        public int GroupId { get; set; }
+        public string RollNumber { get; set; } = string.Empty;
 
         public string GroupName { get; set; } = string.Empty;
 
         public int ExamId { get; set; }
 
+        public string ExamCode { get; set; } = string.Empty;
+
         public string ExamName { get; set; } = string.Empty;
 
-        public int SubjectId { get; set; }
+        public string? SectionName { get; set; }
 
-        public string SubjectName { get; set; } = string.Empty;
+        public decimal GrandTotal { get; set; }
 
-        public decimal InternalMarks { get; set; }
+        public decimal MaximumMarks { get; set; }
 
-        public decimal PracticalMarks { get; set; }
+        public decimal Percentage { get; set; }
 
-        public decimal ExternalMarks { get; set; }
+        public string OverallGrade { get; set; } = string.Empty;
 
-        public decimal TotalMarks { get; set; }
-
-        public string Grade { get; set; } = string.Empty;
+        public string FinalResult { get; set; } = string.Empty;
 
         public string ResultStatus { get; set; } = string.Empty;
 
-        public int? Rank { get; set; }
-
         public DateTime? PublishedDate { get; set; }
+
+        public List<StudentSubjectResultDto> Subjects { get; set; } = new();
+
+        public int? ClassRank { get; set; }
     }
 }

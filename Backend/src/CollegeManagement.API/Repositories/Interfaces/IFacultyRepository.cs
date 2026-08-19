@@ -12,7 +12,6 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<Faculty?> GetByEmailAsync(string email);
         Task<Faculty?> GetByMobileAsync(string mobile);
         Task<Faculty?> GetByAadhaarAsync(string aadhaar);
-        Task<Faculty?> GetByUsernameAsync(string username);
         Task<string?> GetPhotoPathAsync(int id);
 
         // Uniqueness checks (excluding specific Faculty Id during Updates)
@@ -20,7 +19,6 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<bool> IsEmailUniqueAsync(string email, int? excludeId = null);
         Task<bool> IsMobileUniqueAsync(string mobile, int? excludeId = null);
         Task<bool> IsAadhaarUniqueAsync(string aadhaar, int? excludeId = null);
-        Task<bool> IsUsernameUniqueAsync(string username, int? excludeId = null);
 
         Task<(List<Faculty> Items, int TotalCount)> GetPagedFacultiesAsync(FacultyQueryParams queryParams);
         Task<Faculty> AddAsync(Faculty faculty);

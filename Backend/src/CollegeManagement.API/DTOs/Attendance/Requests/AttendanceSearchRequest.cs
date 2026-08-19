@@ -45,6 +45,16 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         /// </summary>
         public int FacultyId { get; set; }
 
+        /// <summary>
+        /// Gets or sets the optional period identifier.
+        /// </summary>
+        public int? PeriodId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional timetable slot identifier.
+        /// </summary>
+        public int? TimetableId { get; set; }
+
         #endregion
 
         #region Student Filters

@@ -92,9 +92,16 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            var success = await _timetableService.DeleteAsync(id);
-            if (!success) return NotFound(new { message = $"Timetable slot with ID {id} not found." });
-            return NoContent();
+            try
+            {
+                var success = await _timetableService.DeleteAsync(id);
+                if (!success) return NotFound(new { message = $"Timetable slot with ID {id} not found." });
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -179,12 +186,20 @@ namespace CollegeManagement.API.Controllers.V1
         /// </summary>
         [HttpPatch("{id:int}/publish")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PublishSlot(int id, [FromBody] PublishTimetableDto dto)
         {
-            var success = await _timetableService.TogglePublishSlotAsync(id, dto.IsPublished);
-            if (!success) return NotFound(new { message = $"Timetable slot with ID {id} not found." });
-            return Ok(new { message = $"Slot publish status updated to {dto.IsPublished}." });
+            try
+            {
+                var success = await _timetableService.TogglePublishSlotAsync(id, dto.IsPublished);
+                if (!success) return NotFound(new { message = $"Timetable slot with ID {id} not found." });
+                return Ok(new { message = $"Slot publish status updated to {dto.IsPublished}." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -192,10 +207,100 @@ namespace CollegeManagement.API.Controllers.V1
         /// </summary>
         [HttpPatch("section/{sectionId:int}/publish")]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> PublishSection(int sectionId, [FromQuery] int academicYearId, [FromBody] PublishTimetableDto dto)
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> PublishSection(int sectionId, [FromBody] PublishTimetableDto dto, [FromQuery] int? academicYearId = null)
         {
-            await _timetableService.PublishSectionTimetableAsync(sectionId, academicYearId, dto.IsPublished);
-            return Ok(new { message = $"All timetable slots for Section ID {sectionId} publish status set to {dto.IsPublished}." });
+            try
+            {
+                await _timetableService.PublishSectionTimetableAsync(sectionId, academicYearId ?? 0, dto.IsPublished);
+                return Ok(new { message = $"All timetable slots for Section ID {sectionId} publish status set to {dto.IsPublished}." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Validates a complete section DRAFT timetable against all conflict and eligibility rules.
+        /// </summary>
+        [HttpPost("section/{sectionId:int}/validate")]
+        [ProducesResponseType(typeof(ValidateTimetableResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ValidateSection(int sectionId, [FromQuery] int? academicYearId = null)
+        {
+            try
+            {
+                var result = await _timetableService.ValidateSectionTimetableAsync(sectionId, academicYearId ?? 0);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Approves a section DRAFT timetable if batch validation passes.
+        /// </summary>
+        [HttpPost("section/{sectionId:int}/approve")]
+        [ProducesResponseType(typeof(ApproveTimetableResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> ApproveSection(int sectionId, [FromQuery] int? academicYearId = null)
+        {
+            try
+            {
+                var result = await _timetableService.ApproveSectionTimetableAsync(sectionId, academicYearId ?? 0);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Automatically generates a conflict-free THEORY timetable in DRAFT state across multiple sections.
+        /// </summary>
+        [HttpPost("generate")]
+        [ProducesResponseType(typeof(GenerateTimetableResultDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> Generate([FromBody] GenerateTimetableRequestDto dto)
+        {
+            try
+            {
+                var result = await _timetableService.GenerateTheoryTimetableAsync(dto);
+                return StatusCode(StatusCodes.Status201Created, result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

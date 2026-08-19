@@ -20,15 +20,18 @@ namespace CollegeManagement.API.Services.Implementations
     public class AdminService : IAdminService
     {
         private readonly IAdminRepository _adminRepository;
+        private readonly IOtpRepository _otpRepository;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AdminService> _logger;
 
         public AdminService(
             IAdminRepository adminRepository,
+            IOtpRepository otpRepository,
             IConfiguration configuration,
             ILogger<AdminService> logger)
         {
             _adminRepository = adminRepository;
+            _otpRepository = otpRepository;
             _configuration = configuration;
             _logger = logger;
         }
@@ -75,11 +78,11 @@ namespace CollegeManagement.API.Services.Implementations
                 return new AuthResult
                 {
                     Status = false,
-                    Message = "Admin account is deactivated."
+                    Message = "Admin account is deactivated"
                 };
             }
 
-            // Generate JWT Token
+            // Generate real JWT token
             var tokenHandler = new JwtSecurityTokenHandler();
             var keyStr = _configuration["JwtSettings:Key"] ?? "a_very_long_secure_secret_key_of_at_least_32_characters_long";
             var key = Encoding.UTF8.GetBytes(keyStr);
@@ -89,10 +92,9 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     new Claim(ClaimTypes.NameIdentifier, admin.Id.ToString()),
                     new Claim(ClaimTypes.Email, admin.Email),
-                    new Claim(ClaimTypes.Role, "Admin"),
-                    new Claim(ClaimTypes.Name, admin.Email)
+                    new Claim(ClaimTypes.Role, "Admin")
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(double.Parse(_configuration["JwtSettings:DurationInMinutes"] ?? "120")),
+                Expires = DateTime.UtcNow.AddDays(7),
                 Issuer = _configuration["JwtSettings:Issuer"],
                 Audience = _configuration["JwtSettings:Audience"],
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -103,10 +105,10 @@ namespace CollegeManagement.API.Services.Implementations
             return new AuthResult
             {
                 Status = true,
-                Message = "Login Successful",
+                Message = "Login successful",
                 AccessToken = tokenString,
                 UserId = admin.Id,
-                Name = admin.Email,
+                Name = admin.Email.Split('@')[0],
                 Role = "Admin"
             };
         }
@@ -116,7 +118,7 @@ namespace CollegeManagement.API.Services.Implementations
             var existing = await _adminRepository.GetByEmailAsync(request.Email);
             if (existing != null)
             {
-                throw new InvalidOperationException("An administrator with this email already exists.");
+                throw new InvalidOperationException("Email is already registered.");
             }
 
             var admin = new Admin
@@ -159,6 +161,104 @@ namespace CollegeManagement.API.Services.Implementations
             var newPasswordHash = PasswordHasher.HashPassword(request.NewPassword);
             await _adminRepository.UpdatePasswordAsync(currentAdminId, newPasswordHash);
             return true;
+        }
+
+        public async Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request)
+        {
+            var admin = await _adminRepository.GetByEmailAsync(request.Email);
+            if (admin == null)
+            {
+                return new AuthResult
+                {
+                    Status = false,
+                    Message = "Admin email address is not registered."
+                };
+            }
+
+            var otpCode = Random.Shared.Next(100000, 999999).ToString();
+            var otp = new OTP
+            {
+                Email = request.Email,
+                OTPCode = otpCode,
+                ExpiryTime = DateTime.UtcNow.AddMinutes(5),
+                IsUsed = false
+            };
+
+            await _otpRepository.AddAsync(otp);
+
+            _logger.LogInformation("Admin OTP generated for {Email}: {Otp}", request.Email, otpCode);
+
+            return new AuthResult
+            {
+                Status = true,
+                Message = "OTP has been generated successfully.",
+                Otp = otpCode
+            };
+        }
+
+        public async Task<AuthResult> VerifyOtpAsync(VerifyOtpRequest request)
+        {
+            var otpRecord = await _otpRepository.GetLatestActiveOtpAsync(request.Email, request.Otp);
+
+            if (otpRecord == null)
+            {
+                return new AuthResult
+                {
+                    Status = false,
+                    Message = "Invalid or expired OTP"
+                };
+            }
+
+            return new AuthResult
+            {
+                Status = true,
+                Message = "OTP Verified Successfully"
+            };
+        }
+
+        public async Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request)
+        {
+            if (request.Password != request.ConfirmPassword)
+            {
+                return new AuthResult
+                {
+                    Status = false,
+                    Message = "Password and Confirm Password do not match"
+                };
+            }
+
+            var otpRecord = await _otpRepository.GetLatestActiveOtpAsync(request.Email, request.OTP);
+
+            if (otpRecord == null)
+            {
+                return new AuthResult
+                {
+                    Status = false,
+                    Message = "Invalid or expired OTP"
+                };
+            }
+
+            var admin = await _adminRepository.GetByEmailAsync(request.Email);
+            if (admin == null)
+            {
+                return new AuthResult
+                {
+                    Status = false,
+                    Message = "Admin account not found"
+                };
+            }
+
+            var newPasswordHash = PasswordHasher.HashPassword(request.Password);
+            otpRecord.IsUsed = true;
+
+            await _adminRepository.UpdatePasswordAsync(admin.Id, newPasswordHash);
+            await _otpRepository.UpdateAsync(otpRecord);
+
+            return new AuthResult
+            {
+                Status = true,
+                Message = "Admin Password Reset Successfully"
+            };
         }
     }
 }

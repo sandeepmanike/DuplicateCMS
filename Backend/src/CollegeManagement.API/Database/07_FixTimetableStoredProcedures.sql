@@ -23,7 +23,8 @@ CREATE PROCEDURE sp_GetTimetables(
 )
 BEGIN
     SELECT 
-        t.TimetableId,
+        t.Id AS Id,
+        t.Id AS TimetableId,
         t.BoardId,
         COALESCE(b.BoardName, '') AS BoardName,
         t.AcademicLevelId,
@@ -90,7 +91,8 @@ DELIMITER //
 CREATE PROCEDURE sp_GetTimetableById(IN p_Id INT)
 BEGIN
     SELECT 
-        t.TimetableId,
+        t.Id AS Id,
+        t.Id AS TimetableId,
         t.BoardId,
         COALESCE(b.BoardName, '') AS BoardName,
         t.AcademicLevelId,
@@ -136,7 +138,7 @@ BEGIN
     LEFT JOIN Subjects sub ON sub.SubjectId = t.SubjectId
     LEFT JOIN Faculties f ON f.Id = t.FacultyId
     LEFT JOIN Rooms r ON r.RoomId = t.RoomId
-    WHERE t.TimetableId = p_Id;
+    WHERE t.Id = p_Id;
 END //
 DELIMITER ;
 
@@ -201,7 +203,7 @@ BEGIN
         IsPublished = p_IsPublished,
         Remarks = p_Remarks,
         UpdatedAt = UTC_TIMESTAMP()
-    WHERE TimetableId = p_Id;
+    WHERE Id = p_Id;
 END //
 DELIMITER ;
 
@@ -212,7 +214,7 @@ DROP PROCEDURE IF EXISTS sp_DeleteTimetable;
 DELIMITER //
 CREATE PROCEDURE sp_DeleteTimetable(IN p_Id INT)
 BEGIN
-    DELETE FROM Timetables WHERE TimetableId = p_Id;
+    DELETE FROM Timetables WHERE Id = p_Id;
 END //
 DELIMITER ;
 
@@ -229,7 +231,7 @@ BEGIN
     UPDATE Timetables
     SET IsPublished = p_IsPublished,
         UpdatedAt = UTC_TIMESTAMP()
-    WHERE TimetableId = p_Id;
+    WHERE Id = p_Id;
 END //
 DELIMITER ;
 
@@ -271,7 +273,7 @@ BEGIN
       AND SectionId = p_SectionId
       AND DayOfWeek = p_DayOfWeek
       AND PeriodId = p_PeriodId
-      AND (p_ExcludeId IS NULL OR TimetableId <> p_ExcludeId);
+      AND (p_ExcludeId IS NULL OR Id <> p_ExcludeId);
 END //
 DELIMITER ;
 
@@ -291,7 +293,7 @@ BEGIN
       AND FacultyId = p_FacultyId
       AND DayOfWeek = p_DayOfWeek
       AND PeriodId = p_PeriodId
-      AND (p_ExcludeId IS NULL OR TimetableId <> p_ExcludeId);
+      AND (p_ExcludeId IS NULL OR Id <> p_ExcludeId);
 END //
 DELIMITER ;
 
@@ -311,7 +313,7 @@ BEGIN
       AND RoomId = p_RoomId
       AND DayOfWeek = p_DayOfWeek
       AND PeriodId = p_PeriodId
-      AND (p_ExcludeId IS NULL OR TimetableId <> p_ExcludeId);
+      AND (p_ExcludeId IS NULL OR Id <> p_ExcludeId);
 END //
 DELIMITER ;
 

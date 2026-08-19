@@ -1,57 +1,41 @@
 ﻿using CollegeManagement.API.DTOs.Fee;
-using CollegeManagement.API.Models;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace CollegeManagement.API.Services.Interfaces
 {
     public interface IFeeService
     {
-        // Fee Structure
-        Task<FeeStructure> CreateFeeStructureAsync(CreateFeeStructureDto dto);
-        Task<FeeStructure?> UpdateFeeStructureAsync(int id, UpdateFeeStructureDto dto);
-        Task<IEnumerable<FeeStructure>> GetAllFeeStructuresAsync();
-        
-        Task<object?> GenerateReceiptAsync(string receiptId);
-        
+        Task<IEnumerable<dynamic>> GetFeeTypesAsync();
 
-        // Fee Collection
-        Task<FeeCollection> CollectFeeAsync(CreateFeeCollectionDto dto);
-        Task<IEnumerable<FeeCollection>> GetStudentFeeDetailsAsync(int studentId);
-        Task<FeeCollection?> UpdatePaymentAsync(int id, UpdatePaymentDto dto);
-        Task<bool> CancelPaymentAsync(int id);
-        Task RefundFeeAsync(RefundFeeDto dto);
+        Task<dynamic?> CreateFeeStructureAsync(FeeStructureRequestDto dto);
+        Task<IEnumerable<dynamic>> GetFeeStructuresAsync();
+        Task<dynamic?> GetFeeStructureByIdAsync(int id);
+        Task<dynamic?> UpdateFeeStructureAsync(int id, FeeStructureRequestDto dto);
+        Task<bool> DeleteFeeStructureAsync(int id);
 
-        // Discounts, Scholarships, Fines
-        Task ApplyDiscountAsync(ApplyDiscountDto dto);
-        Task ApplyScholarshipAsync(ApplyScholarshipDto dto);
-        Task ApplyFineAsync(ApplyFineDto dto);
-        Task WaiveFineAsync(int id);
+        Task<dynamic?> AssignStudentFeeAsync(StudentFeeAssignmentRequestDto dto);
+        Task<IEnumerable<dynamic>> GetStudentFeeDetailsAsync(int studentId);
+        Task<dynamic?> GetStudentFeeAssignmentByIdAsync(int id);
+        Task<dynamic?> UpdateStudentFeeAssignmentAsync(
+            int id,
+            StudentFeeAssignmentUpdateDto dto);
+        Task<bool> AssignAdmissionFeesAsync(AdmissionFeeAssignDto request);
 
-        // Reports
-        
-        Task<byte[]> DownloadReceiptAsync(string receiptId);
-        Task<IEnumerable<FeeCollection>> GetDueFeesAsync(int studentId);
-        
-        Task<FeeCollection?> GetDueFeeAsync(int studentId);
-        Task<IEnumerable<FeeCollection>> GetPaymentHistoryAsync(int studentId);
-        Task<object> GetDailyCollectionAsync(DateTime date);
-        Task<object> GetMonthlyCollectionAsync(int month, int year);
-        Task<object> GetOutstandingReportAsync();
-        
-        
-        
-        
-        Task<FeeCollection> AssignFeeToStudentAsync(AssignFeeDto dto);
-       
-       
-        Task<byte[]> DownloadFeeReceiptAsync(int feeCollectionId);
-        Task<IEnumerable<FeePaymentHistoryDto>> GetFeePaymentHistoryAsync(int studentId);
-        Task<IEnumerable<Student>> GetDueFeeStudentsAsync(int academicYearId);
-        Task<IEnumerable<FeeCollection>> GetDueFeesAsync();
-        
+        Task<AdmissionFeeSummaryDto?> GetAdmissionFeeSummaryAsync(int admissionId);
 
+        Task<AdmissionFeeSummaryDto?> CollectAdmissionFeeAsync(
+            int admissionId,
+            AdmissionFeePaymentDto request);
+        Task<dynamic?> CollectFeeAsync(FeePaymentRequestDto dto);
+        Task<IEnumerable<dynamic>> GetPaymentHistoryAsync(int studentId);
+        Task<dynamic?> GetReceiptAsync(int receiptId);
+        Task<bool> CancelPaymentAsync(int paymentId);
 
+        Task<dynamic?> ApplyDiscountAsync(DiscountRequestDto dto);
+        Task<dynamic?> ApplyScholarshipAsync(ScholarshipRequestDto dto);
+        Task<dynamic?> ApplyFineAsync(FineRequestDto dto);
+        Task<bool> WaiveFineAsync(int fineId);
 
+        Task<dynamic?> CreateRefundAsync(RefundRequestDto dto);
+        Task<IEnumerable<dynamic>> GetDueFeesAsync(int? studentId);
     }
 }

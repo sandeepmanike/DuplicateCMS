@@ -12,6 +12,10 @@
 
         public string GroupName { get; set; } = string.Empty;
 
+        public int ExamId { get; set; }
+
+        public string ExamCode { get; set; } = string.Empty;
+
         public string ExamName { get; set; } = string.Empty;
 
         public decimal TotalMarks { get; set; }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -62,7 +62,7 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var existing = await _marksRepository.GetByIdAsync(id);
             if (existing == null) throw new NotFoundException($"Mark record with ID {id} not found.");
-            if (existing.IsPublished) throw new ConflictException("Cannot edit published marks.");
+            if (existing.IsLocked || existing.Status == CollegeManagement.API.Models.Enums.EvaluationStatus.APPROVED) throw new ConflictException("Cannot edit approved or locked marks.");
             _mapper.Map(dto, existing);
             var updated = await _marksRepository.UpdateAsync(id, existing);
             return _mapper.Map<MarkResponseDto>(updated ?? existing);
@@ -72,7 +72,7 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var existing = await _marksRepository.GetByIdAsync(id);
             if (existing == null) throw new NotFoundException($"Mark record with ID {id} not found.");
-            if (existing.IsPublished) throw new ConflictException("Cannot delete published marks.");
+            if (existing.IsLocked || existing.Status == CollegeManagement.API.Models.Enums.EvaluationStatus.APPROVED) throw new ConflictException("Cannot delete approved or locked marks.");
             return await _marksRepository.DeleteAsync(id);
         }
 
@@ -111,12 +111,17 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<MarksSummaryDto> GetSummaryAsync(int examinationId)
         {
-            var marks = await _marksRepository.GetByExamAsync(examinationId);
-            if (!marks.Any()) return new MarksSummaryDto();
-            var total = marks.Count;
-            var verified = marks.Count(m => m.IsVerified);
+            var marksList = (await _marksRepository.GetByExamAsync(examinationId)).ToList();
+            if (!marksList.Any()) return new MarksSummaryDto();
+
+            var total = marksList.Count;
+            var verified = marksList.Count(m => m.IsVerified);
             var pending = total - verified;
-            var passed = marks.Count(m => m.TotalMarks >= m.PassingMarks);
+            var passed = marksList.Count(m => m.TotalMarks >= m.PassingMarks);
+
+            // Clean LINQ Aggregations without Delegate Type Inference Ambiguity
+            double avgMarks = marksList.Average(m => (double)m.TotalMarks);
+
             return new MarksSummaryDto
             {
                 TotalStudents = total,
@@ -126,8 +131,8 @@ namespace CollegeManagement.API.Services.Implementations
                 PassedStudents = passed,
                 FailedStudents = total - passed,
                 PassPercentage = Math.Round(((decimal)passed / total) * 100, 2),
-                HighestMarks = marks.Max(m => m.TotalMarks),
-                AverageMarks = Math.Round((decimal)marks.Average(m => m.TotalMarks), 2)
+                HighestMarks = marksList.Max(m => m.TotalMarks),
+                AverageMarks = Math.Round((decimal)avgMarks, 2)
             };
         }
 

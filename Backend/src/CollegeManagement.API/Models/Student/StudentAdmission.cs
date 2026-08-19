@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CollegeManagement.API.Models
@@ -6,25 +7,39 @@ namespace CollegeManagement.API.Models
     [Table("StudentAdmissions")]
     public class StudentAdmission
     {
+        // =========================================================
+        // PRIMARY KEY
+        // =========================================================
+
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int AdmissionId { get; set; }
 
+
+        // =========================================================
+        // ADMISSION DETAILS
+        // =========================================================
+
         [Required]
-        [MaxLength(30)]
+        [MaxLength(50)]
         public string AdmissionNo { get; set; } = string.Empty;
 
-        [Required]
         public DateTime AdmissionDate { get; set; }
 
-        // Student Details
+        [MaxLength(50)]
+        public string? AdmissionQuota { get; set; }
+
+
+        // =========================================================
+        // STUDENT BASIC DETAILS
+        // =========================================================
+
         [Required]
         [MaxLength(100)]
         public string FirstName { get; set; } = string.Empty;
 
-        [Required]
         [MaxLength(100)]
-        public string LastName { get; set; } = string.Empty;
+        public string? LastName { get; set; }
 
         [Required]
         [MaxLength(20)]
@@ -39,45 +54,95 @@ namespace CollegeManagement.API.Models
         [MaxLength(500)]
         public string? StudentPhoto { get; set; }
 
-        [Required]
-        [MaxLength(20)]
-        public string AadhaarNumber { get; set; } = string.Empty;
+        [EmailAddress]
+        [MaxLength(150)]
+        public string? StudentEmail { get; set; }
 
-        [MaxLength(100)]
+        [Phone]
+        [MaxLength(20)]
+        public string? StudentMobileNumber { get; set; }
+
+        [MaxLength(20)]
+        public string? AadhaarNumber { get; set; }
+
+        [MaxLength(50)]
         public string? Nationality { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(50)]
         public string? Religion { get; set; }
 
-        [MaxLength(100)]
+        [MaxLength(50)]
         public string? Category { get; set; }
 
-        // Parent Details
+
+        // =========================================================
+        // FATHER DETAILS
+        // =========================================================
+
         [Required]
         [MaxLength(150)]
         public string FatherName { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? FatherOccupation { get; set; }
+
+        [Phone]
+        [MaxLength(20)]
+        public string? FatherMobile { get; set; }
+
+        [EmailAddress]
+        [MaxLength(150)]
+        public string? FatherEmail { get; set; }
+
+
+        // =========================================================
+        // MOTHER DETAILS
+        // =========================================================
 
         [Required]
         [MaxLength(150)]
         public string MotherName { get; set; } = string.Empty;
 
+        [MaxLength(100)]
+        public string? MotherOccupation { get; set; }
+
+        [Phone]
+        [MaxLength(20)]
+        public string? MotherMobile { get; set; }
+
+        [EmailAddress]
+        [MaxLength(150)]
+        public string? MotherEmail { get; set; }
+
+
+        // =========================================================
+        // GUARDIAN DETAILS
+        // =========================================================
+
         [MaxLength(150)]
         public string? GuardianName { get; set; }
 
-        [Required]
-        [MaxLength(15)]
-        public string ParentMobile { get; set; } = string.Empty;
+        [Phone]
+        [MaxLength(20)]
+        public string? GuardianMobile { get; set; }
 
+        [EmailAddress]
         [MaxLength(150)]
-        public string? ParentEmail { get; set; }
+        public string? GuardianEmail { get; set; }
 
-        [MaxLength(100)]
-        public string? Occupation { get; set; }
+
+        // =========================================================
+        // INCOME
+        // =========================================================
 
         public decimal? AnnualIncome { get; set; }
 
-        // Address
-        [MaxLength(500)]
+
+        // =========================================================
+        // ADDRESS DETAILS
+        // =========================================================
+
+        [MaxLength(1000)]
         public string? Address { get; set; }
 
         [MaxLength(100)]
@@ -89,27 +154,53 @@ namespace CollegeManagement.API.Models
         [MaxLength(100)]
         public string? State { get; set; }
 
-        [MaxLength(10)]
+        [MaxLength(20)]
         public string? Pincode { get; set; }
 
-        // Academic Details
+
+        // =========================================================
+        // ACADEMIC RELATIONSHIPS
+        // =========================================================
+
         [Required]
         public int BoardId { get; set; }
+
+        [ForeignKey(nameof(BoardId))]
+        public Board? Board { get; set; }
+
 
         [Required]
         public int AcademicYearId { get; set; }
 
+        [ForeignKey(nameof(AcademicYearId))]
+        public AcademicYear? AcademicYear { get; set; }
+
+
         [Required]
-        [MaxLength(50)]
-        public string AcademicLevel { get; set; } = string.Empty;
+        public int AcademicLevelId { get; set; }
+
+        [ForeignKey(nameof(AcademicLevelId))]
+        public AcademicLevel? AcademicLevelNavigation { get; set; }
+
 
         [Required]
         public int GroupId { get; set; }
 
+        [ForeignKey(nameof(GroupId))]
+        public Group? Group { get; set; }
+
+
         [Required]
         public int SectionId { get; set; }
 
-        // Previous School
+        [ForeignKey(nameof(SectionId))]
+        public Section? Section { get; set; }
+
+
+        // =========================================================
+        // PREVIOUS EDUCATION
+        // =========================================================
+
         [MaxLength(200)]
         public string? PreviousSchool { get; set; }
 
@@ -118,7 +209,42 @@ namespace CollegeManagement.API.Models
 
         public decimal? PreviousPercentage { get; set; }
 
-        // Documents
+        public int? PreviousYearOfPassing { get; set; }
+
+        [MaxLength(500)]
+        public string? MarksMemo { get; set; }
+
+
+        // =========================================================
+        // ADMISSION / COURSE DETAILS
+        // =========================================================
+
+        [MaxLength(50)]
+        public string? SecondLanguage { get; set; }
+
+        [MaxLength(50)]
+        public string? AdmissionType { get; set; }
+
+        [MaxLength(50)]
+        public string? Medium { get; set; }
+
+        [MaxLength(50)]
+        public string? ScholarshipStatus { get; set; }
+
+
+        // =========================================================
+        // ROLL NUMBER
+        // =========================================================
+
+        // Generated after admission approval.
+        [MaxLength(50)]
+        public string? RollNo { get; set; }
+
+
+        // =========================================================
+        // DOCUMENTS
+        // =========================================================
+
         [MaxLength(500)]
         public string? BirthCertificate { get; set; }
 
@@ -138,36 +264,44 @@ namespace CollegeManagement.API.Models
         public string? IncomeCertificate { get; set; }
 
         [MaxLength(500)]
-        public string? PassportPhoto { get; set; }
+        public string? CasteCertificate { get; set; }
 
-        // Status
-        [Required]
-        [MaxLength(20)]
+        [MaxLength(500)]
+        public string? TenthCertificate { get; set; }
+
+
+        // =========================================================
+        // STATUS
+        // =========================================================
+
+        [MaxLength(30)]
         public string Status { get; set; } = "Pending";
 
-        public bool IsVerified { get; set; } = false;
+        public bool IsVerified { get; set; }
 
-        public bool IsApproved { get; set; } = false;
+        public bool IsApproved { get; set; }
 
-        public bool IsRejected { get; set; } = false;
+        public bool IsRejected { get; set; }
 
         public bool IsActive { get; set; } = true;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // =========================================================
+        // OTHER
+        // =========================================================
+
+        [MaxLength(1000)]
+        public string? Remarks { get; set; }
+
+
+        // =========================================================
+        // AUDIT
+        // =========================================================
+
+        public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
 
-        // Navigation Properties
-        [ForeignKey(nameof(BoardId))]
-        public Board? Board { get; set; }
 
-        [ForeignKey(nameof(AcademicYearId))]
-        public AcademicYear? AcademicYear { get; set; }
-
-        [ForeignKey(nameof(GroupId))]
-        public Group? Group { get; set; }
-
-        // Section navigation TEMPORARILY REMOVED
-        // We'll add it after Section module is refactored to use proper foreign keys.
     }
 }

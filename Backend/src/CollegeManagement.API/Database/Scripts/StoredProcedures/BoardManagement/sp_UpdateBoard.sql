@@ -2,6 +2,7 @@ DROP PROCEDURE IF EXISTS sp_UpdateBoard;
 
 CREATE PROCEDURE sp_UpdateBoard(
     IN p_BoardId INT,
+    IN p_ExpectedVersion INT,
     IN p_BoardName VARCHAR(100),
     IN p_BoardCode VARCHAR(30),
     IN p_Description VARCHAR(500),
@@ -14,39 +15,37 @@ CREATE PROCEDURE sp_UpdateBoard(
     IN p_BoardExams BOOLEAN,
     IN p_PassPercentage DECIMAL(5,2),
     IN p_RankCalculation BOOLEAN,
-    IN p_IsActive BOOLEAN
+    IN p_IsActive BOOLEAN,
+    OUT p_AffectedRows INT
 )
 BEGIN
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
+    IF NOT EXISTS (SELECT 1 FROM Boards WHERE BoardId = p_BoardId) THEN
+        SET p_AffectedRows = -1;
+    ELSE
+        UPDATE Boards
+        SET
+            BoardName = p_BoardName,
+            BoardCode = TRIM(p_BoardCode),
+            Description = p_Description,
+            CountryId = p_CountryId,
+            StateId = p_StateId,
+            AcademicPatternId = p_AcademicPatternId,
+            GradingSystemId = p_GradingSystemId,
+            InternalAssessment = p_InternalAssessment,
+            PracticalExams = p_PracticalExams,
+            BoardExams = p_BoardExams,
+            PassPercentage = p_PassPercentage,
+            RankCalculation = p_RankCalculation,
+            IsActive = p_IsActive,
+            RowVersion = RowVersion + 1,
+            UpdatedAt = UTC_TIMESTAMP()
+        WHERE BoardId = p_BoardId AND RowVersion = p_ExpectedVersion;
 
-    START TRANSACTION;
+        SET p_AffectedRows = ROW_COUNT();
+    END IF;
 
-    UPDATE Boards
-    SET
-        BoardName = p_BoardName,
-        BoardCode = TRIM(p_BoardCode),
-        Description = p_Description,
-        CountryId = p_CountryId,
-        StateId = p_StateId,
-        AcademicPatternId = p_AcademicPatternId,
-        GradingSystemId = p_GradingSystemId,
-        InternalAssessment = p_InternalAssessment,
-        PracticalExams = p_PracticalExams,
-        BoardExams = p_BoardExams,
-        PassPercentage = p_PassPercentage,
-        RankCalculation = p_RankCalculation,
-        IsActive = p_IsActive,
-        UpdatedAt = UTC_TIMESTAMP()
-    WHERE BoardId = p_BoardId;
-
-    COMMIT;
-    
     SELECT 
-        b.BoardId, b.BoardCode, b.BoardName, b.Description, b.InternalAssessment, b.PracticalExams, b.BoardExams, b.PassPercentage, b.RankCalculation, b.IsActive, b.CreatedAt, b.UpdatedAt,
+        b.BoardId, b.BoardCode, b.BoardName, b.Description, b.InternalAssessment, b.PracticalExams, b.BoardExams, b.PassPercentage, b.RankCalculation, b.IsActive, b.RowVersion, b.CreatedAt, b.UpdatedAt,
         c.CountryId, c.CountryCode, c.CountryName,
         s.StateId, s.StateCode, s.StateName,
         ap.AcademicPatternId, ap.PatternCode, ap.PatternName,

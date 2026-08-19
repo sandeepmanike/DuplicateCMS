@@ -1,61 +1,72 @@
 using CollegeManagement.API.Models;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-[Table("Assignments")]
-public class Assignment
+namespace CollegeManagement.API.Models
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int AssignmentId { get; set; }
+    [Table("Assignments")]
+    public class Assignment
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int AssignmentId { get; set; }
 
-    [Required]
-    public string Title { get; set; } = string.Empty;
+        [Required]
+        public string Title { get; set; } = string.Empty;
 
-    [Required]
-    public int AcademicYearId { get; set; }
+        [Required]
+        public int AcademicYearId { get; set; }
 
-    [Required]
-    public string AcademicLevel { get; set; } = string.Empty;
+        [Required]
+        public string AcademicLevel { get; set; } = string.Empty;
 
-    [Required]
-    public int GroupId { get; set; }
+        [Required]
+        public int GroupId { get; set; }
 
-    [Required]
-    public int SubjectId { get; set; }
+        [Required]
+        public int SubjectId { get; set; }
 
-    [Required]
-    public int FacultyId { get; set; }
+        public int? FacultyId { get; set; }
 
-    public string? Description { get; set; }
+        public string? Description { get; set; }
 
-    public DateOnly DueDate { get; set; }
+        public DateTime? StartDate { get; set; }
 
-    public string Attachment { get; set; } = string.Empty;
+        public DateTime DueDate { get; set; }
 
-    public int MaximumMarks { get; set; }
+        public string Attachment { get; set; } = string.Empty;
 
-    [ForeignKey(nameof(AcademicYearId))]
-    public AcademicYear? AcademicYear { get; set; }
+        public int MaximumMarks { get; set; }
 
-    [ForeignKey(nameof(GroupId))]
-    public Group? Group { get; set; }
+        public string? CreatedByType { get; set; }
 
-    [ForeignKey(nameof(SubjectId))]
-    public Subject? Subject { get; set; }
+        public bool IsPublished { get; set; } = false;
 
-    [ForeignKey(nameof(FacultyId))]
-    public CollegeManagement.API.Models.Faculty.Faculty? Faculty { get; set; }
+        public DateTime? PublishedAt { get; set; }
 
-    [NotMapped]
-    public string AcademicYearName { get; set; } = string.Empty;
+        [ForeignKey(nameof(AcademicYearId))]
+        public AcademicYear? AcademicYear { get; set; }
 
-    [NotMapped]
-    public string GroupName { get; set; } = string.Empty;
+        [ForeignKey(nameof(GroupId))]
+        public Group? Group { get; set; }
 
-    [NotMapped]
-    public string SubjectName { get; set; } = string.Empty;
+        [ForeignKey(nameof(SubjectId))]
+        public Subject? Subject { get; set; }
 
-    [NotMapped]
-    public string FacultyName { get; set; } = string.Empty;
+        [ForeignKey(nameof(FacultyId))]
+        public CollegeManagement.API.Models.Faculty.Faculty? Faculty { get; set; }
+
+        [NotMapped]
+        public string AcademicYearName { get; set; } = string.Empty;
+
+        [NotMapped]
+        public string GroupName { get; set; } = string.Empty;
+
+        [NotMapped]
+        public string SubjectName { get; set; } = string.Empty;
+
+        [NotMapped]
+        public string FacultyName { get; set; } = string.Empty;
+    }
 }

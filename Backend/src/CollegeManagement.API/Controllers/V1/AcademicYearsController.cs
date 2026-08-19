@@ -40,6 +40,21 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
+        /// Retrieves all currently active academic years.
+        /// </summary>
+        [HttpGet("active")]
+        public async Task<ActionResult> GetActive()
+        {
+            var result = await _service.GetActiveAsync();
+            return Ok(new
+            {
+                Status = true,
+                Message = "Active academic years retrieved successfully.",
+                Data = result
+            });
+        }
+
+        /// <summary>
         /// Retrieves an academic year by its unique identifier.
         /// </summary>
         /// <param name="id">The academic year identifier.</param>
@@ -156,7 +171,41 @@ namespace CollegeManagement.API.Controllers.V1
         [HttpPatch("{id}/activate")]
         public async Task<IActionResult> Activate(int id)
         {
-            var success = await _service.ActivateAsync(id);
+            try
+            {
+                var success = await _service.ActivateAsync(id);
+                if (!success)
+                {
+                    return NotFound(new
+                    {
+                        Status = false,
+                        Message = $"Academic year with ID {id} not found."
+                    });
+                }
+                return Ok(new
+                {
+                    Status = true,
+                    Message = "Academic year activated successfully."
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    Status = false,
+                    Message = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Deactivates a specific academic year by its identifier.
+        /// </summary>
+        /// <param name="id">The academic year identifier to deactivate.</param>
+        [HttpPatch("{id}/deactivate")]
+        public async Task<IActionResult> Deactivate(int id)
+        {
+            var success = await _service.DeactivateAsync(id);
             if (!success)
             {
                 return NotFound(new
@@ -168,7 +217,7 @@ namespace CollegeManagement.API.Controllers.V1
             return Ok(new
             {
                 Status = true,
-                Message = "Academic year activated successfully."
+                Message = "Academic year deactivated successfully."
             });
         }
     }

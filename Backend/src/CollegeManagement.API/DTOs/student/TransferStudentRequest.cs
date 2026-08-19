@@ -1,15 +1,27 @@
-﻿namespace CollegeManagement.API.DTOs.Students
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace CollegeManagement.API.DTOs.Students
 {
     public class TransferStudentRequest
     {
-        public string Board { get; set; } = string.Empty;
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int BoardId { get; set; }
 
+        [Required]
+        [Range(1, int.MaxValue)]
         public int AcademicYearId { get; set; }
 
-        public string AcademicLevel { get; set; } = string.Empty;
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int AcademicLevelId { get; set; }
 
+        [Required]
+        [Range(1, int.MaxValue)]
         public int GroupId { get; set; }
 
-        public string Section { get; set; } = string.Empty;
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int SectionId { get; set; }
     }
 }

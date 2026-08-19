@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Board.Requests;
+using CollegeManagement.API.DTOs.Board.Responses;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Repositories.Interfaces;
 using Dapper;
@@ -31,184 +32,203 @@ namespace CollegeManagement.API.Repositories.Implementations
         private IDbConnection Connection => _context.Database.GetDbConnection();
 
         /// <summary>
+        /// Starts a database transaction on the underlying connection.
+        /// </summary>
+        public async Task<IDbTransaction> BeginTransactionAsync()
+        {
+            if (Connection.State == ConnectionState.Closed)
+            {
+                await _context.Database.OpenConnectionAsync();
+            }
+            return await Task.FromResult(Connection.BeginTransaction());
+        }
+
+        /// <summary>
         /// Creates a new Board in the database using sp_CreateBoard.
         /// </summary>
-        public async Task<Board> CreateBoardAsync(Board board)
+        public async Task<Board> CreateBoardAsync(Board board, IDbTransaction? transaction = null)
         {
-            using var multi = await Connection.QueryMultipleAsync(
-                "sp_CreateBoard",
-                new
-                {
-                    p_BoardName = board.BoardName,
-                    p_BoardCode = board.BoardCode,
-                    p_Description = board.Description,
-                    p_CountryId = board.CountryId,
-                    p_StateId = board.StateId,
-                    p_AcademicPatternId = board.AcademicPatternId,
-                    p_GradingSystemId = board.GradingSystemId,
-                    p_InternalAssessment = board.InternalAssessment,
-                    p_PracticalExams = board.PracticalExams,
-                    p_BoardExams = board.BoardExams,
-                    p_PassPercentage = board.PassPercentage,
-                    p_RankCalculation = board.RankCalculation,
-                    p_IsActive = board.IsActive
-                },
-                commandType: CommandType.StoredProcedure);
+            var parameters = new DynamicParameters();
+            parameters.Add("p_BoardCode", board.BoardCode);
+            parameters.Add("p_BoardName", board.BoardName);
+            parameters.Add("p_Description", board.Description);
+            parameters.Add("p_CountryId", board.CountryId);
+            parameters.Add("p_StateId", board.StateId);
+            parameters.Add("p_AcademicPatternId", board.AcademicPatternId);
+            parameters.Add("p_GradingSystemId", board.GradingSystemId);
+            parameters.Add("p_InternalAssessment", board.InternalAssessment);
+            parameters.Add("p_PracticalExams", board.PracticalExams);
+            parameters.Add("p_BoardExams", board.BoardExams);
+            parameters.Add("p_PassPercentage", board.PassPercentage);
+            parameters.Add("p_RankCalculation", board.RankCalculation);
+            parameters.Add("p_IsActive", board.IsActive);
 
-            var created = multi.Read<Board, Country, State, AcademicPattern, GradingSystem, Board>(
-                (b, c, s, ap, gs) =>
-                {
-                    b.Country = c;
-                    b.State = s;
-                    b.AcademicPattern = ap;
-                    b.GradingSystem = gs;
-                    return b;
-                },
-                splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId"
-            ).FirstOrDefault();
 
-            if (created == null)
-            {
-                throw new InvalidOperationException("Failed to create board.");
-            }
+            var boardId = await Connection.ExecuteScalarAsync<int>(
+                 "sp_CreateBoard",
+                    parameters,
+                    transaction: transaction,
+                    commandType: CommandType.StoredProcedure);
 
-            return created;
-        }
-
-        /// <summary>
-        /// Updates an existing Board in the database using sp_UpdateBoard.
-        /// </summary>
-        public async Task<Board?> UpdateBoardAsync(Board board)
-        {
-            using var multi = await Connection.QueryMultipleAsync(
-                "sp_UpdateBoard",
-                new
-                {
-                    p_BoardId = board.BoardId,
-                    p_BoardName = board.BoardName,
-                    p_BoardCode = board.BoardCode,
-                    p_Description = board.Description,
-                    p_CountryId = board.CountryId,
-                    p_StateId = board.StateId,
-                    p_AcademicPatternId = board.AcademicPatternId,
-                    p_GradingSystemId = board.GradingSystemId,
-                    p_InternalAssessment = board.InternalAssessment,
-                    p_PracticalExams = board.PracticalExams,
-                    p_BoardExams = board.BoardExams,
-                    p_PassPercentage = board.PassPercentage,
-                    p_RankCalculation = board.RankCalculation,
-                    p_IsActive = board.IsActive
-                },
-                commandType: CommandType.StoredProcedure);
-
-            var updated = multi.Read<Board, Country, State, AcademicPattern, GradingSystem, Board>(
-                (b, c, s, ap, gs) =>
-                {
-                    b.Country = c;
-                    b.State = s;
-                    b.AcademicPattern = ap;
-                    b.GradingSystem = gs;
-                    return b;
-                },
-                splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId"
-            ).FirstOrDefault();
-
-            return updated;
-        }
-
-        /// <summary>
-        /// Soft deletes a Board using sp_DeleteBoard.
-        /// </summary>
-        public async Task<bool> DeleteBoardAsync(int boardId)
-        {
-            var affected = await Connection.ExecuteScalarAsync<int>(
-                "sp_DeleteBoard",
-                new { p_BoardId = boardId },
-                commandType: CommandType.StoredProcedure);
-
-            return affected > 0;
-        }
-
-        /// <summary>
-        /// Retrieves a Board by ID, mapping relationships from multi-result set using sp_GetBoardById.
-        /// </summary>
-        public async Task<Board?> GetBoardByIdAsync(int boardId)
-        {
-            using var multi = await Connection.QueryMultipleAsync(
-                "sp_GetBoardById",
-                new { p_BoardId = boardId },
-                commandType: CommandType.StoredProcedure);
-
-            var board = multi.Read<Board, Country, State, AcademicPattern, GradingSystem, Board>(
-                (b, c, s, ap, gs) =>
-                {
-                    b.Country = c;
-                    b.State = s;
-                    b.AcademicPattern = ap;
-                    b.GradingSystem = gs;
-                    return b;
-                },
-                splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId"
-            ).FirstOrDefault();
-
-            if (board != null)
-            {
-                var academicLevels = multi.Read<BoardAcademicLevel, AcademicLevel, BoardAcademicLevel>(
-                    (bal, al) =>
-                    {
-                        bal.AcademicLevel = al;
-                        bal.Board = board;
-                        return bal;
-                    },
-                    splitOn: "AcademicLevelId"
-                ).ToList();
-
-                board.BoardAcademicLevels = academicLevels;
-            }
-
+            board.BoardId = boardId;
             return board;
         }
 
         /// <summary>
-        /// Retrieves filtered list of Boards using sp_GetBoards.
+        /// Updates an existing Board in the database using sp_UpdateBoard with optimistic concurrency.
         /// </summary>
-        public async Task<List<Board>> GetBoardsAsync(BoardSearchRequest request)
+        public async Task<(Board? Board, int AffectedRows)> UpdateBoardAsync(Board board, uint expectedVersion, IDbTransaction? transaction = null)
         {
-            var result = await Connection.QueryAsync<Board, Country, State, AcademicPattern, GradingSystem, Board>(
-                "sp_GetBoards",
-                (b, c, s, ap, gs) =>
+            var parameters = new DynamicParameters();
+            parameters.Add("p_BoardId", board.BoardId);
+            parameters.Add("p_ExpectedVersion", expectedVersion);
+            parameters.Add("p_BoardName", board.BoardName);
+            parameters.Add("p_BoardCode", board.BoardCode);
+            parameters.Add("p_Description", board.Description);
+            parameters.Add("p_CountryId", board.CountryId);
+            parameters.Add("p_StateId", board.StateId);
+            parameters.Add("p_AcademicPatternId", board.AcademicPatternId);
+            parameters.Add("p_GradingSystemId", board.GradingSystemId);
+            parameters.Add("p_InternalAssessment", board.InternalAssessment);
+            parameters.Add("p_PracticalExams", board.PracticalExams);
+            parameters.Add("p_BoardExams", board.BoardExams);
+            parameters.Add("p_PassPercentage", board.PassPercentage);
+            parameters.Add("p_RankCalculation", board.RankCalculation);
+            parameters.Add("p_IsActive", board.IsActive);
+            parameters.Add("p_AffectedRows", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            var updatedBoard = await Connection.QueryFirstOrDefaultAsync<Board>(
+                "sp_UpdateBoard",
+                parameters,
+                transaction: transaction,
+                commandType: CommandType.StoredProcedure);
+
+            var affected = parameters.Get<int>("p_AffectedRows");
+            return (affected > 0 ? updatedBoard : null, affected);
+        }
+
+        /// <summary>
+        /// Performs soft delete of a Board using sp_DeleteBoard with optimistic concurrency.
+        /// </summary>
+        public async Task<int> DeleteBoardAsync(int boardId, uint expectedVersion, IDbTransaction? transaction = null)
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("p_BoardId", boardId);
+            parameters.Add("p_ExpectedVersion", expectedVersion);
+            parameters.Add("p_AffectedRows", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            await Connection.ExecuteAsync(
+                "sp_DeleteBoard",
+                parameters,
+                transaction: transaction,
+                commandType: CommandType.StoredProcedure);
+
+            return parameters.Get<int>("p_AffectedRows");
+        }
+
+        /// <summary>
+        /// Retrieves a Board by ID including relations, using the active transaction if available.
+        /// </summary>
+        public async Task<Board?> GetBoardByIdAsync(int boardId, IDbTransaction? transaction = null)
+        {
+            var sql = @"
+                SELECT b.*, c.*, s.*, ap.*, gs.*
+                FROM Boards b
+                LEFT JOIN Countries c ON b.CountryId = c.CountryId
+                LEFT JOIN States s ON b.StateId = s.StateId
+                LEFT JOIN AcademicPatterns ap ON b.AcademicPatternId = ap.AcademicPatternId
+                LEFT JOIN GradingSystems gs ON b.GradingSystemId = gs.GradingSystemId
+                WHERE b.BoardId = @BoardId;
+
+                SELECT bal.*, al.*
+                FROM BoardAcademicLevels bal
+                LEFT JOIN AcademicLevels al ON bal.AcademicLevelId = al.AcademicLevelId
+                WHERE bal.BoardId = @BoardId;";
+
+            using (var multi = await Connection.QueryMultipleAsync(sql, new { BoardId = boardId }, transaction))
+            {
+                var board = multi.Read<Board, Country, State, AcademicPattern, GradingSystem, Board>((b, c, s, ap, gs) =>
                 {
                     b.Country = c;
                     b.State = s;
                     b.AcademicPattern = ap;
                     b.GradingSystem = gs;
                     return b;
-                },
-                new
-                {
-                    p_BoardName = string.IsNullOrWhiteSpace(request.BoardName) ? null : request.BoardName.Trim(),
-                    p_BoardCode = string.IsNullOrWhiteSpace(request.BoardCode) ? null : request.BoardCode.Trim(),
-                    p_CountryId = request.CountryId,
-                    p_StateId = request.StateId,
-                    p_Status = request.Status
-                },
-                splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId",
-                commandType: CommandType.StoredProcedure);
+                }, splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId").FirstOrDefault();
 
-            return result.ToList();
+                if (board != null)
+                {
+                    var academicLevels = multi.Read<BoardAcademicLevel, AcademicLevel, BoardAcademicLevel>((bal, al) =>
+                    {
+                        bal.AcademicLevel = al;
+                        return bal;
+                    }, splitOn: "AcademicLevelId").ToList();
+
+                    board.BoardAcademicLevels = academicLevels;
+                }
+
+                return board;
+            }
         }
 
         /// <summary>
-        /// Changes status of a Board using sp_ChangeBoardStatus.
+        /// Retrieves filtered list of Boards with pagination, searching, and sorting using sp_GetBoards.
         /// </summary>
-        public async Task<bool> ChangeBoardStatusAsync(int boardId, bool status)
+        public async Task<(List<Board> Items, int TotalCount)> GetBoardsAsync(BoardSearchRequest request)
         {
-            var affected = await Connection.ExecuteScalarAsync<int>(
+            var parameters = new DynamicParameters();
+            parameters.Add("p_Search", request.Search);
+            parameters.Add("p_BoardName", request.BoardName);
+            parameters.Add("p_BoardCode", request.BoardCode);
+            parameters.Add("p_CountryId", request.CountryId);
+            parameters.Add("p_StateId", request.StateId);
+            parameters.Add("p_Status", request.Status);
+            parameters.Add("p_SortBy", request.SortBy);
+            parameters.Add("p_SortOrder", request.SortOrder);
+            parameters.Add("p_PageNumber", request.PageNumber);
+            parameters.Add("p_PageSize", request.PageSize);
+
+            using (var multi = await Connection.QueryMultipleAsync(
+                "sp_GetBoards",
+                parameters,
+                commandType: CommandType.StoredProcedure))
+            {
+                var totalCount = await multi.ReadFirstOrDefaultAsync<int>();
+                var items = multi.Read<Board, Country, State, AcademicPattern, GradingSystem, Board>((b, c, s, ap, gs) =>
+                {
+                    b.Country = c;
+                    b.State = s;
+                    b.AcademicPattern = ap;
+                    b.GradingSystem = gs;
+                    b.CountryId = c?.CountryId ?? 0;
+                    b.StateId = s?.StateId;
+                    b.AcademicPatternId = ap?.AcademicPatternId ?? 0;
+                    b.GradingSystemId = gs?.GradingSystemId ?? 0;
+                    return b;
+                }, splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId").ToList();
+
+                return (items, totalCount);
+            }
+        }
+
+        /// <summary>
+        /// Changes status of a Board using sp_ChangeBoardStatus with optimistic concurrency.
+        /// </summary>
+        public async Task<int> ChangeBoardStatusAsync(int boardId, uint expectedVersion, bool status, IDbTransaction? transaction = null)
+        {
+            var parameters = new DynamicParameters();
+            parameters.Add("p_BoardId", boardId);
+            parameters.Add("p_ExpectedVersion", expectedVersion);
+            parameters.Add("p_Status", status);
+            parameters.Add("p_AffectedRows", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+            await Connection.ExecuteAsync(
                 "sp_ChangeBoardStatus",
-                new { p_BoardId = boardId, p_Status = status },
+                parameters,
+                transaction: transaction,
                 commandType: CommandType.StoredProcedure);
 
-            return affected > 0;
+            return parameters.Get<int>("p_AffectedRows");
         }
 
         /// <summary>
@@ -229,11 +249,10 @@ namespace CollegeManagement.API.Repositories.Implementations
         /// </summary>
         public async Task<List<Country>> GetCountriesAsync()
         {
-            var result = await Connection.QueryAsync<Country>(
+            var countries = await Connection.QueryAsync<Country>(
                 "sp_GetCountries",
                 commandType: CommandType.StoredProcedure);
-
-            return result.ToList();
+            return countries.ToList();
         }
 
         /// <summary>
@@ -241,12 +260,11 @@ namespace CollegeManagement.API.Repositories.Implementations
         /// </summary>
         public async Task<List<State>> GetStatesByCountryAsync(int countryId)
         {
-            var result = await Connection.QueryAsync<State>(
+            var states = await Connection.QueryAsync<State>(
                 "sp_GetStatesByCountry",
                 new { p_CountryId = countryId },
                 commandType: CommandType.StoredProcedure);
-
-            return result.ToList();
+            return states.ToList();
         }
 
         /// <summary>
@@ -254,11 +272,10 @@ namespace CollegeManagement.API.Repositories.Implementations
         /// </summary>
         public async Task<List<AcademicPattern>> GetAcademicPatternsAsync()
         {
-            var result = await Connection.QueryAsync<AcademicPattern>(
+            var patterns = await Connection.QueryAsync<AcademicPattern>(
                 "sp_GetAcademicPatterns",
                 commandType: CommandType.StoredProcedure);
-
-            return result.ToList();
+            return patterns.ToList();
         }
 
         /// <summary>
@@ -266,11 +283,10 @@ namespace CollegeManagement.API.Repositories.Implementations
         /// </summary>
         public async Task<List<AcademicLevel>> GetAcademicLevelsAsync()
         {
-            var result = await Connection.QueryAsync<AcademicLevel>(
+            var levels = await Connection.QueryAsync<AcademicLevel>(
                 "sp_GetAcademicLevels",
                 commandType: CommandType.StoredProcedure);
-
-            return result.ToList();
+            return levels.ToList();
         }
 
         /// <summary>
@@ -278,25 +294,22 @@ namespace CollegeManagement.API.Repositories.Implementations
         /// </summary>
         public async Task<List<GradingSystem>> GetGradingSystemsAsync()
         {
-            var result = await Connection.QueryAsync<GradingSystem>(
+            var systems = await Connection.QueryAsync<GradingSystem>(
                 "sp_GetGradingSystems",
                 commandType: CommandType.StoredProcedure);
-
-            return result.ToList();
+            return systems.ToList();
         }
 
         /// <summary>
         /// Replaces academic levels mapping for a board using sp_ReplaceBoardAcademicLevels.
         /// </summary>
-        public async Task ReplaceAcademicLevelsAsync(int boardId, List<int> academicLevelIds)
+        public async Task ReplaceAcademicLevelsAsync(int boardId, List<int> academicLevelIds, IDbTransaction? transaction = null)
         {
-            var idsString = academicLevelIds != null && academicLevelIds.Any()
-                ? string.Join(",", academicLevelIds.Distinct())
-                : null;
-
+            var academicLevelIdsCsv = string.Join(",", academicLevelIds);
             await Connection.ExecuteAsync(
                 "sp_ReplaceBoardAcademicLevels",
-                new { p_BoardId = boardId, p_AcademicLevelIds = idsString },
+                new { p_BoardId = boardId, p_AcademicLevelIds = academicLevelIdsCsv },
+                transaction: transaction,
                 commandType: CommandType.StoredProcedure);
         }
 
@@ -389,20 +402,178 @@ namespace CollegeManagement.API.Repositories.Implementations
                 return true;
             }
 
-            foreach (var id in ids)
-            {
-                var exists = await Connection.ExecuteScalarAsync<int>(
-                    "sp_AcademicLevelExists",
-                    new { p_AcademicLevelId = id },
-                    commandType: CommandType.StoredProcedure);
+            var activeLevels = await GetAcademicLevelsAsync();
+            var activeLevelIds = activeLevels.Select(al => al.AcademicLevelId).ToHashSet();
 
-                if (exists == 0)
-                {
-                    return false;
-                }
+            return ids.All(id => activeLevelIds.Contains(id));
+        }
+
+        /// <inheritdoc />
+        public async Task<BoardSummaryResponse> GetDashboardSummaryAsync()
+        {
+            if (Connection.State == ConnectionState.Closed)
+            {
+                await _context.Database.OpenConnectionAsync();
             }
 
-            return true;
+            var sql = @"
+                SELECT COUNT(*) FROM Boards;
+                SELECT COUNT(*) FROM Boards WHERE IsActive = 1;
+                SELECT COUNT(*) FROM Boards WHERE IsActive = 0;
+
+                SELECT c.CountryId AS Id, c.CountryName AS Name, COUNT(b.BoardId) AS Count
+                FROM Countries c
+                LEFT JOIN Boards b ON b.CountryId = c.CountryId
+                WHERE c.IsActive = 1
+                GROUP BY c.CountryId, c.CountryName
+                HAVING COUNT(b.BoardId) > 0;
+
+                SELECT ap.AcademicPatternId AS Id, ap.PatternName AS Name, COUNT(b.BoardId) AS Count
+                FROM AcademicPatterns ap
+                LEFT JOIN Boards b ON b.AcademicPatternId = ap.AcademicPatternId
+                WHERE ap.IsActive = 1
+                GROUP BY ap.AcademicPatternId, ap.PatternName
+                HAVING COUNT(b.BoardId) > 0;
+
+                SELECT gs.GradingSystemId AS Id, gs.GradingSystemName AS Name, COUNT(b.BoardId) AS Count
+                FROM GradingSystems gs
+                LEFT JOIN Boards b ON b.GradingSystemId = gs.GradingSystemId
+                WHERE gs.IsActive = 1
+                GROUP BY gs.GradingSystemId, gs.GradingSystemName
+                HAVING COUNT(b.BoardId) > 0;
+
+                SELECT b.BoardId, b.BoardCode, b.BoardName, c.CountryName, b.IsActive AS Status, b.CreatedAt
+                FROM Boards b
+                LEFT JOIN Countries c ON b.CountryId = c.CountryId
+                ORDER BY b.CreatedAt DESC
+                LIMIT 5;
+
+                SELECT b.BoardId, b.BoardCode, b.BoardName, c.CountryName, b.IsActive AS Status, b.UpdatedAt
+                FROM Boards b
+                LEFT JOIN Countries c ON b.CountryId = c.CountryId
+                WHERE b.UpdatedAt IS NOT NULL
+                ORDER BY b.UpdatedAt DESC
+                LIMIT 5;
+            ";
+
+            using (var multi = await Connection.QueryMultipleAsync(sql))
+            {
+                var total = await multi.ReadFirstOrDefaultAsync<int>();
+                var active = await multi.ReadFirstOrDefaultAsync<int>();
+                var inactive = await multi.ReadFirstOrDefaultAsync<int>();
+                var byCountry = multi.Read<BoardLookupCountDto>().ToList();
+                var byPattern = multi.Read<BoardLookupCountDto>().ToList();
+                var byGrading = multi.Read<BoardLookupCountDto>().ToList();
+                var recentlyCreated = multi.Read<BoardRecentActivityDto>().ToList();
+                var recentlyUpdated = multi.Read<BoardRecentActivityDto>().ToList();
+
+                return new BoardSummaryResponse
+                {
+                    TotalBoards = total,
+                    ActiveBoards = active,
+                    InactiveBoards = inactive,
+                    BoardsByCountry = byCountry,
+                    BoardsByAcademicPattern = byPattern,
+                    BoardsByGradingSystem = byGrading,
+                    RecentlyCreated = recentlyCreated,
+                    RecentlyUpdated = recentlyUpdated
+                };
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<List<Board>> GetBoardsForExportAsync(BoardExportRequest request)
+        {
+            var validSortFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "BoardCode", "b.BoardCode" },
+                { "BoardName", "b.BoardName" },
+                { "CreatedAt", "b.CreatedAt" }
+            };
+
+            var orderByColumn = validSortFields.TryGetValue(request.SortBy ?? "", out var col) ? col : "b.BoardName";
+            var orderByDirection = string.Equals(request.SortOrder, "DESC", StringComparison.OrdinalIgnoreCase) ? "DESC" : "ASC";
+
+            var sql = @"
+                SELECT b.*, c.*, s.*, ap.*, gs.*
+                FROM Boards b
+                LEFT JOIN Countries c ON b.CountryId = c.CountryId
+                LEFT JOIN States s ON b.StateId = s.StateId
+                LEFT JOIN AcademicPatterns ap ON b.AcademicPatternId = ap.AcademicPatternId
+                LEFT JOIN GradingSystems gs ON b.GradingSystemId = gs.GradingSystemId
+                WHERE 1 = 1";
+
+            var parameters = new DynamicParameters();
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                sql += " AND (b.BoardName LIKE @Search OR b.BoardCode LIKE @Search)";
+                parameters.Add("Search", $"%{request.Search}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.BoardName))
+            {
+                sql += " AND b.BoardName LIKE @BoardName";
+                parameters.Add("BoardName", $"%{request.BoardName}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.BoardCode))
+            {
+                sql += " AND b.BoardCode LIKE @BoardCode";
+                parameters.Add("BoardCode", $"%{request.BoardCode}%");
+            }
+
+            if (request.CountryId.HasValue)
+            {
+                sql += " AND b.CountryId = @CountryId";
+                parameters.Add("CountryId", request.CountryId.Value);
+            }
+
+            if (request.StateId.HasValue)
+            {
+                sql += " AND b.StateId = @StateId";
+                parameters.Add("StateId", request.StateId.Value);
+            }
+
+            if (request.AcademicPatternId.HasValue)
+            {
+                sql += " AND b.AcademicPatternId = @AcademicPatternId";
+                parameters.Add("AcademicPatternId", request.AcademicPatternId.Value);
+            }
+
+            if (request.GradingSystemId.HasValue)
+            {
+                sql += " AND b.GradingSystemId = @GradingSystemId";
+                parameters.Add("GradingSystemId", request.GradingSystemId.Value);
+            }
+
+            if (request.Status.HasValue)
+            {
+                sql += " AND b.IsActive = @Status";
+                parameters.Add("Status", request.Status.Value ? 1 : 0);
+            }
+
+            sql += $" ORDER BY {orderByColumn} {orderByDirection};";
+
+            if (Connection.State == ConnectionState.Closed)
+            {
+                await _context.Database.OpenConnectionAsync();
+            }
+
+            var items = await Connection.QueryAsync<Board, Country, State, AcademicPattern, GradingSystem, Board>(
+                sql,
+                (b, c, s, ap, gs) =>
+                {
+                    b.Country = c;
+                    b.State = s;
+                    b.AcademicPattern = ap;
+                    b.GradingSystem = gs;
+                    return b;
+                },
+                parameters,
+                splitOn: "CountryId,StateId,AcademicPatternId,GradingSystemId");
+
+            return items.ToList();
         }
     }
 }

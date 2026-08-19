@@ -82,19 +82,22 @@ namespace CollegeManagement.API.Models
         /// <summary>
         /// Gets or sets the minimum pass percentage.
         /// </summary>
-       
-        public bool PassPercentage { get; set; }
+        public decimal PassPercentage { get; set; }
 
         /// <summary>
         /// Gets or sets the rank calculation details.
         /// </summary>
-        [MaxLength(100)]
         public bool RankCalculation { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the board is active.
         /// </summary>
         public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the optimistic concurrency row version token.
+        /// </summary>
+        public uint RowVersion { get; set; } = 1;
 
         /// <summary>
         /// Gets or sets the created date.

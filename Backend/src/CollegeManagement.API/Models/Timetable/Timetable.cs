@@ -44,6 +44,8 @@ namespace CollegeManagement.API.Models.Timetable
 
         public bool IsPublished { get; set; } = false;
 
+        public TimetableApprovalStatus ApprovalStatus { get; set; } = TimetableApprovalStatus.Draft;
+
         [MaxLength(250)]
         public string? Remarks { get; set; }
 

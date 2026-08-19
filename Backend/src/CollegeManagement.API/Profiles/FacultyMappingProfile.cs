@@ -11,6 +11,7 @@ namespace CollegeManagement.API.Profiles
         {
             // CreateFacultyDto -> Faculty Entity
             CreateMap<CreateFacultyDto, Faculty>()
+                .ForMember(dest => dest.FacultyType, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.FacultyType) ? "Teaching" : src.FacultyType))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.Status) ? "Active" : src.Status))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => System.DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
@@ -24,8 +25,6 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.EmployeeId, opt => opt.Ignore())
-                .ForMember(dest => dest.Username, opt => opt.Ignore())
-                .ForMember(dest => dest.Password, opt => opt.Ignore())
                 .ForMember(dest => dest.PhotoPath, opt => opt.Ignore())
                 .ForMember(dest => dest.Id, opt => opt.Ignore());
 
@@ -45,7 +44,12 @@ namespace CollegeManagement.API.Profiles
 
             // FacultySubjectAllocation Entity -> FacultySubjectAllocationResponseDto
             CreateMap<FacultySubjectAllocation, FacultySubjectAllocationResponseDto>()
-                .ForMember(dest => dest.FacultyName, opt => opt.MapFrom(src => src.Faculty != null ? $"{src.Faculty.FirstName} {src.Faculty.LastName}".Trim() : string.Empty));
+                .ForMember(dest => dest.FacultyName, opt => opt.MapFrom(src => src.Faculty != null ? $"{src.Faculty.FirstName} {src.Faculty.LastName}".Trim() : string.Empty))
+                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectName : string.Empty))
+                .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectCode : string.Empty))
+                .ForMember(dest => dest.BoardName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.BoardName ?? string.Empty) : string.Empty))
+                .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.GroupName ?? string.Empty) : string.Empty))
+                .ForMember(dest => dest.AcademicLevelName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.AcademicLevelName ?? string.Empty) : string.Empty));
         }
     }
 }

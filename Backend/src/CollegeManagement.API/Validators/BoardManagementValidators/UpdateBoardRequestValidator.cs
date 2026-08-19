@@ -48,6 +48,10 @@ namespace CollegeManagement.API.Validators.BoardManagementValidators
 
             RuleFor(x => x.GradingSystemId)
                 .GreaterThan(0).WithMessage("Grading system ID must be greater than 0.");
+
+            RuleFor(x => x.RowVersion)
+                .NotEmpty().WithMessage("RowVersion is required.")
+                .GreaterThan(0u).WithMessage("RowVersion must be greater than 0.");
         }
     }
 }

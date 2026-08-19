@@ -17,13 +17,6 @@ CREATE PROCEDURE sp_CreateBoard(
 )
 BEGIN
     DECLARE v_BoardId INT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
-    START TRANSACTION;
 
     INSERT INTO Boards (
         BoardName, BoardCode, Description, CountryId, StateId, AcademicPatternId, GradingSystemId, 
@@ -35,8 +28,6 @@ BEGIN
     
     SET v_BoardId = LAST_INSERT_ID();
 
-    COMMIT;
-    
     SELECT 
         b.BoardId, b.BoardCode, b.BoardName, b.Description, b.InternalAssessment, b.PracticalExams, b.BoardExams, b.PassPercentage, b.RankCalculation, b.IsActive, b.CreatedAt, b.UpdatedAt,
         c.CountryId, c.CountryCode, c.CountryName,

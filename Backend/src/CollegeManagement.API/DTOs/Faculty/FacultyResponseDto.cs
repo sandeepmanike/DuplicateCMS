@@ -17,10 +17,10 @@ namespace CollegeManagement.API.DTOs.Faculty.Response
         public string? BloodGroup { get; set; }
         public string Qualification { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
+        public string FacultyType { get; set; } = "Teaching";
         public string Department { get; set; } = string.Empty;
         public DateTime JoiningDate { get; set; }
         public decimal Experience { get; set; }
-        public string Username { get; set; } = string.Empty;
         public string Status { get; set; } = "Active";
         public string? PhotoPath { get; set; }
         public DateTime CreatedAt { get; set; }

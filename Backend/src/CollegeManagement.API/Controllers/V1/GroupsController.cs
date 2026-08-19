@@ -7,256 +7,93 @@ using MySqlConnector;
 
 namespace CollegeManagement.API.Controllers
 {
-    /// <summary>
-    /// API controller for Group management, handling creation, retrieval, updates, and deletion of academic groups.
-    /// </summary>
     [ApiController]
     [Route("api/v1/groups")]
     [Authorize]
     public class GroupsController : ControllerBase
     {
         private readonly IGroupRepository _groupRepository;
+        public GroupsController(IGroupRepository groupRepository) => _groupRepository = groupRepository;
 
-        public GroupsController(
-            IGroupRepository groupRepository)
-        {
-            _groupRepository = groupRepository;
-        }
-
-        /// <summary>
-        /// Retrieves a paginated, filtered, and searched list of academic groups.
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetGroups(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
-            [FromQuery] string? board = null,
+            [FromQuery] int? boardId = null,
             [FromQuery] int? academicYearId = null,
-            [FromQuery] string? academicLevel = null,
+            [FromQuery] int? academicLevelId = null,
             [FromQuery] bool? isActive = null)
-        {
-            if (pageNumber < 1)
-            {
-                pageNumber = 1;
-            }
+            => Ok(await _groupRepository.GetAllAsync(search, boardId, academicYearId, academicLevelId, isActive));
 
-            if (pageSize < 1 || pageSize > 100)
-            {
-                pageSize = 20;
-            }
+        [HttpGet("dropdown")]
+        public async Task<IActionResult> GetDropdown() => Ok(await _groupRepository.GetDropdownAsync());
 
-            var result = await _groupRepository.GetAllAsync(
-                pageNumber,
-                pageSize,
-                search,
-                board,
-                academicYearId,
-                academicLevel,
-                isActive);
+        [HttpGet("{groupId:int}/students")]
+        public async Task<IActionResult> GetStudents(int groupId)
+        { if (groupId <= 0) throw new ValidationException("Valid GroupId is required"); return Ok(await _groupRepository.GetStudentsAsync(groupId)); }
 
-            return Ok(result);
-        }
+        [HttpGet("{groupId:int}/subjects")]
+        public async Task<IActionResult> GetSubjects(int groupId)
+        { if (groupId <= 0) throw new ValidationException("Valid GroupId is required"); return Ok(await _groupRepository.GetSubjectsAsync(groupId)); }
 
-        /// <summary>
-        /// Retrieves detailed information for a specific academic group by ID.
-        /// </summary>
-        /// <param name="groupId">The group identifier.</param>
+        [HttpGet("{groupId:int}/summary")]
+        public async Task<IActionResult> GetSummary(int groupId)
+        { if (groupId <= 0) throw new ValidationException("Valid GroupId is required"); var result = await _groupRepository.GetSummaryAsync(groupId); return result == null ? NotFound(new { message = "Group not found" }) : Ok(result); }
+
         [HttpGet("{groupId:int}")]
-        public async Task<IActionResult> GetGroup(
-            int groupId)
-        {
-            if (groupId <= 0)
-            {
-                throw new ValidationException("Valid GroupId is required");
-            }
+        public async Task<IActionResult> GetGroup(int groupId)
+        { if (groupId <= 0) throw new ValidationException("Valid GroupId is required"); var group = await _groupRepository.GetByIdAsync(groupId); if (group == null) throw new NotFoundException("Group not found"); return Ok(group); }
 
-            var group =
-                await _groupRepository.GetByIdAsync(groupId);
+        [HttpGet("board/{boardId:int}")]
+        public async Task<IActionResult> GetGroupsByBoard(int boardId)
+        { if (boardId <= 0) throw new ValidationException("Valid BoardId is required"); return Ok(await _groupRepository.GetByBoardAsync(boardId)); }
 
-            if (group == null)
-            {
-                throw new NotFoundException("Group not found");
-            }
-
-            return Ok(group);
-        }
-
-        /// <summary>
-        /// Retrieves academic groups filtered by board name.
-        /// </summary>
-        /// <param name="board">The board name.</param>
-        [HttpGet("board/{board}")]
-        public async Task<IActionResult> GetGroupsByBoard(
-            string board)
-        {
-            if (string.IsNullOrWhiteSpace(board))
-            {
-                throw new ValidationException("Board is required");
-            }
-
-            var groups =
-                await _groupRepository.GetByBoardAsync(board);
-
-            return Ok(groups);
-        }
-
-        /// <summary>
-        /// Creates a new academic group.
-        /// </summary>
-        /// <param name="request">The group details to create.</param>
         [HttpPost]
-        public async Task<IActionResult> CreateGroup(
-            [FromBody] CreateGroupRequest request)
+        public async Task<IActionResult> CreateGroup([FromBody] CreateGroupRequest request)
         {
-            if (!ModelState.IsValid)
-            {
-                return ValidationProblem(ModelState);
-            }
-
-            try
-            {
-                var group =
-                    await _groupRepository.CreateAsync(request);
-
-                return CreatedAtAction(
-                    nameof(GetGroup),
-                    new
-                    {
-                        groupId = group.GroupId
-                    },
-                    new
-                    {
-                        message = "Group created successfully",
-                        data = group
-                    });
-            }
-            catch (MySqlException ex)
-            {
-                HandleException(ex);
-                throw;
-            }
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            try { var group = await _groupRepository.CreateAsync(request); return CreatedAtAction(nameof(GetGroup), new { groupId = group.GroupId }, new { message = "Group created successfully", data = group }); }
+            catch (MySqlException ex) { HandleException(ex); throw; }
         }
 
-        /// <summary>
-        /// Updates an existing academic group.
-        /// </summary>
-        /// <param name="groupId">The group identifier to update.</param>
-        /// <param name="request">The updated group configuration values.</param>
         [HttpPut("{groupId:int}")]
-        public async Task<IActionResult> UpdateGroup(
-            int groupId,
-            [FromBody] UpdateGroupRequest request)
+        public async Task<IActionResult> UpdateGroup(int groupId, [FromBody] UpdateGroupRequest request)
         {
-            if (groupId <= 0)
-            {
-                throw new ValidationException("Valid GroupId is required");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                return ValidationProblem(ModelState);
-            }
-
-            try
-            {
-                var group =
-                    await _groupRepository.UpdateAsync(
-                        groupId,
-                        request);
-
-                if (group == null)
-                {
-                    throw new NotFoundException("Group not found");
-                }
-
-                return Ok(new
-                {
-                    message = "Group updated successfully",
-                    data = group
-                });
-            }
-            catch (MySqlException ex)
-            {
-                HandleException(ex);
-                throw;
-            }
+            if (groupId <= 0) throw new ValidationException("Valid GroupId is required");
+            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            try { var group = await _groupRepository.UpdateAsync(groupId, request); if (group == null) throw new NotFoundException("Group not found"); return Ok(new { message = "Group updated successfully", data = group }); }
+            catch (MySqlException ex) { HandleException(ex); throw; }
         }
 
-        /// <summary>
-        /// Deletes a specific academic group by ID.
-        /// </summary>
-        /// <param name="groupId">The group identifier to delete.</param>
         [HttpDelete("{groupId:int}")]
-        public async Task<IActionResult> DeleteGroup(
-            int groupId)
+        public async Task<IActionResult> DeleteGroup(int groupId)
         {
-            if (groupId <= 0)
-            {
-                throw new ValidationException("Valid GroupId is required");
-            }
-
-            try
-            {
-                var deleted =
-                    await _groupRepository.DeleteAsync(groupId);
-
-                if (!deleted)
-                {
-                    throw new NotFoundException("Group not found");
-                }
-
-                return Ok(new
-                {
-                    message = "Group deleted successfully"
-                });
-            }
-            catch (MySqlException ex)
-            {
-                HandleException(ex);
-                throw;
-            }
+            if (groupId <= 0) throw new ValidationException("Valid GroupId is required");
+            try { var deleted = await _groupRepository.DeleteAsync(groupId); if (!deleted) throw new NotFoundException("Group not found"); return Ok(new { message = "Group deleted successfully" }); }
+            catch (MySqlException ex) { HandleException(ex); throw; }
         }
 
-        /// <summary>
-        /// Validates if a group code is available for use.
-        /// </summary>
-        /// <param name="groupCode">The group code to validate.</param>
-        /// <param name="excludeGroupId">An optional group ID to exclude from validation.</param>
-        [HttpGet("validate-code")]
-        public async Task<IActionResult> ValidateGroupCode(
-            [FromQuery] string groupCode,
-            [FromQuery] int? excludeGroupId = null)
+        [HttpPatch("{groupId:int}/activate")]
+        public async Task<IActionResult> ActivateGroup(int groupId, [FromQuery] bool isActive = true)
         {
-            if (string.IsNullOrWhiteSpace(groupCode))
-            {
-                throw new ValidationException("Group code is required");
-            }
+            if (groupId <= 0) throw new ValidationException("Valid GroupId is required");
+            var success = await _groupRepository.ActivateAsync(groupId, isActive);
+            if (!success) throw new NotFoundException("Group not found");
+            return Ok(new { message = isActive ? "Group activated successfully" : "Group deactivated successfully", data = new { groupId, isActive } });
+        }
 
-            var exists =
-                await _groupRepository.GroupCodeExistsAsync(
-                    groupCode,
-                    excludeGroupId);
-
-            return Ok(new
-            {
-                groupCode,
-                exists,
-                isAvailable = !exists
-            });
+        [HttpGet("validate-code")]
+        public async Task<IActionResult> ValidateGroupCode([FromQuery] string groupCode, [FromQuery] int? excludeGroupId = null)
+        {
+            if (string.IsNullOrWhiteSpace(groupCode)) throw new ValidationException("Group code is required");
+            var exists = await _groupRepository.GroupCodeExistsAsync(groupCode, excludeGroupId);
+            return Ok(new { groupCode, exists, isAvailable = !exists });
         }
 
         private static void HandleException(MySqlException exception)
         {
             var message = exception.Message;
-            if (message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ConflictException(message);
-            }
-            if (message.Contains("not found", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new NotFoundException(message);
-            }
+            if (message.Contains("already exists", StringComparison.OrdinalIgnoreCase)) throw new ConflictException(message);
+            if (message.Contains("not found", StringComparison.OrdinalIgnoreCase)) throw new NotFoundException(message);
             throw new ValidationException(message);
         }
     }

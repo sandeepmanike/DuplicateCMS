@@ -1,15 +1,16 @@
-﻿using CollegeManagement.API.DTOs.Promotion;
+using CollegeManagement.API.DTOs.Promotion;
 using FluentValidation;
 
 namespace CollegeManagement.API.Validators.PromotionModuleValidators
 {
-    public class RollbackPromotionDtoValidator
-        : AbstractValidator<RollbackPromotionDto>
+    public class RollbackPromotionRequestValidator
+        : AbstractValidator<RollbackPromotionRequest>
     {
-        public RollbackPromotionDtoValidator()
+        public RollbackPromotionRequestValidator()
         {
             RuleFor(x => x.PromotionId)
-                .GreaterThan(0);
+                .GreaterThan(0)
+                .WithMessage("Valid Promotion ID is required.");
         }
     }
 }

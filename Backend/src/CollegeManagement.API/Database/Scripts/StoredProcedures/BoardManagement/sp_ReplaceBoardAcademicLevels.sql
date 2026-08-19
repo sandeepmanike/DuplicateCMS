@@ -7,13 +7,6 @@ CREATE PROCEDURE sp_ReplaceBoardAcademicLevels(
 BEGIN
     DECLARE v_IdString TEXT;
     DECLARE v_IdVal INT;
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        ROLLBACK;
-        RESIGNAL;
-    END;
-
-    START TRANSACTION;
 
     DELETE FROM BoardAcademicLevels 
     WHERE BoardId = p_BoardId;
@@ -34,6 +27,4 @@ BEGIN
             VALUES (p_BoardId, v_IdVal, 1, UTC_TIMESTAMP());
         END IF;
     END IF;
-
-    COMMIT;
 END;

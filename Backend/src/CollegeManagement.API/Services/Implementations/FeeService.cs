@@ -1,314 +1,350 @@
-using CollegeManagement.API.Data;
-using CollegeManagement.API.DTOs.Fee;
-using CollegeManagement.API.Models;
+﻿using CollegeManagement.API.DTOs.Fee;
+using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace CollegeManagement.API.Services.Implementations
 {
     public class FeeService : IFeeService
     {
-        private readonly AppDbContext _context;
-        public FeeService(AppDbContext context) => _context = context;
+        private readonly IFeeRepository _feeRepository;
 
-        // ---------------- Fee Structure ----------------
-        public async Task<FeeStructure> CreateFeeStructureAsync(CreateFeeStructureDto dto)
+        public FeeService(IFeeRepository feeRepository)
         {
-            var fee = new FeeStructure
-            {
-                BoardId = dto.BoardId,
-                AcademicYearId = dto.AcademicYearId,
-                GroupId = dto.GroupId,
-                FeeType = dto.FeeType,
-                Amount = dto.Amount,
-                DueDate = dto.DueDate,
-                IsActive = true
-            };
-            _context.FeeStructures.Add(fee);
-            await _context.SaveChangesAsync();
-            return fee;
+            _feeRepository = feeRepository;
         }
 
-
-        public async Task<FeeCollection> AssignFeeToStudentAsync(AssignFeeDto dto)
+        public async Task<IEnumerable<dynamic>> GetFeeTypesAsync()
         {
-            var fee = new FeeCollection
-            {
-                StudentId = dto.StudentId,
-                FeeStructureId = dto.FeeStructureId,
-                Amount = 0,
-                Status = "Pending",
-                PaymentDate = DateTime.Now
-            };
-            _context.FeeCollections.Add(fee);
-            var result = await _context.SaveChangesAsync();
-            return fee;
-        }
-        public async Task<FeeStructure?> UpdateFeeStructureAsync(int id, UpdateFeeStructureDto dto)
-        {
-            var fee = await _context.FeeStructures.FindAsync(id);
-            if (fee == null)
-                return null;
-
-            fee.BoardId = dto.BoardId;
-            fee.AcademicYearId = dto.AcademicYearId;
-            fee.GroupId = dto.GroupId;
-            fee.FeeType = dto.FeeType;
-            fee.Amount = dto.Amount;
-            fee.DueDate = dto.DueDate;
-
-            await _context.SaveChangesAsync();
-            return fee;
+            return await _feeRepository.GetFeeTypesAsync();
         }
 
-        public async Task<IEnumerable<FeeStructure>> GetAllFeeStructuresAsync()
+        public async Task<dynamic?> CreateFeeStructureAsync(
+            FeeStructureRequestDto dto)
         {
-            return await _context.FeeStructures.Where(x => x.IsActive).ToListAsync();
+            ValidateFeeStructure(dto);
+
+            return await _feeRepository
+                .CreateFeeStructureAsync(dto);
         }
 
-        public async Task<FeeStructure?> GetFeeStructureByIdAsync(int id)
+        public async Task<IEnumerable<dynamic>> GetFeeStructuresAsync()
         {
-            return await _context.FeeStructures.FindAsync(id);
+            return await _feeRepository.GetFeeStructuresAsync();
+        }
+
+        public async Task<dynamic?> GetFeeStructureByIdAsync(int id)
+        {
+            ValidateId(id);
+
+            return await _feeRepository
+                .GetFeeStructureByIdAsync(id);
+        }
+
+        public async Task<dynamic?> UpdateFeeStructureAsync(
+            int id,
+            FeeStructureRequestDto dto)
+        {
+            ValidateId(id);
+            ValidateFeeStructure(dto);
+
+            return await _feeRepository
+                .UpdateFeeStructureAsync(id, dto);
         }
 
         public async Task<bool> DeleteFeeStructureAsync(int id)
         {
-            var fee = await _context.FeeStructures.FindAsync(id);
-            if (fee == null) return false;
+            ValidateId(id);
 
-            _context.FeeStructures.Remove(fee);
-            await _context.SaveChangesAsync();
-            return true;
+            return await _feeRepository
+                .DeleteFeeStructureAsync(id);
         }
 
-        // ---------------- Fee Collection ----------------
-        public async Task<FeeCollection> CollectFeeAsync(CreateFeeCollectionDto dto)
+        public async Task<dynamic?> AssignStudentFeeAsync(
+            StudentFeeAssignmentRequestDto dto)
         {
-            var payment = new FeeCollection
+            if (dto.StudentId <= 0)
+                throw new ArgumentException("Invalid StudentId.");
+
+            if (dto.StudentAdmissionId <= 0)
+                throw new ArgumentException(
+                    "Invalid StudentAdmissionId.");
+
+            if (dto.FeeStructureId <= 0)
+                throw new ArgumentException(
+                    "Invalid FeeStructureId.");
+
+            return await _feeRepository
+                .AssignStudentFeeAsync(dto);
+        }
+
+        public async Task<IEnumerable<dynamic>> GetStudentFeeDetailsAsync(
+            int studentId)
+        {
+            ValidateId(studentId);
+
+            return await _feeRepository
+                .GetStudentFeeDetailsAsync(studentId);
+        }
+
+        public async Task<dynamic?> GetStudentFeeAssignmentByIdAsync(
+            int id)
+        {
+            ValidateId(id);
+
+            return await _feeRepository
+                .GetStudentFeeAssignmentByIdAsync(id);
+        }
+
+        public async Task<dynamic?> UpdateStudentFeeAssignmentAsync(
+            int id,
+            StudentFeeAssignmentUpdateDto dto)
+        {
+            ValidateId(id);
+
+            if (dto.DiscountAmount < 0)
+                throw new ArgumentException(
+                    "Discount cannot be negative.");
+
+            if (dto.ScholarshipAmount < 0)
+                throw new ArgumentException(
+                    "Scholarship cannot be negative.");
+
+            return await _feeRepository
+                .UpdateStudentFeeAssignmentAsync(id, dto);
+        }
+
+        public async Task<dynamic?> CollectFeeAsync(
+            FeePaymentRequestDto dto)
+        {
+            if (dto.StudentFeeAssignmentId <= 0)
+                throw new ArgumentException(
+                    "Invalid StudentFeeAssignmentId.");
+
+            if (dto.Amount <= 0)
+                throw new ArgumentException(
+                    "Payment amount must be greater than zero.");
+
+            if (string.IsNullOrWhiteSpace(dto.PaymentMode))
+                throw new ArgumentException(
+                    "Payment mode is required.");
+
+            return await _feeRepository
+                .CollectFeeAsync(dto);
+        }
+
+        public async Task<IEnumerable<dynamic>> GetPaymentHistoryAsync(
+            int studentId)
+        {
+            ValidateId(studentId);
+
+            return await _feeRepository
+                .GetPaymentHistoryAsync(studentId);
+        }
+
+        public async Task<dynamic?> GetReceiptAsync(int receiptId)
+        {
+            ValidateId(receiptId);
+
+            return await _feeRepository
+                .GetReceiptAsync(receiptId);
+        }
+
+        public async Task<bool> CancelPaymentAsync(int paymentId)
+        {
+            ValidateId(paymentId);
+
+            return await _feeRepository
+                .CancelPaymentAsync(paymentId);
+        }
+
+        public async Task<dynamic?> ApplyDiscountAsync(
+            DiscountRequestDto dto)
+        {
+            if (dto.AdmissionId <= 0)
+                throw new ArgumentException(
+                    "Invalid AdmissionId.");
+
+            if (dto.DiscountAmount <= 0)
+                throw new ArgumentException(
+                    "Discount amount must be greater than zero.");
+
+            return await _feeRepository
+                .ApplyDiscountAsync(dto);
+        }
+
+        public async Task<dynamic?> ApplyScholarshipAsync(
+            ScholarshipRequestDto dto)
+        {
+            if (dto.StudentFeeAssignmentId <= 0)
+                throw new ArgumentException(
+                    "Invalid StudentFeeAssignmentId.");
+
+            if (dto.ScholarshipAmount <= 0)
+                throw new ArgumentException(
+                    "Scholarship amount must be greater than zero.");
+
+            if (string.IsNullOrWhiteSpace(dto.ScholarshipName))
+                throw new ArgumentException(
+                    "Scholarship name is required.");
+
+            return await _feeRepository
+                .ApplyScholarshipAsync(dto);
+        }
+
+        public async Task<dynamic?> ApplyFineAsync(
+            FineRequestDto dto)
+        {
+            if (dto.StudentFeeAssignmentId <= 0)
+                throw new ArgumentException(
+                    "Invalid StudentFeeAssignmentId.");
+
+            if (dto.FineAmount <= 0)
+                throw new ArgumentException(
+                    "Fine amount must be greater than zero.");
+
+            return await _feeRepository
+                .ApplyFineAsync(dto);
+        }
+
+        public async Task<bool> WaiveFineAsync(int fineId)
+        {
+            ValidateId(fineId);
+
+            return await _feeRepository
+                .WaiveFineAsync(fineId);
+        }
+
+        public async Task<dynamic?> CreateRefundAsync(
+            RefundRequestDto dto)
+        {
+            if (dto.PaymentId <= 0)
+                throw new ArgumentException(
+                    "Invalid PaymentId.");
+
+            if (dto.RefundAmount <= 0)
+                throw new ArgumentException(
+                    "Refund amount must be greater than zero.");
+
+            return await _feeRepository
+                .CreateRefundAsync(dto);
+        }
+
+        public async Task<IEnumerable<dynamic>> GetDueFeesAsync(
+            int? studentId)
+        {
+            if (studentId.HasValue && studentId.Value <= 0)
+                throw new ArgumentException(
+                    "Invalid StudentId.");
+
+            return await _feeRepository
+                .GetDueFeesAsync(studentId);
+        }
+
+        private static void ValidateId(int id)
+        {
+            if (id <= 0)
+                throw new ArgumentException(
+                    "ID must be greater than zero.");
+        }
+
+        private static void ValidateFeeStructure(
+            FeeStructureRequestDto dto)
+        {
+            if (dto.BoardId <= 0)
+                throw new ArgumentException("Invalid BoardId.");
+
+            if (dto.AcademicYearId <= 0)
+                throw new ArgumentException(
+                    "Invalid AcademicYearId.");
+
+            if (dto.AcademicLevelId <= 0)
+                throw new ArgumentException(
+                    "Invalid AcademicLevelId.");
+
+            if (dto.GroupId <= 0)
+                throw new ArgumentException(
+                    "Invalid GroupId.");
+
+            if (dto.FeeTypeId <= 0)
+                throw new ArgumentException(
+                    "Invalid FeeTypeId.");
+
+            if (dto.Amount < 0)
+                throw new ArgumentException(
+                    "Amount cannot be negative.");
+        }
+
+        public async Task<bool> AssignAdmissionFeesAsync(
+    AdmissionFeeAssignDto dto)
+        {
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            if (dto.AdmissionId <= 0)
+                throw new ArgumentException(
+                    "Invalid AdmissionId.");
+
+            if (dto.FeeStructureId <= 0)
+                throw new ArgumentException(
+                    "Invalid FeeStructureId.");
+
+            if (dto.FeeItems == null || dto.FeeItems.Count == 0)
+                throw new ArgumentException(
+                    "At least one fee item is required.");
+
+            foreach (var item in dto.FeeItems)
             {
-                StudentId = dto.StudentId,
-                FeeStructureId = dto.FeeStructureId,
-                Amount = dto.Amount,
-                PaymentMode = "",
-                PaymentDate = DateTime.Now,
-                ReceiptId = "RCP" + DateTime.Now.Ticks,
-                Status = "Pending",
-                Discount = dto.Discount,
-                Fine = dto.Fine,
-                TransactionId = "",
-                DueAmount = 0,
+                if (item.FeeTypeId <= 0)
+                    throw new ArgumentException(
+                        "Invalid FeeTypeId.");
 
-                TransactionNumber = "",
-            };
-            _context.FeeCollections.Add(payment);
-            await _context.SaveChangesAsync();
-            return payment;
+                if (item.Amount < 0)
+                    throw new ArgumentException(
+                        "Fee amount cannot be negative.");
+            }
+
+            return await _feeRepository
+                .AssignAdmissionFeesAsync(dto);
         }
-      
 
-        public async Task<IEnumerable<FeeCollection>> GetStudentFeeDetailsAsync(int studentId)
+
+        public async Task<AdmissionFeeSummaryDto?> GetAdmissionFeeSummaryAsync(
+            int admissionId)
         {
-            return await _context.FeeCollections
-                .Where(x => x.StudentId == studentId)
-                .ToListAsync();
+            if (admissionId <= 0)
+                throw new ArgumentException(
+                    "Invalid AdmissionId.");
+
+            return await _feeRepository
+                .GetAdmissionFeeSummaryAsync(admissionId);
         }
 
-        public async Task<FeeCollection?> UpdatePaymentAsync(int id, UpdatePaymentDto dto)
+
+        public async Task<AdmissionFeeSummaryDto?> CollectAdmissionFeeAsync(
+            int admissionId,
+            AdmissionFeePaymentDto dto)
         {
-            var payment = await _context.FeeCollections.FindAsync(id);
-            if (payment == null) return null;
+            if (admissionId <= 0)
+                throw new ArgumentException(
+                    "Invalid AdmissionId.");
 
-            payment.Amount = dto.Amount;
-            payment.PaymentMode = dto.PaymentMode ?? string.Empty;
-            await _context.SaveChangesAsync();
-            return payment;
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            if (dto.Amount <= 0)
+                throw new ArgumentException(
+                    "Payment amount must be greater than zero.");
+
+            if (string.IsNullOrWhiteSpace(dto.PaymentMode))
+                throw new ArgumentException(
+                    "Payment mode is required.");
+
+            return await _feeRepository
+                .CollectAdmissionFeeAsync(admissionId, dto);
         }
-
-        public async Task<bool> CancelPaymentAsync(int id)
-        {
-            var payment = await _context.FeeCollections.FindAsync(id);
-            if (payment == null) return false;
-
-            payment.Status = "Cancelled";
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task RefundFeeAsync(RefundFeeDto dto)
-        {
-            var payment = await _context.FeeCollections.FindAsync(dto.FeeCollectionId);
-            if (payment == null) return;
-
-            payment.Status = "Refunded";
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task ApplyDiscountAsync(ApplyDiscountDto dto)
-        {
-            var payment = await _context.FeeCollections.FindAsync(dto.FeeCollectionId);
-            if (payment == null) return;
-
-            payment.Discount = dto.DiscountAmount;
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task ApplyScholarshipAsync(ApplyScholarshipDto dto)
-        {
-            // Scholarship logic placeholder
-            await Task.CompletedTask;
-        }
-
-        public async Task ApplyFineAsync(ApplyFineDto dto)
-        {
-            var payment = await _context.FeeCollections.FindAsync(dto.FeeCollectionId);
-            if (payment == null) return;
-
-            payment.Fine = dto.FineAmount;
-            await _context.SaveChangesAsync();
-        }
-
-        public async Task WaiveFineAsync(int id)
-        {
-            var payment = await _context.FeeCollections.FindAsync(id);
-            if (payment == null) return;
-
-            payment.Fine = 0;
-            await _context.SaveChangesAsync();
-        }
-        public async Task<object> GetDueFeeByYearAsync(int academicYear)
-        {
-            
-            var result = await _context.FeeCollections
-                .Where(f => f.FeeStructure.AcademicYearId == academicYear && f.Status == "Pending")
-                .Include(f => f.Student)
-                .Include(f => f.FeeStructure)
-                .ToListAsync();
-
-            return result;
-        }
-
-
-        // ---------------- Reports ----------------
-        public async Task<object?> GenerateReceiptAsync(string receiptId)
-        {
-            var payment = await _context.FeeCollections
-                .FirstOrDefaultAsync(x => x.ReceiptId == receiptId);
-            return payment;
-        }
-
-        public async Task<object> GetFeeDefaulterReportAsync()
-        {
-            return await _context.StudentFees
-                .Where(x => x.DueAmount > 0)
-                .ToListAsync();
-        }
-        public async Task<byte[]> DownloadReceiptAsync(string receiptId)
-        {
-            return await Task.FromResult(new byte[0]);
-        }
-
-        public async Task<byte[]> DownloadFeeReceiptAsync(int feeCollectionId)
-        {
-            return await Task.FromResult(new byte[0]);
-        }
-
-        public async Task<IEnumerable<FeeCollection>> GetPaymentHistoryAsync(int studentId)
-        {
-            return await _context.FeeCollections
-                .Where(x => x.StudentId == studentId)
-                .ToListAsync();
-        }
-
-        public async Task<object> GetDailyCollectionAsync(DateTime date)
-        {
-            var total = await _context.FeeCollections
-               .Where(x => x.PaymentDate.Date == date && x.Status == "Paid")
-               .SumAsync(x => x.Amount + x.Fine - x.Discount);
-            return new { Date = date, TotalCollection = total };
-        }
-
-        public async Task<object> GetMonthlyCollectionAsync(int month, int year)
-        {
-            var total = await _context.FeeCollections
-               .Where(x => x.PaymentDate.Month == month && x.PaymentDate.Year == year && x.Status == "Paid")
-               .SumAsync(x => x.Amount + x.Fine - x.Discount);
-            return new { Month = month, Year = year, TotalCollection = total };
-        }
-
-        public async Task<object> GetOutstandingReportAsync()
-        {
-            var totalOutstanding = await _context.FeeCollections
-               .Where(x => x.Status != "Paid")
-               .SumAsync(x => x.Amount);
-            return new { TotalOutstanding = totalOutstanding };
-        }
-
-        public async Task<IEnumerable<FeeCollection>> GetPendingFeesReportAsync()
-        {
-            return await _context.FeeCollections
-                .Where(x => x.Status != "Paid")
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<FeeCollection>> GetCollectedFeesReportAsync(DateTime from, DateTime to)
-        {
-            return await _context.FeeCollections
-                .Where(x => x.PaymentDate >= from &&
-                            x.PaymentDate <= to &&
-                            x.Status == "Paid")
-                .ToListAsync();
-        }
-        public async Task<IEnumerable<FeePaymentHistoryDto>> GetFeePaymentHistoryAsync(int studentId)
-        {
-            return await _context.FeeCollections
-                .Where(f => f.StudentId == studentId && f.Status == "Paid")
-                .Include(f => f.FeeStructure)
-                .Include(f => f.FeeStructure.AcademicYear)
-                .Select(f => new FeePaymentHistoryDto
-                {
-                    ReceiptId = f.ReceiptId ?? "",
-                    FeeType = f.FeeStructure.FeeType,
-                    Amount = f.Amount,
-                    PaymentDate = f.PaymentDate,
-                    AcademicYear = f.FeeStructure.AcademicYear.AcademicYearName
-                })
-                .ToListAsync();
-        }
-
-        public async Task<IEnumerable<FeeCollection>> GetDueFeesAsync(int studentId)
-        {
-            return await _context.FeeCollections
-                .Where(x => x.StudentId == studentId && x.Status != "Pending")
-                .ToListAsync();
-        }
-        public async Task<FeeCollection?> GetDueFeeAsync(int studentId) 
-        {
-            return await _context.FeeCollections
-                .FirstOrDefaultAsync(f => f.StudentId == studentId && (f.Status == "Pending" || f.Amount > 0));
-        }
-        public async Task<IEnumerable<FeeCollection>> GetDueFeesAsync()
-        {
-            return await _context.FeeCollections
-                .Where(x => x.Status != "Paid")
-                .ToListAsync();
-        }
-        public async Task<IEnumerable<Student>> GetDueFeeStudentsAsync(int academicYearId)
-        {
-            var studentIds = await _context.FeeCollections
-                .Include(f => f.FeeStructure)
-                .Where(f => f.FeeStructure.AcademicYearId == academicYearId && f.Status == "Pending")
-                .Select(f => f.StudentId)
-                .Distinct()
-                .ToListAsync();
-
-            return await _context.Students
-                .Where(s => studentIds.Contains(s.StudentId))
-                .ToListAsync();
-        }
-
 
 
     }
-    }
-    
+}
+
 

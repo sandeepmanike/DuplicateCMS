@@ -1,9 +1,17 @@
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
+
+using Dapper;
+using Microsoft.EntityFrameworkCore;
+
 using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Assignment;
 using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Repositories.Interfaces;
-using Microsoft.EntityFrameworkCore;
 
 namespace CollegeManagement.API.Repositories.Implementations
 {
@@ -11,102 +19,220 @@ namespace CollegeManagement.API.Repositories.Implementations
     {
         private readonly AppDbContext _context;
 
+        private IDbConnection Connection =>
+            _context.Database.GetDbConnection();
+
         public AssignmentRepository(AppDbContext context)
         {
             _context = context;
         }
 
+
+        // =========================================================
+        // GET ALL ASSIGNMENTS
+        // Faculty + Admin assignments
+        // =========================================================
+
         public async Task<IEnumerable<Assignment>> GetAllAsync()
         {
-            return await _context.Assignments
-                .FromSqlRaw("CALL sp_GetAllAssignments()")
-                .ToListAsync();
+            var result = await Connection.QueryAsync<Assignment>(
+                "sp_GetAllAssignments",
+                commandType: CommandType.StoredProcedure);
+
+            return result.ToList();
         }
+
+
+        // =========================================================
+        // GET ASSIGNMENT BY ID
+        // =========================================================
 
         public async Task<Assignment?> GetByIdAsync(int id)
         {
-            var result = await _context.Assignments
-                .FromSqlRaw("CALL sp_GetAssignmentById({0})", id)
-                .ToListAsync();
-
-            return result.FirstOrDefault();
+            return await Connection.QueryFirstOrDefaultAsync<Assignment>(
+                "sp_GetAssignmentById",
+                new
+                {
+                    p_AssignmentId = id
+                },
+                commandType: CommandType.StoredProcedure);
         }
+
+
+        // =========================================================
+        // PUBLISH ASSIGNMENT
+        // =========================================================
+
+        public async Task<bool> PublishAssignmentAsync(int assignmentId)
+        {
+            var result = await Connection.QueryFirstOrDefaultAsync<Assignment>(
+                "sp_PublishAssignment",
+                new
+                {
+                    p_AssignmentId = assignmentId
+                },
+                commandType: CommandType.StoredProcedure);
+
+            return result != null && result.AssignmentId > 0;
+        }
+
+
+        // =========================================================
+        // GET PUBLISHED ASSIGNMENTS
+        // =========================================================
+
+        public async Task<IEnumerable<Assignment>> GetPublishedAssignmentsAsync()
+        {
+            var result = await Connection.QueryAsync<Assignment>(
+                "sp_GetPublishedAssignments",
+                commandType: CommandType.StoredProcedure);
+
+            return result.ToList();
+        }
+
+
+        // =========================================================
+        // CREATE FACULTY ASSIGNMENT
+        // =========================================================
 
         public async Task AddAsync(Assignment assignment)
         {
-            var result = await _context.Assignments
-                .FromSqlRaw(
-                    "CALL sp_CreateAssignment({0},{1},{2},{3},{4},{5},{6},{7},{8},{9})",
+            var result = await Connection.QueryFirstOrDefaultAsync<Assignment>(
+                "sp_CreateAssignment",
+                new
+                {
+                    p_Title = assignment.Title,
+                    p_AcademicYearId = assignment.AcademicYearId,
+                    p_AcademicLevel = assignment.AcademicLevel,
+                    p_GroupId = assignment.GroupId,
+                    p_SubjectId = assignment.SubjectId,
+                    p_FacultyId = assignment.FacultyId,
+                    p_Description = assignment.Description,
+                    p_StartDate = assignment.StartDate,
+                    p_DueDate = assignment.DueDate,
+                    p_Attachment = assignment.Attachment,
+                    p_MaximumMarks = assignment.MaximumMarks
+                },
+                commandType: CommandType.StoredProcedure);
 
-                    assignment.Title,
-assignment.AcademicYearId,
-assignment.AcademicLevel,
-assignment.GroupId,
-assignment.SubjectId,
-assignment.FacultyId,
-assignment.Description,
-assignment.DueDate,
-assignment.Attachment,
-assignment.MaximumMarks)
-                .ToListAsync();
+            // Copy returned database values back into the object
+            // so that the service can return the created assignment.
+            if (result != null)
+            {
+                assignment.AssignmentId = result.AssignmentId;
+
+                assignment.AcademicYearName =
+                    result.AcademicYearName;
+
+                assignment.GroupName =
+                    result.GroupName;
+
+                assignment.SubjectName =
+                    result.SubjectName;
+
+                assignment.FacultyName =
+                    result.FacultyName;
+
+                assignment.CreatedByType =
+                    result.CreatedByType;
+            }
         }
+
+
+        // =========================================================
+        // UPDATE FACULTY ASSIGNMENT
+        // =========================================================
 
         public async Task UpdateAsync(Assignment assignment)
         {
-            await _context.Database.ExecuteSqlRawAsync(
-
-                "CALL sp_UpdateAssignment({0},{1},{2},{3},{4},{5},{6},{7},{8},{9},{10})",
-                assignment.AssignmentId,
-assignment.Title,
-assignment.AcademicYearId,
-assignment.AcademicLevel,
-assignment.GroupId,
-assignment.SubjectId,
-assignment.FacultyId,
-assignment.Description,
-assignment.DueDate,
-assignment.Attachment,
-assignment.MaximumMarks);
-
+            await Connection.ExecuteAsync(
+                "sp_UpdateAssignment",
+                new
+                {
+                    p_AssignmentId = assignment.AssignmentId,
+                    p_Title = assignment.Title,
+                    p_AcademicYearId = assignment.AcademicYearId,
+                    p_AcademicLevel = assignment.AcademicLevel,
+                    p_GroupId = assignment.GroupId,
+                    p_SubjectId = assignment.SubjectId,
+                    p_FacultyId = assignment.FacultyId,
+                    p_Description = assignment.Description,
+                    p_StartDate = assignment.StartDate,
+                    p_DueDate = assignment.DueDate,
+                    p_Attachment = assignment.Attachment,
+                    p_MaximumMarks = assignment.MaximumMarks
+                },
+                commandType: CommandType.StoredProcedure);
         }
+
+
+        // =========================================================
+        // DELETE ASSIGNMENT
+        // =========================================================
+
         public async Task DeleteAsync(Assignment assignment)
         {
-            await _context.Database.ExecuteSqlRawAsync(
-                "CALL sp_DeleteAssignment({0})",
-                assignment.AssignmentId);
+            await Connection.ExecuteAsync(
+                "sp_DeleteAssignment",
+                new
+                {
+                    p_AssignmentId = assignment.AssignmentId
+                },
+                commandType: CommandType.StoredProcedure);
         }
 
-        // We will implement these after creating AssignmentSubmissions table
 
-        public async Task SubmitAssignmentAsync(AssignmentSubmission submission)
+        // =========================================================
+        // CREATE ADMIN ASSIGNMENT
+        // =========================================================
+
+        public async Task<Assignment?> CreateAdminAssignmentAsync(
+            Assignment assignment)
         {
-            await _context.Database.ExecuteSqlRawAsync(
-                "CALL sp_SubmitAssignment({0},{1},{2})",
-                submission.AssignmentId,
-                submission.StudentName,
-                submission.SubmissionFile);
+            var result = await Connection.QueryFirstOrDefaultAsync<Assignment>(
+                "sp_CreateAdminAssignment",
+                new
+                {
+                    p_Title = assignment.Title,
+                    p_AcademicYearId = assignment.AcademicYearId,
+                    p_AcademicLevel = assignment.AcademicLevel,
+                    p_GroupId = assignment.GroupId,
+                    p_SubjectId = assignment.SubjectId,
+                    p_Description = assignment.Description,
+                    p_StartDate = assignment.StartDate,
+                    p_DueDate = assignment.DueDate,
+                    p_Attachment = assignment.Attachment,
+                    p_MaximumMarks = assignment.MaximumMarks
+                },
+                commandType: CommandType.StoredProcedure);
+
+            return result;
         }
 
-        public async Task<IEnumerable<AssignmentSubmission>> GetSubmissionsAsync(int assignmentId)
+
+        // =========================================================
+        // GET ADMIN ASSIGNMENTS
+        // =========================================================
+
+        public async Task<IEnumerable<Assignment>> GetAdminAssignmentsAsync()
         {
-            return await _context.AssignmentSubmissions
-                .FromSqlRaw("CALL sp_GetAssignmentSubmissions({0})", assignmentId)
-                .ToListAsync();
+            var result = await Connection.QueryAsync<Assignment>(
+                "sp_GetAdminAssignments",
+                commandType: CommandType.StoredProcedure);
+
+            return result.ToList();
         }
+
+
+        // =========================================================
+        // GET SUBJECTS BY GROUP
+        // =========================================================
 
         public async Task<IEnumerable<SubjectDropdownDto>>
-GetSubjectsByGroupAsync(int groupId)
+            GetSubjectsByGroupAsync(int groupId)
         {
-            var groupName = await _context.Groups
-                .Where(x => x.GroupId == groupId)
-                .Select(x => x.GroupName)
-                .FirstOrDefaultAsync();
-
-            if (string.IsNullOrEmpty(groupName))
-                return new List<SubjectDropdownDto>();
-
             return await _context.Subjects
-                .Where(x => x.Group == groupName)
+                .Where(x => x.GroupId == groupId)
                 .Select(x => new SubjectDropdownDto
                 {
                     SubjectId = x.SubjectId,
@@ -115,44 +241,36 @@ GetSubjectsByGroupAsync(int groupId)
                 .ToListAsync();
         }
 
-        
+
+        // =========================================================
+        // GET FACULTY BY SUBJECT
+        // =========================================================
 
         public async Task<IEnumerable<FacultyDropdownDto>>
-GetFacultyBySubjectAsync(
-    int subjectId,
-    int groupId,
-    int academicYearId,
-    string academicLevel)
+            GetFacultyBySubjectAsync(
+                int subjectId,
+                int groupId,
+                int academicYearId,
+                string academicLevel)
         {
-            var groupName = await _context.Groups
-                .Where(x => x.GroupId == groupId)
-                .Select(x => x.GroupName)
-                .FirstOrDefaultAsync();
-
-            var academicYear = await _context.AcademicYears
-                .Where(x => x.AcademicYearId == academicYearId)
-                .Select(x => x.AcademicYearName)
-                .FirstOrDefaultAsync();
-
-            var subjectName = await _context.Subjects
-                .Where(x => x.SubjectId == subjectId)
-                .Select(x => x.SubjectName)
-                .FirstOrDefaultAsync();
-
             return await
             (
                 from allocation in _context.FacultySubjectAllocations
+
                 join faculty in _context.Faculties
                     on allocation.FacultyId equals faculty.Id
-                where allocation.Group == groupName
-                   && allocation.Subject == subjectName
-                   && allocation.AcademicYear == academicYear
-                   && allocation.AcademicLevel == academicLevel
+
+                where allocation.SubjectId == subjectId
+
                 select new FacultyDropdownDto
                 {
                     Id = faculty.Id,
-                    FullName = faculty.FirstName + " " + faculty.LastName
+
+                    FullName =
+                        faculty.FirstName + " " +
+                        faculty.LastName
                 }
+
             ).ToListAsync();
         }
     }

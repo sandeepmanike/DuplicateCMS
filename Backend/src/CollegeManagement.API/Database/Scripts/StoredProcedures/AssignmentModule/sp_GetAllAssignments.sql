@@ -44,8 +44,8 @@ ON g.GroupId=a.GroupId
 INNER JOIN Subjects s
 ON s.SubjectId=a.SubjectId
 
-INNER JOIN Faculties f
-ON f.Id=a.FacultyId
+LEFT JOIN Faculties f
+    ON f.Id = a.FacultyId
 
 ORDER BY a.AssignmentId DESC;
 

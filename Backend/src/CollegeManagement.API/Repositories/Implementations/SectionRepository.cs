@@ -52,7 +52,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_RoomNumber = section.RoomNumber,
                     p_ClassTeacherId = section.ClassTeacherId,
                     p_MaximumStrength = section.MaximumStrength,
-                    p_IsActive = section.IsActive
+                    p_IsActive = section.IsActive,
+                    p_RoomId = section.RoomId
                 },
                 commandType: CommandType.StoredProcedure);
         }
@@ -72,7 +73,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_RoomNumber = section.RoomNumber,
                     p_ClassTeacherId = section.ClassTeacherId,
                     p_MaximumStrength = section.MaximumStrength,
-                    p_IsActive = section.IsActive
+                    p_IsActive = section.IsActive,
+                    p_RoomId = section.RoomId
                 },
                 commandType: CommandType.StoredProcedure);
             return affected > 0;
@@ -121,6 +123,13 @@ namespace CollegeManagement.API.Repositories.Implementations
             return count > 0;
         }
 
+        public async Task<AcademicYear?> GetAcademicYearByIdAsync(int academicYearId)
+        {
+            return await Connection.QueryFirstOrDefaultAsync<AcademicYear>(
+                "SELECT AcademicYearId, AcademicYearName, StartDate, EndDate, AdmissionStartDate, AdmissionEndDate, IsActive FROM AcademicYears WHERE AcademicYearId = @Id",
+                new { Id = academicYearId });
+        }
+
         public async Task<bool> FacultyExistsAsync(int facultyId)
         {
             // First we try querying Faculty table
@@ -139,6 +148,14 @@ namespace CollegeManagement.API.Repositories.Implementations
                     new { Id = facultyId });
                 return count > 0;
             }
+        }
+
+        public async Task<bool> RoomExistsAsync(int roomId)
+        {
+            var count = await Connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM Rooms WHERE RoomId = @Id AND IsActive = 1",
+                new { Id = roomId });
+            return count > 0;
         }
     }
 }

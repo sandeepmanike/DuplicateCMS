@@ -12,6 +12,8 @@ namespace CollegeManagement.API.DTOs.Sections
         public string AcademicLevel { get; set; } = string.Empty;
         public string SectionName { get; set; } = string.Empty;
         public string? RoomNumber { get; set; }
+        public int? RoomId { get; set; }
+        public string? RoomName { get; set; }
         public int? ClassTeacherId { get; set; }
         public string ClassTeacherName { get; set; } = string.Empty;
         public int MaximumStrength { get; set; }

@@ -1,4 +1,3 @@
-﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -7,20 +6,46 @@ namespace CollegeManagement.API.Models
     [Table("Students")]
     public class Student
     {
+        // =========================================================
+        // PRIMARY KEY
+        // =========================================================
+
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int StudentId { get; set; }
 
-        // ==========================
-        // Admission Details
-        // ==========================
+
+        // =========================================================
+        // ADMISSION DETAILS
+        // =========================================================
 
         [Required]
-        [MaxLength(30)]
+        [MaxLength(50)]
         public string AdmissionNo { get; set; } = string.Empty;
 
         [Required]
-        [MaxLength(30)]
+        [MaxLength(50)]
         public string RollNo { get; set; } = string.Empty;
+
+        [Required]
+        public DateTime AdmissionDate { get; set; }
+
+        [MaxLength(50)]
+        public string? AdmissionType { get; set; }
+
+        [MaxLength(50)]
+        public string? AdmissionQuota { get; set; }
+
+        [MaxLength(50)]
+        public string? Medium { get; set; }
+
+        [MaxLength(50)]
+        public string? SecondLanguage { get; set; }
+
+
+        // =========================================================
+        // STUDENT BASIC DETAILS
+        // =========================================================
 
         [Required]
         [MaxLength(150)]
@@ -29,71 +54,117 @@ namespace CollegeManagement.API.Models
         [MaxLength(500)]
         public string? Photo { get; set; }
 
-        // ==========================
-        // Personal Information
-        // ==========================
-
         [Required]
         [MaxLength(20)]
         public string Gender { get; set; } = string.Empty;
 
         [Required]
-        public DateOnly DateOfBirth { get; set; }
+        public DateTime DateOfBirth { get; set; }
 
         [MaxLength(10)]
         public string? BloodGroup { get; set; }
 
-        [Required]
         [MaxLength(150)]
         [EmailAddress]
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
-        [Required]
         [MaxLength(20)]
-        public string MobileNumber { get; set; } = string.Empty;
+        public string? MobileNumber { get; set; }
 
         [MaxLength(20)]
         public string? AadhaarNumber { get; set; }
 
+        [MaxLength(50)]
+        public string? Nationality { get; set; }
+
+        [MaxLength(50)]
+        public string? Religion { get; set; }
+
+        [MaxLength(50)]
+        public string? Category { get; set; }
+
+
+        // =========================================================
+        // ADDRESS
+        // =========================================================
+
         [MaxLength(500)]
         public string? Address { get; set; }
 
-        // ==========================
-        // Academic Information
-        // ==========================
+        [MaxLength(100)]
+        public string? City { get; set; }
+
+        [MaxLength(100)]
+        public string? District { get; set; }
+
+        [MaxLength(100)]
+        public string? State { get; set; }
+
+        [MaxLength(20)]
+        public string? Pincode { get; set; }
+
+
+        // =========================================================
+        // ACADEMIC FOREIGN KEYS
+        // =========================================================
 
         [Required]
-        [MaxLength(100)]
-        public string Board { get; set; } = string.Empty;
+        public int BoardId { get; set; }
+
+        [ForeignKey(nameof(BoardId))]
+        public Board? BoardNavigation { get; set; }
+
 
         [Required]
         public int AcademicYearId { get; set; }
 
+        [ForeignKey(nameof(AcademicYearId))]
+        public AcademicYear? AcademicYear { get; set; }
+
+
         [Required]
-        [MaxLength(50)]
-        public string AcademicLevel { get; set; } = string.Empty;
+        public int AcademicLevelId { get; set; }
+
+        [ForeignKey(nameof(AcademicLevelId))]
+        public AcademicLevel? AcademicLevelNavigation { get; set; }
+
 
         [Required]
         public int GroupId { get; set; }
 
-        [Required]
-        [MaxLength(20)]
-        public string Section { get; set; } = string.Empty;
+        [ForeignKey(nameof(GroupId))]
+        public Group? GroupNavigation { get; set; }
+
 
         [Required]
-        public DateOnly AdmissionDate { get; set; }
+        public int SectionId { get; set; }
 
-        [MaxLength(50)]
-        public string? AdmissionType { get; set; }
+        [ForeignKey(nameof(SectionId))]
+        public Section? SectionNavigation { get; set; }
 
-        [MaxLength(50)]
-        public string? Medium { get; set; }
+
+        // =========================================================
+        // PREVIOUS EDUCATION
+        // =========================================================
 
         [MaxLength(200)]
         public string? PreviousSchool { get; set; }
 
-        [MaxLength(50)]
+        [MaxLength(100)]
         public string? PreviousHallTicketNumber { get; set; }
+
+        [MaxLength(100)]
+        public string? PreviousBoard { get; set; }
+
+        public int? PreviousYearOfPassing { get; set; }
+
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal? PreviousPercentage { get; set; }
+
+
+        // =========================================================
+        // STUDENT CATEGORY / SCHOLARSHIP
+        // =========================================================
 
         [MaxLength(50)]
         public string? StudentCategory { get; set; }
@@ -101,21 +172,39 @@ namespace CollegeManagement.API.Models
         [MaxLength(50)]
         public string? ScholarshipStatus { get; set; }
 
-        // ==========================
-        // Parent Details
-        // ==========================
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? ScholarshipAmount { get; set; }
+
+
+        // =========================================================
+        // PARENT DETAILS
+        // =========================================================
 
         [MaxLength(150)]
         public string? FatherName { get; set; }
+
+        [MaxLength(100)]
+        public string? FatherOccupation { get; set; }
 
         [MaxLength(20)]
         public string? FatherMobile { get; set; }
 
         [MaxLength(150)]
+        public string? FatherEmail { get; set; }
+
+
+        [MaxLength(150)]
         public string? MotherName { get; set; }
+
+        [MaxLength(100)]
+        public string? MotherOccupation { get; set; }
 
         [MaxLength(20)]
         public string? MotherMobile { get; set; }
+
+        [MaxLength(150)]
+        public string? MotherEmail { get; set; }
+
 
         [MaxLength(150)]
         public string? GuardianName { get; set; }
@@ -123,9 +212,16 @@ namespace CollegeManagement.API.Models
         [MaxLength(20)]
         public string? GuardianMobile { get; set; }
 
-        // ==========================
-        // Fee Information
-        // ==========================
+        [MaxLength(150)]
+        public string? GuardianEmail { get; set; }
+
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal? AnnualIncome { get; set; }
+
+
+        // =========================================================
+        // FEES
+        // =========================================================
 
         [Column(TypeName = "decimal(10,2)")]
         public decimal FeeAmount { get; set; }
@@ -133,15 +229,13 @@ namespace CollegeManagement.API.Models
         [Column(TypeName = "decimal(10,2)")]
         public decimal FeePaid { get; set; }
 
-        [Column(TypeName = "decimal(10,2)")]
-        public decimal ScholarshipAmount { get; set; }
-
         [MaxLength(30)]
         public string? FeeStatus { get; set; }
 
-        // ==========================
-        // Attendance & Performance
-        // ==========================
+
+        // =========================================================
+        // ATTENDANCE / PERFORMANCE
+        // =========================================================
 
         [Column(TypeName = "decimal(5,2)")]
         public decimal AttendancePercentage { get; set; }
@@ -154,12 +248,50 @@ namespace CollegeManagement.API.Models
 
         public int? Rank { get; set; }
 
+
+        // =========================================================
+        // DOCUMENTS
+        // =========================================================
+
         [MaxLength(500)]
+        public string? BirthCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? TransferCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? StudyCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? AadhaarDocument { get; set; }
+
+        [MaxLength(500)]
+        public string? CommunityCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? IncomeCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? CasteCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? TenthCertificate { get; set; }
+
+        [MaxLength(500)]
+        public string? MarksMemo { get; set; }
+
+
+        // =========================================================
+        // REMARKS
+        // =========================================================
+
+        [MaxLength(1000)]
         public string? Remarks { get; set; }
 
-        // ==========================
-        // Login Information
-        // ==========================
+
+        // =========================================================
+        // STUDENT LOGIN
+        // =========================================================
 
         [Required]
         [MaxLength(255)]
@@ -169,13 +301,22 @@ namespace CollegeManagement.API.Models
 
         public DateTime? LastLogin { get; set; }
 
-        // ==========================
-        // Status
-        // ==========================
+
+        // =========================================================
+        // STATUS
+        // =========================================================
+
+        [MaxLength(30)]
+        public string Status { get; set; } = "Active";
 
         public bool IsActive { get; set; } = true;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // =========================================================
+        // AUDIT
+        // =========================================================
+
+        public DateTime CreatedAt { get; set; }
 
         public DateTime? UpdatedAt { get; set; }
     }

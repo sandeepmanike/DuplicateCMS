@@ -52,5 +52,15 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         /// Gets or sets the list of students with their attendance details.
         /// </summary>
         public List<AttendanceStudentRequest> Students { get; set; } = new();
+
+        /// <summary>
+        /// Gets or sets the period identifier.
+        /// </summary>
+        public int PeriodId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the timetable slot identifier.
+        /// </summary>
+        public int? TimetableId { get; set; }
     }
 }

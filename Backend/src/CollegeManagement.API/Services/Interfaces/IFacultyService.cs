@@ -19,6 +19,7 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<FacultySubjectAllocationResponseDto> AssignSubjectAsync(AssignSubjectDto dto);
         Task<FacultySubjectAllocationResponseDto> UpdateSubjectAllocationAsync(int id, UpdateSubjectAllocationDto dto);
         Task<bool> DeleteSubjectAllocationAsync(int id);
+        Task<System.Collections.Generic.List<FacultySubjectAllocationResponseDto>> GetFacultySubjectAllocationsAsync(int facultyId);
 
         Task<FacultyWorkloadResponseDto?> GetFacultyWorkloadAsync(int facultyId);
     }

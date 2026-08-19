@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using CollegeManagement.API.Data;
@@ -14,7 +15,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CollegeManagement.API.Repositories.Implementations
 {
     /// <summary>
-    /// Repository implementation for Attendance database operations using Dapper and Stored Procedures.
+    /// Repository implementation for Attendance database operations using Dapper and EF Core.
     /// </summary>
     public class AttendanceRepository : IAttendanceRepository
     {
@@ -88,15 +89,8 @@ namespace CollegeManagement.API.Repositories.Implementations
         public async Task<int> CreateAttendanceAsync(Attendance attendance)
         {
             var parameters = new DynamicParameters();
-            parameters.Add("p_AttendanceDate", attendance.AttendanceDate);
+            parameters.Add("p_AttendanceSessionId", attendance.AttendanceSessionId);
             parameters.Add("p_StudentId", attendance.StudentId);
-            parameters.Add("p_FacultyId", attendance.FacultyId);
-            parameters.Add("p_BoardId", attendance.BoardId);
-            parameters.Add("p_AcademicYearId", attendance.AcademicYearId);
-            parameters.Add("p_AcademicLevelId", attendance.AcademicLevelId);
-            parameters.Add("p_GroupId", attendance.GroupId);
-            parameters.Add("p_SectionId", attendance.SectionId);
-            parameters.Add("p_SubjectId", attendance.SubjectId);
             parameters.Add("p_Status", (byte)attendance.Status);
             parameters.Add("p_Remarks", attendance.Remarks);
 
@@ -109,11 +103,19 @@ namespace CollegeManagement.API.Repositories.Implementations
         /// <summary>
         /// Creates multiple student attendance records in bulk using stored procedure sp_CreateBulkAttendance.
         /// </summary>
-        public async Task<int> CreateBulkAttendanceAsync(IEnumerable<Attendance> attendances)
+        public async Task<int> CreateBulkAttendanceAsync(IEnumerable<Attendance> attendances, int attendanceSessionId)
         {
-            var json = JsonSerializer.Serialize(attendances);
+            var bulkList = attendances.Select(a => new
+            {
+                StudentId = a.StudentId,
+                Status = (byte)a.Status,
+                Remarks = a.Remarks
+            }).ToList();
+
+            var json = JsonSerializer.Serialize(bulkList);
 
             var parameters = new DynamicParameters();
+            parameters.Add("p_AttendanceSessionId", attendanceSessionId);
             parameters.Add("p_AttendanceJson", json);
 
             return await Connection.ExecuteScalarAsync<int>(
@@ -129,15 +131,6 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             var parameters = new DynamicParameters();
             parameters.Add("p_AttendanceId", attendance.AttendanceId);
-            parameters.Add("p_AttendanceDate", attendance.AttendanceDate);
-            parameters.Add("p_StudentId", attendance.StudentId);
-            parameters.Add("p_FacultyId", attendance.FacultyId);
-            parameters.Add("p_BoardId", attendance.BoardId);
-            parameters.Add("p_AcademicYearId", attendance.AcademicYearId);
-            parameters.Add("p_AcademicLevelId", attendance.AcademicLevelId);
-            parameters.Add("p_GroupId", attendance.GroupId);
-            parameters.Add("p_SectionId", attendance.SectionId);
-            parameters.Add("p_SubjectId", attendance.SubjectId);
             parameters.Add("p_Status", (byte)attendance.Status);
             parameters.Add("p_Remarks", attendance.Remarks);
 
@@ -191,6 +184,59 @@ namespace CollegeManagement.API.Repositories.Implementations
                 SpGetAttendances,
                 parameters,
                 commandType: CommandType.StoredProcedure);
+        }
+
+        /// <summary>
+        /// Retrieves the total count of attendance records matching the search filters (without pagination).
+        /// Mirrors the WHERE clause from sp_GetAttendances for accurate pagination metadata.
+        /// </summary>
+        public async Task<int> GetAttendancesTotalCountAsync(AttendanceSearchRequest request)
+        {
+            const string sql = @"
+                SELECT COUNT(*)
+                FROM attendances a
+                INNER JOIN attendance_sessions ses ON a.AttendanceSessionId = ses.AttendanceSessionId
+                INNER JOIN students s ON a.StudentId = s.StudentId
+                LEFT JOIN faculties f ON ses.FacultyId = f.Id
+                WHERE a.IsActive = 1
+                  AND ses.IsActive = 1
+                  AND (@BoardId IS NULL OR @BoardId = 0 OR ses.BoardId = @BoardId)
+                  AND (@AcademicYearId IS NULL OR @AcademicYearId = 0 OR ses.AcademicYearId = @AcademicYearId)
+                  AND (@AcademicLevelId IS NULL OR @AcademicLevelId = 0 OR ses.AcademicLevelId = @AcademicLevelId)
+                  AND (@GroupId IS NULL OR @GroupId = 0 OR ses.GroupId = @GroupId)
+                  AND (@SectionId IS NULL OR @SectionId = 0 OR ses.SectionId = @SectionId)
+                  AND (@SubjectId IS NULL OR @SubjectId = 0 OR ses.SubjectId = @SubjectId)
+                  AND (@FacultyId IS NULL OR @FacultyId = 0 OR ses.FacultyId = @FacultyId)
+                  AND (@StudentId IS NULL OR @StudentId = 0 OR a.StudentId = @StudentId)
+                  AND (@Status IS NULL OR a.Status = @Status)
+                  AND (@FromDate IS NULL OR DATE(ses.AttendanceDate) >= DATE(@FromDate))
+                  AND (@ToDate IS NULL OR DATE(ses.AttendanceDate) <= DATE(@ToDate))
+                  AND (@PeriodId IS NULL OR @PeriodId = 0 OR ses.PeriodId = @PeriodId)
+                  AND (@TimetableId IS NULL OR @TimetableId = 0 OR ses.TimetableId = @TimetableId)
+                  AND (@SearchText IS NULL OR @SearchText = '' OR 
+                       s.StudentName LIKE CONCAT('%', @SearchText, '%') OR 
+                       s.RollNo LIKE CONCAT('%', @SearchText, '%') OR 
+                       CONCAT(f.FirstName,' ',f.LastName) LIKE CONCAT('%', @SearchText, '%'))";
+
+            var parameters = new
+            {
+                BoardId = request.BoardId == 0 ? (int?)null : request.BoardId,
+                AcademicYearId = request.AcademicYearId == 0 ? (int?)null : request.AcademicYearId,
+                AcademicLevelId = request.AcademicLevelId == 0 ? (int?)null : request.AcademicLevelId,
+                GroupId = request.GroupId == 0 ? (int?)null : request.GroupId,
+                SectionId = request.SectionId == 0 ? (int?)null : request.SectionId,
+                SubjectId = request.SubjectId == 0 ? (int?)null : request.SubjectId,
+                FacultyId = request.FacultyId == 0 ? (int?)null : request.FacultyId,
+                StudentId = request.StudentId.HasValue && request.StudentId.Value == 0 ? (int?)null : request.StudentId,
+                Status = request.Status.HasValue ? (byte?)request.Status.Value : null,
+                FromDate = request.FromDate,
+                ToDate = request.ToDate,
+                PeriodId = request.PeriodId.HasValue && request.PeriodId.Value == 0 ? (int?)null : request.PeriodId,
+                TimetableId = request.TimetableId.HasValue && request.TimetableId.Value == 0 ? (int?)null : request.TimetableId,
+                SearchText = string.IsNullOrEmpty(request.SearchText) ? null : request.SearchText
+            };
+
+            return await Connection.ExecuteScalarAsync<int>(sql, parameters);
         }
 
         /// <summary>
@@ -248,14 +294,13 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
         /// <summary>
-        /// Checks if an active attendance record already exists for a student, subject, and date using stored procedure sp_AttendanceExists.
+        /// Checks if an active attendance record already exists for a student in a specific session using stored procedure sp_AttendanceExists.
         /// </summary>
-        public async Task<bool> AttendanceExistsAsync(int studentId, int subjectId, DateTime attendanceDate)
+        public async Task<bool> AttendanceExistsAsync(int studentId, int attendanceSessionId)
         {
             var parameters = new DynamicParameters();
             parameters.Add("p_StudentId", studentId);
-            parameters.Add("p_SubjectId", subjectId);
-            parameters.Add("p_AttendanceDate", attendanceDate);
+            parameters.Add("p_AttendanceSessionId", attendanceSessionId);
 
             var exists = await Connection.ExecuteScalarAsync<int>(
                 SpAttendanceExists,

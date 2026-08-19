@@ -27,6 +27,8 @@ namespace CollegeManagement.API.DTOs.Sections
         [MaxLength(50, ErrorMessage = "Room Number cannot exceed 50 characters.")]
         public string? RoomNumber { get; set; }
 
+        public int? RoomId { get; set; }
+
         [Range(1, int.MaxValue, ErrorMessage = "Valid Class Teacher ID is required.")]
         public int? ClassTeacherId { get; set; }
 

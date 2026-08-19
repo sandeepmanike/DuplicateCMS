@@ -62,5 +62,15 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         /// Gets or sets any remarks or notes for the attendance.
         /// </summary>
         public string? Remarks { get; set; }
+
+        /// <summary>
+        /// Gets or sets the period identifier.
+        /// </summary>
+        public int PeriodId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the timetable slot identifier.
+        /// </summary>
+        public int? TimetableId { get; set; }
     }
 }

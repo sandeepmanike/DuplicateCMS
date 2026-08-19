@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace CollegeManagement.API.DTOs.Result
 {
@@ -7,20 +6,17 @@ namespace CollegeManagement.API.DTOs.Result
     {
         [Required]
         public int BoardId { get; set; }
-
         [Required]
         public int AcademicYearId { get; set; }
-
         [Required]
         public int AcademicLevelId { get; set; }
-
         [Required]
         public int GroupId { get; set; }
-
         [Required]
         public int ExamId { get; set; }
-
-        [Required]
-        public DateTime ProcessDate { get; set; }
+        public DateTime PublishDate { get; set; }
+        
     }
 }
+
+

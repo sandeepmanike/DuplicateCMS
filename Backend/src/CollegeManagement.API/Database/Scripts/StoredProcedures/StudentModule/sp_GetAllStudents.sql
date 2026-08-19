@@ -24,7 +24,6 @@ BEGIN
         s.AdmissionType,
         s.Medium,
         s.PreviousSchool,
-        s.PreviousHallTicketNumber,
         s.StudentCategory,
         s.ScholarshipStatus,
         s.FatherName,

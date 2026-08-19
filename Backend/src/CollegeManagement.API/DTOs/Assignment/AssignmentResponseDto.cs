@@ -21,8 +21,8 @@
         public string FacultyName { get; set; } = string.Empty;
 
         public string? Description { get; set; }
-
-        public DateOnly DueDate { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime DueDate { get; set; }
 
         public int GroupId { get; set; }
 
@@ -31,5 +31,8 @@
         public string? AttachmentPath { get; set; }
 
         public int MaximumMarks { get; set; }
+        public string? CreatedByType { get; set; }
+        public bool IsPublished { get; set; }
+        public DateTime? PublishedAt { get; set; }
     }
 }

@@ -1,9 +1,13 @@
 ﻿using Asp.Versioning;
+using ClosedXML.Excel;
 using CollegeManagement.API.DTOs.Result;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+
 
 namespace CollegeManagement.API.Controllers.V1
 {
@@ -42,20 +46,18 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> ProcessResults([FromBody] ProcessResultRequestDto request)
+        public async Task<IActionResult> ProcessResults(
+    [FromBody] ProcessResultRequestDto request)
         {
-            _logger.LogInformation("Processing results for Exam ID: {ExamId}", request.ExamId);
+            _logger.LogInformation(
+                "Processing results for Exam: {ExamId}",
+                request.ExamId);
 
-            var processed = await _resultService.ProcessResultsAsync(request);
+            var result = await _resultService.ProcessResultsAsync(request);
 
-            if (!processed)
-            {
-                return BadRequest();
-            }
-
-            return Ok("Results processed successfully.");
+            return Ok(result);
         }
-
+        
         /// <summary>
         /// Publishes examination results.
         /// </summary>
@@ -70,7 +72,7 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> PublishResults([FromBody] PublishResultRequestDto request)
         {
-            _logger.LogInformation("Publishing results for Exam ID: {ExamId}", request.ExamId);
+            _logger.LogInformation( "Publishing results for Exam: {ExamId}", request.ExamId);
 
             var published = await _resultService.PublishResultsAsync(request);
 
@@ -91,55 +93,103 @@ namespace CollegeManagement.API.Controllers.V1
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<ResultDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<ResultDto>>> GetResults()
+        [HttpGet]
+        public async Task<IActionResult> GetResults(
+    [FromQuery] GetResultsRequestDto request)
         {
-            _logger.LogInformation("Retrieving all published examination results.");
-
-            var results = await _resultService.GetResultsAsync();
-
-            return Ok(results);
-        }
-
-        /// <summary>
-        /// Retrieves the published result for a specific student.
-        /// </summary>
-        /// <param name="studentId">The unique identifier of the student.</param>
-        /// <returns>The student's published result.</returns>
-        /// <response code="200">Student result retrieved successfully.</response>
-        /// <response code="404">Student result not found.</response>
-        /// <response code="500">Internal server error.</response>
-        [HttpGet("students/{studentId}")]
-        [ProducesResponseType(typeof(StudentResultDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<StudentResultDto>> GetStudentResult(int studentId)
-        {
-            _logger.LogInformation("Retrieving result for Student ID: {StudentId}", studentId);
-
-            var result = await _resultService.GetStudentResultAsync(studentId);
-
-            if (result == null)
-            {
-                return NotFound();
-            }
+            var result =
+                await _resultService.GetResultsAsync(request);
 
             return Ok(result);
         }
 
         /// <summary>
-        /// Retrieves the rank list.
+        ///  Retrieves the complete result/memo details for a selected student.
         /// </summary>
-        /// <returns>A list of ranked students.</returns>
-        /// <response code="200">Rank list retrieved successfully.</response>
+        /// <param name="studentId">The unique identifier of the student.</param>
+        /// <param name="boardId">The unique identifier of the board.</param>
+        /// <param name="academicYearId">The unique identifier of the academic year.</param>
+        /// <param name="academicLevelId">The unique identifier of the academic level.</param>
+        /// <param name="groupId">The unique identifier of the group.</param>
+        /// <param name="examId">The unique identifier of the examination.</param>
+        /// <returns>The student's published result.</returns>
+        /// <response code="200">Student result retrieved successfully.</response>
+        /// <response code="404">Student result not found.</response>
         /// <response code="500">Internal server error.</response>
+        [HttpGet("student-result")]
+        [ProducesResponseType(typeof(StudentResultDto),StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetStudentResult(
+            [FromQuery] int studentId,
+            [FromQuery] int boardId,
+            [FromQuery] int academicYearId,
+            [FromQuery] int academicLevelId,
+            [FromQuery] int groupId,
+            [FromQuery] int examId)
+        {
+            _logger.LogInformation(
+                "Retrieving student result. " +
+                "StudentId: {StudentId}, " +
+                "BoardId: {BoardId}, " +
+                "AcademicYearId: {AcademicYearId}, " +
+                "AcademicLevelId: {AcademicLevelId}, " +
+                "GroupId: {GroupId}, " +
+                "ExamId: {ExamId}",
+                studentId,
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
+
+
+            var result = await _resultService.GetStudentResultAsync(
+                studentId,
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
+
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Retrieves the published rank list for the selected
+        /// board, academic year, academic level, group and examination.
+        /// </summary>
         [HttpGet("rank-list")]
         [ProducesResponseType(typeof(IEnumerable<RankListDto>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<RankListDto>>> GetRankList()
+        public async Task<IActionResult> GetRankList(
+            [FromQuery] int boardId,
+            [FromQuery] int academicYearId,
+            [FromQuery] int academicLevelId,
+            [FromQuery] int groupId,
+            [FromQuery] int examId)
         {
-            _logger.LogInformation("Retrieving rank list.");
+            _logger.LogInformation(
+                "Retrieving rank list for BoardId: {BoardId}, " +
+                "AcademicYearId: {AcademicYearId}, " +
+                "AcademicLevelId: {AcademicLevelId}, " +
+                "GroupId: {GroupId}, " +
+                "ExamId: {ExamId}",
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
 
-            var result = await _resultService.GetRankListAsync();
+            var result = await _resultService.GetRankListAsync(
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
 
             return Ok(result);
         }
@@ -181,48 +231,88 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Retrieves examination result analysis.
+        /// Retrieves examination result analysis for the selected
+        /// board, academic year, academic level, group and examination.
         /// </summary>
-        /// <returns>Result analysis.</returns>
-        /// <response code="200">Result analysis retrieved successfully.</response>
-        /// <response code="500">Internal server error.</response>
         [HttpGet("analysis")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ResultAnalysisDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetResultAnalysis()
+        public async Task<IActionResult> GetResultAnalysis(
+            [FromQuery] int boardId,
+            [FromQuery] int academicYearId,
+            [FromQuery] int academicLevelId,
+            [FromQuery] int groupId,
+            [FromQuery] int examId)
         {
-            _logger.LogInformation("Retrieving result analysis.");
+            _logger.LogInformation(
+                "Retrieving result analysis for BoardId: {BoardId}, " +
+                "AcademicYearId: {AcademicYearId}, " +
+                "AcademicLevelId: {AcademicLevelId}, " +
+                "GroupId: {GroupId}, " +
+                "ExamId: {ExamId}",
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
 
-            var analysis = await _resultService.GetResultAnalysisAsync();
+            var analysis = await _resultService.GetResultAnalysisAsync(
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
 
             return Ok(analysis);
         }
+
 
         /// <summary>
         /// Downloads the published result memo for a student.
         /// </summary>
         /// <param name="studentId">The unique identifier of the student.</param>
-        /// <returns>The downloadable result memo.</returns>
-        /// <response code="200">Memo downloaded successfully.</response>
-        /// <response code="404">Memo not found.</response>
+        /// <param name="boardId">The unique identifier of the board.</param>
+        /// <param name="academicYearId">The unique identifier of the academic year.</param>
+        /// <param name="academicLevelId">The unique identifier of the academic level.</param>
+        /// <param name="groupId">The unique identifier of the group.</param>
+        /// <param name="examId">The unique identifier of the examination.</param>
+        /// <returns>The student's result memo.</returns>
+        /// <response code="200">Result memo downloaded successfully.</response>
+        /// <response code="404">Result memo not found.</response>
         /// <response code="500">Internal server error.</response>
-        [HttpGet("memo/{studentId}")]
-        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+        [HttpGet("students/memo")]
+        [Produces("application/pdf")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> DownloadMemo(int studentId)
+        public async Task<IActionResult> DownloadMemo(
+    [FromQuery] int studentId,
+    [FromQuery] int boardId,
+    [FromQuery] int academicYearId,
+    [FromQuery] int academicLevelId,
+    [FromQuery] int groupId,
+    [FromQuery] int examId)
         {
-            _logger.LogInformation("Downloading result memo for Student ID: {StudentId}", studentId);
+            _logger.LogInformation(
+                "Downloading result memo for StudentId: {StudentId}, BoardId: {BoardId}, AcademicYearId: {AcademicYearId}, AcademicLevelId: {AcademicLevelId}, GroupId: {GroupId}, ExamId: {ExamId}",
+                studentId,
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
 
-            var file = await _resultService.DownloadMemoAsync(studentId);
-
-            if (file == null || file.Length == 0)
-            {
-                return NotFound();
-            }
+            var pdf = await _resultService.DownloadMemoAsync(
+                studentId,
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
 
             return File(
-                file,
+                pdf,
                 "application/pdf",
                 $"ResultMemo_{studentId}.pdf");
         }
@@ -282,5 +372,357 @@ namespace CollegeManagement.API.Controllers.V1
 
             return Ok(status);
         }
+
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetResultDashboard()
+        {
+            var dashboard = await _resultService.GetResultDashboardAsync();
+
+            return Ok(dashboard);
+        }
+
+
+        
+
+
+        [HttpPut("{resultId:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateResult(
+    int resultId,
+    [FromBody] UpdateResultRequestDto request)
+        {
+            _logger.LogInformation(
+                "Updating Result ID: {ResultId}",
+                resultId);
+
+            var updated = await _resultService.UpdateResultAsync(
+                resultId,
+                request);
+
+            if (!updated)
+            {
+                return BadRequest(
+                    "Result cannot be updated.");
+            }
+
+            return Ok("Result updated successfully.");
+        }
+        [HttpGet("download-pdf")]
+        public async Task<IActionResult> DownloadPdf(
+            [FromQuery] int boardId,
+            [FromQuery] int academicYearId,
+            [FromQuery] int academicLevelId,
+            [FromQuery] int groupId,
+            [FromQuery] int examId)
+        {
+            _logger.LogInformation(
+                "Downloading results PDF for BoardId: {BoardId}, " +
+                "AcademicYearId: {AcademicYearId}, " +
+                "AcademicLevelId: {AcademicLevelId}, " +
+                "GroupId: {GroupId}, " +
+                "ExamId: {ExamId}",
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
+
+            var results = (
+                await _resultService.GetResultsForPdfAsync(
+                    boardId,
+                    academicYearId,
+                    academicLevelId,
+                    groupId,
+                    examId)
+            ).ToList();
+
+            if (!results.Any())
+            {
+                return NotFound(
+                    "No results found for the selected criteria.");
+            }
+
+            var first = results.First();
+
+            var document = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4.Landscape());
+
+                    page.Margin(20);
+
+                    page.Header()
+                        .AlignCenter()
+                        .Text("Student Results")
+                        .FontSize(20)
+                        .Bold();
+
+                    page.Content()
+                        .Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(35);
+                                columns.RelativeColumn(2);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(2);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                                columns.RelativeColumn(1);
+                            });
+
+                            // Only ONE Header
+                            table.Header(header =>
+                            {
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("S.No")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Student")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Roll No")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Subject")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Internal")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Practical")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Theory")
+                                    .Bold();
+
+                                header.Cell()
+                                    .Background(Colors.Grey.Lighten2)
+                                    .Padding(5)
+                                    .Text("Total")
+                                    .Bold();
+                            });
+
+                            var serialNumber = 1;
+
+                            foreach (var result in results)
+                            {
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(serialNumber++.ToString());
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(result.StudentName ?? "");
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(result.RollNumber ?? "");
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(result.SubjectName ?? "");
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(result.InternalMarks.ToString());
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(result.PracticalMarks.ToString());
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(result.ExternalMarks.ToString());
+
+                                table.Cell()
+                                    .Padding(5)
+                                    .Text(
+                                        $"{result.TotalMarks}/{result.MaximumMarks}");
+                            }
+                        });
+
+                    page.Footer()
+                        .AlignCenter()
+                        .Text(text =>
+                        {
+                            text.Span("Generated on ");
+                            text.Span(
+                                DateTime.Now.ToString("dd-MM-yyyy HH:mm"));
+                        });
+                });
+            });
+
+            var pdfBytes = document.GeneratePdf();
+
+            var fileName =
+                $"Results_{first.ExamName}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+
+            return File(
+                pdfBytes,
+                "application/pdf",
+                fileName);
+        }
+
+
+        [HttpGet("export-excel")]
+        public async Task<IActionResult> ExportExcel(
+    [FromQuery] int boardId,
+    [FromQuery] int academicYearId,
+    [FromQuery] int academicLevelId,
+    [FromQuery] int groupId,
+    [FromQuery] int examId)
+        {
+            _logger.LogInformation(
+                "Exporting results to Excel for BoardId: {BoardId}, " +
+                "AcademicYearId: {AcademicYearId}, " +
+                "AcademicLevelId: {AcademicLevelId}, " +
+                "GroupId: {GroupId}, " +
+                "ExamId: {ExamId}",
+                boardId,
+                academicYearId,
+                academicLevelId,
+                groupId,
+                examId);
+
+            var results = (
+                await _resultService.GetResultsForExportAsync(
+                    boardId,
+                    academicYearId,
+                    academicLevelId,
+                    groupId,
+                    examId)
+            ).ToList();
+
+            if (!results.Any())
+            {
+                return NotFound(
+                    "No results found for the selected criteria.");
+            }
+
+            using var workbook = new XLWorkbook();
+
+            var worksheet = workbook.Worksheets.Add("Results");
+
+            // Title
+            worksheet.Cell(1, 1).Value = "Student Results";
+
+            worksheet.Range(1, 1, 1, 14).Merge();
+
+            worksheet.Cell(1, 1).Style.Font.Bold = true;
+            worksheet.Cell(1, 1).Style.Font.FontSize = 16;
+
+            // Headers
+            var headers = new[]
+            {
+        "S.No",
+        "Student Name",
+        "Roll Number",
+        "Board",
+        "Academic Year",
+        "Academic Level",
+        "Group",
+        "Exam",
+        "Subject",
+        "Internal Marks",
+        "Practical Marks",
+        "External Marks",
+        "Total Marks",
+        "Grade"
+    };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                worksheet.Cell(3, i + 1).Value = headers[i];
+            }
+
+            // Data
+            int row = 4;
+            int serialNumber = 1;
+
+            foreach (var result in results)
+            {
+                worksheet.Cell(row, 1).Value = serialNumber++;
+                worksheet.Cell(row, 2).Value = result.StudentName;
+                worksheet.Cell(row, 3).Value = result.RollNumber;
+                worksheet.Cell(row, 4).Value = result.BoardName;
+                worksheet.Cell(row, 5).Value = result.AcademicYearName;
+                worksheet.Cell(row, 6).Value = result.AcademicLevel;
+                worksheet.Cell(row, 7).Value = result.GroupName;
+                worksheet.Cell(row, 8).Value = result.ExamName;
+                worksheet.Cell(row, 9).Value = result.SubjectName;
+
+                worksheet.Cell(row, 10).Value =
+                    result.InternalMarks;
+
+                worksheet.Cell(row, 11).Value =
+                    result.PracticalMarks;
+
+                worksheet.Cell(row, 12).Value =
+                    result.ExternalMarks;
+
+                worksheet.Cell(row, 13).Value =
+                    result.TotalMarks;
+
+                worksheet.Cell(row, 14).Value =
+                    result.Grade;
+
+                row++;
+            }
+
+            // Format header
+            var headerRange = worksheet.Range(
+                3,
+                1,
+                3,
+                headers.Length);
+
+            headerRange.Style.Font.Bold = true;
+
+            // Auto-fit columns
+            worksheet.Columns().AdjustToContents();
+
+            // Freeze header
+            worksheet.SheetView.FreezeRows(3);
+
+            using var stream = new MemoryStream();
+
+            workbook.SaveAs(stream);
+
+            var fileBytes = stream.ToArray();
+
+            var fileName =
+                $"Results_{results.First().ExamName}_{DateTime.Now:yyyyMMddHHmmss}.xlsx";
+
+            return File(
+                fileBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
+        }
+
     }
 }

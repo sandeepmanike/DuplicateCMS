@@ -18,7 +18,7 @@ namespace CollegeManagement.API.Models
         public int RevaluationId { get; set; }
 
         /// <summary>
-        /// Gets or sets the result identifier.
+        /// Gets or sets the result identifier associated with the revaluation request.
         /// </summary>
         [Required]
         public int ResultId { get; set; }
@@ -30,44 +30,17 @@ namespace CollegeManagement.API.Models
         public int StudentId { get; set; }
 
         /// <summary>
-        /// Gets or sets the reason for revaluation.
+        /// Gets or sets the subject identifier for which revaluation is requested.
+        /// </summary>
+        [Required]
+        public int SubjectId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the reason for requesting revaluation.
         /// </summary>
         [Required]
         [MaxLength(500)]
         public string Reason { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Gets or sets the request date.
-        /// </summary>
-        public DateTime RequestedDate { get; set; } = DateTime.UtcNow;
-
-        /// <summary>
-        /// Gets or sets the current status of the request.
-        /// </summary>
-        [Required]
-        [MaxLength(30)]
-        public string Status { get; set; } = "Pending";
-
-        /// <summary>
-        /// Gets or sets the reviewed date.
-        /// </summary>
-        public DateTime? ReviewedDate { get; set; }
-
-        /// <summary>
-        /// Gets or sets reviewer remarks.
-        /// </summary>
-        [MaxLength(500)]
-        public string? Remarks { get; set; }
-
-        /// <summary>
-        /// Gets or sets the created date.
-        /// </summary>
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        /// <summary>
-        /// Gets or sets the updated date.
-        /// </summary>
-        public DateTime? UpdatedAt { get; set; }
 
         /// <summary>
         /// Gets or sets the marks before revaluation.
@@ -85,21 +58,61 @@ namespace CollegeManagement.API.Models
         public decimal? NewMarks { get; set; }
 
         /// <summary>
-        /// Gets or sets the reviewer identifier.
+        /// Gets or sets whether the revaluation fee has been paid.
+        /// </summary>
+        public bool FeePaid { get; set; }
+
+        /// <summary>
+        /// Gets or sets the date when the revaluation request was submitted.
+        /// </summary>
+        public DateTime RequestedDate { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets or sets the identifier of the person who reviewed the request.
         /// </summary>
         public int? ReviewedBy { get; set; }
 
         /// <summary>
-        /// Gets or sets whether the revaluation fee is paid.
+        /// Gets or sets the date when the revaluation request was reviewed.
         /// </summary>
-        public bool FeePaid { get; set; }
+        public DateTime? ReviewedDate { get; set; }
+
+        /// <summary>
+        /// Gets or sets the current status of the revaluation request.
+        /// </summary>
+        [Required]
+        [MaxLength(30)]
+        public string Status { get; set; } = "Pending";
+
+        /// <summary>
+        /// Gets or sets the remarks provided during the review.
+        /// </summary>
+        [MaxLength(500)]
+        public string? Remarks { get; set; }
+
+        /// <summary>
+        /// Gets or sets the date when the revaluation record was created.
+        /// </summary>
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// Gets or sets the date when the revaluation record was last updated.
+        /// </summary>
+        public DateTime? UpdatedAt { get; set; }
 
         // Navigation Properties
 
+        /// <summary>
+        /// Gets or sets the associated result.
+        /// </summary>
         [ForeignKey(nameof(ResultId))]
         public virtual Result Result { get; set; } = null!;
 
+        /// <summary>
+        /// Gets or sets the associated student.
+        /// </summary>
         [ForeignKey(nameof(StudentId))]
         public virtual Student Student { get; set; } = null!;
     }
 }
+

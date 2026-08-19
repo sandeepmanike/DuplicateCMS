@@ -1,22 +1,22 @@
-﻿using CollegeManagement.API.DTOs.Promotion;
+using CollegeManagement.API.DTOs.Promotion;
 using FluentValidation;
 
 namespace CollegeManagement.API.Validators.PromotionModuleValidators
 {
-    public class PromotionRequestDtoValidator
-        : AbstractValidator<PromotionRequestDto>
+    public class PromoteStudentsRequestValidator
+        : AbstractValidator<PromoteStudentsRequest>
     {
-        public PromotionRequestDtoValidator()
+        public PromoteStudentsRequestValidator()
         {
             RuleFor(x => x.StudentIds)
                 .NotEmpty()
                 .WithMessage("Select at least one student.");
 
-            RuleFor(x => x.NewClassId)
+            RuleFor(x => x.TargetAcademicYearId)
                 .GreaterThan(0);
 
-            RuleFor(x => x.AcademicYearId)
-                .GreaterThan(0);
+            RuleFor(x => x.TargetAcademicLevel)
+                .NotEmpty();
         }
     }
 }

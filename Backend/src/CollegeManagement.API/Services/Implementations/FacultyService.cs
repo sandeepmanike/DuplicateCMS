@@ -19,10 +19,11 @@ namespace CollegeManagement.API.Services.Implementations
     {
         private readonly IFacultyRepository _facultyRepository;
         private readonly IFacultySubjectAllocationRepository _allocationRepository;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly ITimetableRepository _timetableRepository;
         private readonly IMapper _mapper;
         private readonly IWebHostEnvironment _environment;
 
-        private const int StandardWeeklyClassesPerSubject = 4;
         private const decimal HoursPerClassPeriod = 1.0m;
         private const long MaxPhotoFileSizeBytes = 5 * 1024 * 1024; // 5 MB
         private static readonly string[] AllowedPhotoExtensions = { ".jpg", ".jpeg", ".png" };
@@ -30,11 +31,15 @@ namespace CollegeManagement.API.Services.Implementations
         public FacultyService(
             IFacultyRepository facultyRepository,
             IFacultySubjectAllocationRepository allocationRepository,
+            IDepartmentRepository departmentRepository,
+            ITimetableRepository timetableRepository,
             IMapper mapper,
             IWebHostEnvironment environment)
         {
             _facultyRepository = facultyRepository;
             _allocationRepository = allocationRepository;
+            _departmentRepository = departmentRepository;
+            _timetableRepository = timetableRepository;
             _mapper = mapper;
             _environment = environment;
         }
@@ -66,19 +71,19 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var faculty = await _facultyRepository.GetByEmployeeIdAsync(employeeId);
             if (faculty == null)
-                throw new NotFoundException($"Faculty record with Employee ID '{employeeId}' not found.");
+                throw new NotFoundException($"Faculty record with Employee ID {employeeId} not found.");
 
             return _mapper.Map<FacultyResponseDto>(faculty);
         }
 
         public async Task<FacultyResponseDto> CreateFacultyAsync(CreateFacultyDto dto)
         {
-            // 1. Uniqueness Checks
+            // Uniqueness Validations
             if (!await _facultyRepository.IsEmployeeIdUniqueAsync(dto.EmployeeId))
                 throw new ConflictException($"Employee ID '{dto.EmployeeId}' is already registered.");
 
             if (!await _facultyRepository.IsEmailUniqueAsync(dto.Email))
-                throw new ConflictException($"Email '{dto.Email}' is already registered.");
+                throw new ConflictException($"Email address '{dto.Email}' is already registered.");
 
             if (!await _facultyRepository.IsMobileUniqueAsync(dto.Mobile))
                 throw new ConflictException($"Mobile number '{dto.Mobile}' is already registered.");
@@ -86,14 +91,24 @@ namespace CollegeManagement.API.Services.Implementations
             if (!await _facultyRepository.IsAadhaarUniqueAsync(dto.Aadhaar))
                 throw new ConflictException($"Aadhaar number '{dto.Aadhaar}' is already registered.");
 
-            if (!await _facultyRepository.IsUsernameUniqueAsync(dto.Username))
-                throw new ConflictException($"Username '{dto.Username}' is already taken.");
+            // Department resolution
+            int? resolvedDepartmentId = dto.DepartmentId;
+            if (!resolvedDepartmentId.HasValue || resolvedDepartmentId.Value <= 0)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Department))
+                {
+                    var depts = await _departmentRepository.GetActiveDepartmentsAsync();
+                    var dept = depts?.FirstOrDefault(d =>
+                        string.Equals(d.DepartmentName, dto.Department.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(d.DepartmentCode, dto.Department.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (dept != null)
+                        resolvedDepartmentId = dept.DepartmentId;
+                }
+            }
 
-            // 2. Map & Hash Password
             var faculty = _mapper.Map<Faculty>(dto);
-            faculty.Password = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            faculty.DepartmentId = resolvedDepartmentId;
 
-            // 3. Persist Entity
             var createdFaculty = await _facultyRepository.AddAsync(faculty);
             return _mapper.Map<FacultyResponseDto>(createdFaculty);
         }
@@ -104,18 +119,34 @@ namespace CollegeManagement.API.Services.Implementations
             if (existingFaculty == null)
                 throw new NotFoundException($"Faculty record with ID {id} not found.");
 
-            // Uniqueness checks (excluding current Faculty ID)
+            // Uniqueness Validations (Excluding current ID)
             if (!await _facultyRepository.IsEmailUniqueAsync(dto.Email, id))
-                throw new ConflictException($"Email '{dto.Email}' is already registered by another faculty.");
+                throw new ConflictException($"Email address '{dto.Email}' is already registered to another faculty.");
 
             if (!await _facultyRepository.IsMobileUniqueAsync(dto.Mobile, id))
-                throw new ConflictException($"Mobile number '{dto.Mobile}' is already registered by another faculty.");
+                throw new ConflictException($"Mobile number '{dto.Mobile}' is already registered to another faculty.");
 
             if (!await _facultyRepository.IsAadhaarUniqueAsync(dto.Aadhaar, id))
-                throw new ConflictException($"Aadhaar number '{dto.Aadhaar}' is already registered by another faculty.");
+                throw new ConflictException($"Aadhaar number '{dto.Aadhaar}' is already registered to another faculty.");
 
-            // Update allowed fields via AutoMapper
+            // Department resolution
+            int? resolvedDepartmentId = dto.DepartmentId;
+            if (!resolvedDepartmentId.HasValue || resolvedDepartmentId.Value <= 0)
+            {
+                if (!string.IsNullOrWhiteSpace(dto.Department))
+                {
+                    var depts = await _departmentRepository.GetActiveDepartmentsAsync();
+                    var dept = depts?.FirstOrDefault(d =>
+                        string.Equals(d.DepartmentName, dto.Department.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(d.DepartmentCode, dto.Department.Trim(), StringComparison.OrdinalIgnoreCase));
+                    if (dept != null)
+                        resolvedDepartmentId = dept.DepartmentId;
+                }
+            }
+
             _mapper.Map(dto, existingFaculty);
+            existingFaculty.DepartmentId = resolvedDepartmentId;
+            existingFaculty.UpdatedAt = DateTime.UtcNow;
 
             await _facultyRepository.UpdateAsync(existingFaculty);
             return _mapper.Map<FacultyResponseDto>(existingFaculty);
@@ -137,53 +168,35 @@ namespace CollegeManagement.API.Services.Implementations
             if (faculty == null)
                 throw new NotFoundException($"Faculty record with ID {dto.FacultyId} not found.");
 
-            // 1. File Validation
             if (dto.Photo == null || dto.Photo.Length == 0)
-                throw new ValidationException("Photo file is required.");
+                throw new ValidationException("Please provide a valid non-empty photo file.");
 
             if (dto.Photo.Length > MaxPhotoFileSizeBytes)
                 throw new ValidationException("Photo file size cannot exceed 5 MB.");
 
             var fileExtension = Path.GetExtension(dto.Photo.FileName).ToLowerInvariant();
-            if (!AllowedPhotoExtensions.Contains(fileExtension))
-                throw new ValidationException("Invalid image format. Allowed formats: .jpg, .jpeg, .png.");
+            if (!AllowedPhotoExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
+                throw new ValidationException("Invalid photo file format. Only .jpg, .jpeg, and .png are allowed.");
 
             var webRootPath = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            var uploadsFolder = Path.Combine(webRootPath, "uploads", "faculty-photos");
+            var uploadsDirectory = Path.Combine(webRootPath, "uploads", "faculties");
 
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
+            if (!Directory.Exists(uploadsDirectory))
+                Directory.CreateDirectory(uploadsDirectory);
 
-            // 2. Delete Existing Photo File from Storage if present
-            if (!string.IsNullOrWhiteSpace(faculty.PhotoPath))
-            {
-                var existingRelativePath = faculty.PhotoPath.TrimStart('/', '\\');
-                var existingPhysicalPath = Path.Combine(webRootPath, existingRelativePath);
-                if (File.Exists(existingPhysicalPath))
-                {
-                    File.Delete(existingPhysicalPath);
-                }
-            }
+            var fileName = $"faculty_{faculty.Id}_{DateTime.UtcNow.Ticks}{fileExtension}";
+            var fullPath = Path.Combine(uploadsDirectory, fileName);
 
-            // 3. Save New Photo File
-            var uniqueFileName = $"faculty_{faculty.Id}_{Guid.NewGuid():N}{fileExtension}";
-            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            using (var stream = new FileStream(fullPath, FileMode.Create))
             {
                 await dto.Photo.CopyToAsync(stream);
             }
 
-            // 4. Save Relative Path in Database via Stored Procedure
-            var photoRelativePath = $"/uploads/faculty-photos/{uniqueFileName}";
-            await _facultyRepository.UpdatePhotoPathAsync(faculty.Id, photoRelativePath);
+            var relativePhotoPath = $"/uploads/faculties/{fileName}";
+            await _facultyRepository.UpdatePhotoPathAsync(faculty.Id, relativePhotoPath);
 
-            // 5. Reload updated Faculty entity directly from database to verify and return persisted state
-            var updatedFaculty = await _facultyRepository.GetByIdAsync(faculty.Id);
-            if (updatedFaculty == null)
-                throw new NotFoundException($"Faculty record with ID {faculty.Id} not found.");
-
-            return _mapper.Map<FacultyResponseDto>(updatedFaculty);
+            faculty.PhotoPath = relativePhotoPath;
+            return _mapper.Map<FacultyResponseDto>(faculty);
         }
 
         public async Task<(string PhysicalPath, string ContentType)> GetPhotoAsync(int id)
@@ -191,7 +204,7 @@ namespace CollegeManagement.API.Services.Implementations
             var photoPath = await _facultyRepository.GetPhotoPathAsync(id);
             if (string.IsNullOrWhiteSpace(photoPath))
             {
-                throw new NotFoundException($"Photo for faculty ID {id} not found.");
+                throw new NotFoundException($"Photo for faculty ID {id} does not exist.");
             }
 
             var webRootPath = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
@@ -223,23 +236,37 @@ namespace CollegeManagement.API.Services.Implementations
             if (faculty == null)
                 throw new NotFoundException($"Faculty record with ID {dto.FacultyId} not found.");
 
+            // Verify Faculty is Active
+            if (string.Equals(faculty.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
+                throw new ValidationException("Cannot assign subject allocation to an inactive faculty member.");
+
+            // Verify Faculty is Teaching type
+            if (string.Equals(faculty.FacultyType, "Non-Teaching", StringComparison.OrdinalIgnoreCase))
+                throw new ValidationException("Non-Teaching faculty cannot be assigned subject allocations.");
+
+            // Resolve Subject ID (supports direct SubjectId or string name/code fallback)
+            var targetSubjectName = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (!string.IsNullOrWhiteSpace(dto.SubjectName) ? dto.SubjectName : dto.SubjectCode);
+            var resolvedSubjectId = await _allocationRepository.ResolveSubjectIdAsync(
+                dto.SubjectId, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, targetSubjectName ?? string.Empty);
+
+            if (!resolvedSubjectId.HasValue || resolvedSubjectId.Value <= 0)
+                throw new ValidationException("Please provide a valid Subject ID or Subject Name.");
+
+            int finalSubjectId = resolvedSubjectId.Value;
+
             // Prevent Duplicate Subject Allocation
-            if (await _allocationRepository.ExistsAllocationAsync(dto.FacultyId, dto.Board, dto.AcademicYear, dto.Group, dto.AcademicLevel, dto.Section, dto.Subject))
-                throw new ConflictException($"Subject '{dto.Subject}' is already allocated to Faculty ID {dto.FacultyId} for Section '{dto.Section}' in Group '{dto.Group}'.");
+            if (await _allocationRepository.ExistsAllocationAsync(dto.FacultyId, finalSubjectId))
+                throw new ConflictException($"Subject ID {finalSubjectId} is already allocated to Faculty ID {dto.FacultyId}.");
 
             var allocation = new FacultySubjectAllocation
             {
                 FacultyId = dto.FacultyId,
-                Board = dto.Board,
-                AcademicYear = dto.AcademicYear,
-                Group = dto.Group,
-                AcademicLevel = dto.AcademicLevel,
-                Section = dto.Section,
-                Subject = dto.Subject
+                SubjectId = finalSubjectId
             };
 
             var createdAllocation = await _allocationRepository.AddAsync(allocation);
-            var resultDto = _mapper.Map<FacultySubjectAllocationResponseDto>(createdAllocation);
+            var fullAllocation = await _allocationRepository.GetByIdAsync(createdAllocation.Id) ?? createdAllocation;
+            var resultDto = _mapper.Map<FacultySubjectAllocationResponseDto>(fullAllocation);
             resultDto.FacultyName = $"{faculty.FirstName} {faculty.LastName}".Trim();
             return resultDto;
         }
@@ -250,16 +277,31 @@ namespace CollegeManagement.API.Services.Implementations
             if (existingAllocation == null)
                 throw new NotFoundException($"Subject Allocation record with ID {id} not found.");
 
-            // Check Duplicate (excluding current allocation id)
-            if (await _allocationRepository.ExistsAllocationAsync(existingAllocation.FacultyId, dto.Board, dto.AcademicYear, dto.Group, dto.AcademicLevel, dto.Section, dto.Subject, id))
-                throw new ConflictException($"Subject '{dto.Subject}' is already allocated for Section '{dto.Section}' in Group '{dto.Group}'.");
+            // Verify Faculty is Teaching type
+            var faculty = await _facultyRepository.GetByIdAsync(existingAllocation.FacultyId);
+            if (faculty != null)
+            {
+                if (string.Equals(faculty.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
+                    throw new ValidationException("Cannot update subject allocation for an inactive faculty member.");
 
-            existingAllocation.Board = dto.Board;
-            existingAllocation.AcademicYear = dto.AcademicYear;
-            existingAllocation.Group = dto.Group;
-            existingAllocation.AcademicLevel = dto.AcademicLevel;
-            existingAllocation.Section = dto.Section;
-            existingAllocation.Subject = dto.Subject;
+                if (string.Equals(faculty.FacultyType, "Non-Teaching", StringComparison.OrdinalIgnoreCase))
+                    throw new ValidationException("Non-Teaching faculty cannot be assigned subject allocations.");
+            }
+
+            var targetSubjectName = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (!string.IsNullOrWhiteSpace(dto.SubjectName) ? dto.SubjectName : dto.SubjectCode);
+            var resolvedSubjectId = await _allocationRepository.ResolveSubjectIdAsync(
+                dto.SubjectId, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, targetSubjectName ?? string.Empty);
+
+            if (!resolvedSubjectId.HasValue || resolvedSubjectId.Value <= 0)
+                throw new ValidationException("Please provide a valid Subject ID or Subject Name.");
+
+            int finalSubjectId = resolvedSubjectId.Value;
+
+            // Check Duplicate (excluding current allocation id)
+            if (await _allocationRepository.ExistsAllocationAsync(existingAllocation.FacultyId, finalSubjectId, id))
+                throw new ConflictException($"Subject ID {finalSubjectId} is already allocated to Faculty ID {existingAllocation.FacultyId}.");
+
+            existingAllocation.SubjectId = finalSubjectId;
 
             await _allocationRepository.UpdateAsync(existingAllocation);
 
@@ -277,6 +319,43 @@ namespace CollegeManagement.API.Services.Implementations
             return true;
         }
 
+        private async Task EnrichAllocationSectionsAsync(int facultyId, List<FacultySubjectAllocationResponseDto> allocationDtos)
+        {
+            if (allocationDtos == null || !allocationDtos.Any()) return;
+
+            var timetableSlots = await _timetableRepository.GetByFacultyIdAsync(facultyId, null);
+            if (timetableSlots == null || !timetableSlots.Any()) return;
+
+            var subjectSectionsMap = timetableSlots
+                .Where(t => !string.IsNullOrWhiteSpace(t.SectionName))
+                .GroupBy(t => t.SubjectId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => string.Join(", ", g.Select(x => x.SectionName).Distinct())
+                );
+
+            foreach (var dto in allocationDtos)
+            {
+                if (subjectSectionsMap.TryGetValue(dto.SubjectId, out var secName) && !string.IsNullOrWhiteSpace(secName))
+                {
+                    dto.Section = secName;
+                    dto.SectionName = secName;
+                }
+            }
+        }
+
+        public async Task<List<FacultySubjectAllocationResponseDto>> GetFacultySubjectAllocationsAsync(int facultyId)
+        {
+            var faculty = await _facultyRepository.GetByIdAsync(facultyId);
+            if (faculty == null)
+                throw new NotFoundException($"Faculty record with ID {facultyId} not found.");
+
+            var allocations = await _allocationRepository.GetByFacultyIdAsync(facultyId);
+            var dtos = _mapper.Map<List<FacultySubjectAllocationResponseDto>>(allocations);
+            await EnrichAllocationSectionsAsync(facultyId, dtos);
+            return dtos;
+        }
+
         public async Task<FacultyWorkloadResponseDto?> GetFacultyWorkloadAsync(int facultyId)
         {
             var faculty = await _facultyRepository.GetByIdAsync(facultyId);
@@ -285,11 +364,32 @@ namespace CollegeManagement.API.Services.Implementations
 
             var allocations = await _allocationRepository.GetByFacultyIdAsync(facultyId);
             var allocationDtos = _mapper.Map<List<FacultySubjectAllocationResponseDto>>(allocations);
+            await EnrichAllocationSectionsAsync(facultyId, allocationDtos);
 
-            int totalAssignedSubjects = allocations.Select(a => a.Subject).Distinct(StringComparer.OrdinalIgnoreCase).Count();
-            int totalSections = allocations.Select(a => $"{a.Group}_{a.AcademicLevel}_{a.Section}").Distinct(StringComparer.OrdinalIgnoreCase).Count();
-            int weeklyClasses = allocations.Count * StandardWeeklyClassesPerSubject;
-            decimal totalWorkloadHours = weeklyClasses * HoursPerClassPeriod;
+            var timetableSlots = await _timetableRepository.GetByFacultyIdAsync(facultyId, null);
+            var publishedSlots = timetableSlots != null ? timetableSlots.Where(t => t.IsPublished).ToList() : new List<CollegeManagement.API.DTOs.Timetable.TimetableResponseDto>();
+
+            int totalAssignedSubjects = allocationDtos.Select(a => a.SubjectId).Distinct().Count();
+            if (totalAssignedSubjects == 0 && publishedSlots.Count > 0)
+            {
+                totalAssignedSubjects = publishedSlots.Select(t => t.SubjectId).Distinct().Count();
+            }
+
+            int totalSections = publishedSlots.Select(t => t.SectionId).Distinct().Count();
+            int weeklyClasses = publishedSlots.Count;
+
+            decimal totalWorkloadHours = 0;
+            foreach (var slot in publishedSlots)
+            {
+                if (slot.EndTime > slot.StartTime)
+                {
+                    totalWorkloadHours += (decimal)(slot.EndTime - slot.StartTime).TotalHours;
+                }
+                else
+                {
+                    totalWorkloadHours += HoursPerClassPeriod;
+                }
+            }
 
             return new FacultyWorkloadResponseDto
             {
@@ -301,7 +401,7 @@ namespace CollegeManagement.API.Services.Implementations
                 TotalAssignedSubjects = totalAssignedSubjects,
                 TotalSections = totalSections,
                 WeeklyClasses = weeklyClasses,
-                TotalWorkloadHours = totalWorkloadHours,
+                TotalWorkloadHours = Math.Round(totalWorkloadHours, 2),
                 Allocations = allocationDtos
             };
         }

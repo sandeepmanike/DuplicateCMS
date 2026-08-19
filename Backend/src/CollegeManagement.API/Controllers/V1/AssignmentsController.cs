@@ -172,26 +172,6 @@ namespace CollegeManagement.API.Controllers.V1
             });
         }
 
-        [HttpPost("{id}/submit")]
-        public async Task<IActionResult> SubmitAssignment(int id, SubmitAssignmentDto dto)
-        {
-            var success = await _service.SubmitAssignmentAsync(id, dto);
-
-            if (!success)
-            {
-                return NotFound(new
-                {
-                    Status = false,
-                    Message = $"Assignment with ID {id} not found."
-                });
-            }
-
-            return Ok(new
-            {
-                Status = true,
-                Message = "Assignment submitted successfully."
-            });
-        }
 
         [HttpGet("groups/{groupId}/subjects")]
         public async Task<IActionResult> GetSubjects(int groupId)
@@ -218,15 +198,62 @@ namespace CollegeManagement.API.Controllers.V1
             return Ok(data);
         }
 
-        [HttpGet("{id}/submissions")]
-        public async Task<IActionResult> GetSubmissions(int id)
+        [HttpPost("publish")]
+        public async Task<IActionResult> Publish([FromBody] PublishAssignmentsDto dto)
         {
-            var result = await _service.GetSubmissionsAsync(id);
+            if (dto?.AssignmentIds == null || dto.AssignmentIds.Count == 0)
+            {
+                return BadRequest(new
+                {
+                    Status = false,
+                    Message = "Please select at least one assignment."
+                });
+            }
+
+            foreach (var id in dto.AssignmentIds)
+            {
+                var assignment = await _service.GetByIdAsync(id);
+                if (assignment == null)
+                {
+                    return NotFound(new
+                    {
+                        Status = false,
+                        Message = $"Assignment with ID {id} not found."
+                    });
+                }
+            }
+
+            var success = await _service.PublishAssignmentsAsync(dto.AssignmentIds);
+
+            if (!success)
+            {
+                return BadRequest(new
+                {
+                    Status = false,
+                    Message = "Failed to publish assignment(s)."
+                });
+            }
+
+            string message = dto.AssignmentIds.Count == 1
+                ? "Assignment published successfully."
+                : "Assignments published successfully.";
 
             return Ok(new
             {
                 Status = true,
-                Message = "Assignment submissions retrieved successfully.",
+                Message = message
+            });
+        }
+
+        [HttpGet("published")]
+        public async Task<IActionResult> GetPublished()
+        {
+            var result = await _service.GetPublishedAssignmentsAsync();
+
+            return Ok(new
+            {
+                Status = true,
+                Message = "Published assignments retrieved successfully.",
                 Data = result
             });
         }

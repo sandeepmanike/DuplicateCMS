@@ -16,9 +16,15 @@ namespace CollegeManagement.API.Repositories.Interfaces
 
         Task DeleteAsync(Assignment assignment);
 
-        Task SubmitAssignmentAsync(AssignmentSubmission submission);
 
-        Task<IEnumerable<AssignmentSubmission>> GetSubmissionsAsync(int assignmentId);
+
+        Task<bool> PublishAssignmentAsync(int assignmentId);
+
+        Task<IEnumerable<Assignment>> GetPublishedAssignmentsAsync();
+
+        Task<Assignment?> CreateAdminAssignmentAsync(Assignment assignment);
+
+        Task<IEnumerable<Assignment>> GetAdminAssignmentsAsync();
 
         Task<IEnumerable<SubjectDropdownDto>>
 GetSubjectsByGroupAsync(int groupId);
@@ -30,4 +36,6 @@ GetSubjectsByGroupAsync(int groupId);
             int academicYearId,
             string academicLevel);
     }
+
+
 }

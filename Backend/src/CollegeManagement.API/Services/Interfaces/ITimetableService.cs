@@ -18,5 +18,8 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<bool> TogglePublishSlotAsync(int id, bool isPublished);
         Task<bool> PublishSectionTimetableAsync(int sectionId, int academicYearId, bool isPublished);
         Task<bool> CopyTimetableAsync(CopyTimetableDto dto);
+        Task<GenerateTimetableResultDto> GenerateTheoryTimetableAsync(GenerateTimetableRequestDto dto);
+        Task<ValidateTimetableResultDto> ValidateSectionTimetableAsync(int sectionId, int academicYearId);
+        Task<ApproveTimetableResultDto> ApproveSectionTimetableAsync(int sectionId, int academicYearId);
     }
 }

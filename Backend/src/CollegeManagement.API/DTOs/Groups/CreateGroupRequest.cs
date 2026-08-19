@@ -4,24 +4,20 @@ namespace CollegeManagement.API.DTOs.Groups
 {
     public class CreateGroupRequest
     {
-        [Required(ErrorMessage = "Board is required")]
-        [MaxLength(100)]
-        public string Board { get; set; } = string.Empty;
+        [Range(1, int.MaxValue, ErrorMessage = "Valid BoardId is required")]
+        public int BoardId { get; set; }
 
-        [Range(1, int.MaxValue,
-            ErrorMessage = "Valid AcademicYearId is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Valid AcademicYearId is required")]
         public int AcademicYearId { get; set; }
 
-        [Required(ErrorMessage = "Academic level is required")]
-        [MaxLength(50)]
-        public string AcademicLevel { get; set; } = string.Empty;
+        [Range(1, int.MaxValue, ErrorMessage = "Valid AcademicLevelId is required")]
+        public int AcademicLevelId { get; set; }
 
-        [Required(ErrorMessage = "Group name is required")]
-        [MaxLength(100)]
+        [Required, MaxLength(100)]
         public string GroupName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Group code is required")]
-        [MaxLength(30)]
+        [Required, MaxLength(30)]
+        [RegularExpression(@"^[A-Za-z0-9_-]+$", ErrorMessage = "Group code can contain only letters, numbers, hyphen and underscore.")]
         public string GroupCode { get; set; } = string.Empty;
 
         [MaxLength(500)]

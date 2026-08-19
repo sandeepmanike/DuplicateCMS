@@ -1,14 +1,14 @@
-﻿using CollegeManagement.API.DTOs.Promotion;
+using CollegeManagement.API.DTOs.Promotion;
 using FluentValidation;
 
 namespace CollegeManagement.API.Validators.PromotionModuleValidators
 {
-    public class GroupAllocationDtoValidator
-        : AbstractValidator<GroupAllocationDto>
+    public class GroupAllocationRequestValidator
+        : AbstractValidator<GroupAllocationRequest>
     {
-        public GroupAllocationDtoValidator()
+        public GroupAllocationRequestValidator()
         {
-            RuleFor(x => x.GroupId)
+            RuleFor(x => x.TargetGroupId)
                 .GreaterThan(0);
 
             RuleFor(x => x.StudentIds)

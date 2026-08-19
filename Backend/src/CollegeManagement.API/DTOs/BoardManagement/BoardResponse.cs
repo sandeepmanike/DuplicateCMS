@@ -45,6 +45,8 @@ namespace CollegeManagement.API.DTOs.Board.Responses
 
         public bool Status { get; set; }
 
+        public uint RowVersion { get; set; }
+
         public DateTime CreatedDate { get; set; }
     }
 }
