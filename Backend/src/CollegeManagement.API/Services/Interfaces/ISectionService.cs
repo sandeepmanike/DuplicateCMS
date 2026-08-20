@@ -6,7 +6,7 @@ namespace CollegeManagement.API.Services.Interfaces
 {
     public interface ISectionService
     {
-        Task<IEnumerable<SectionResponse>> GetAllSectionsAsync();
+        Task<IEnumerable<SectionResponse>> GetAllSectionsAsync(SectionFilterDto? filter = null);
         Task<SectionResponse?> GetSectionByIdAsync(int id);
         Task<SectionResponse> CreateSectionAsync(CreateSectionRequest request);
         Task<SectionResponse> UpdateSectionAsync(int id, UpdateSectionRequest request);

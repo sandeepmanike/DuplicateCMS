@@ -21,9 +21,9 @@ namespace CollegeManagement.API.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<SectionResponse>> GetAllSectionsAsync()
+        public async Task<IEnumerable<SectionResponse>> GetAllSectionsAsync(SectionFilterDto? filter = null)
         {
-            return await _sectionRepository.GetAllSectionsAsync();
+            return await _sectionRepository.GetAllSectionsAsync(filter);
         }
 
         public async Task<SectionResponse?> GetSectionByIdAsync(int id)
@@ -55,9 +55,9 @@ namespace CollegeManagement.API.Services.Implementations
 
             // 3. Validate duplicate Section Name in the same context
             if (await _sectionRepository.IsSectionNameDuplicateAsync(
-                request.Board, request.AcademicYearId, request.Group, request.AcademicLevel, request.SectionName))
+                request.Board, request.AcademicYearId, request.Group, request.Programme, request.AcademicLevel, request.SectionName))
             {
-                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, and Academic Level configuration.");
+                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, Programme, and Level configuration.");
             }
 
             // 4. Map DTO to Entity and insert
@@ -99,9 +99,9 @@ namespace CollegeManagement.API.Services.Implementations
 
             // 4. Validate duplicate Section Name (excluding current Section)
             if (await _sectionRepository.IsSectionNameDuplicateAsync(
-                request.Board, request.AcademicYearId, request.Group, request.AcademicLevel, request.SectionName, id))
+                request.Board, request.AcademicYearId, request.Group, request.Programme, request.AcademicLevel, request.SectionName, id))
             {
-                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, and Academic Level configuration.");
+                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, Programme, and Level configuration.");
             }
 
             // 5. Map DTO to Entity and update
@@ -134,7 +134,6 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<IEnumerable<SectionResponse>> GetSectionsByGroupAsync(int groupId)
         {
-            // Note: If needed, we can validate the Group exists here, but sp_GetSectionsByGroup handles checking matched groups
             return await _sectionRepository.GetSectionsByGroupAsync(groupId);
         }
 

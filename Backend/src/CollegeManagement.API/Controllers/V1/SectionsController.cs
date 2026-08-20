@@ -2,15 +2,15 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Sections;
 using CollegeManagement.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
 
 namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
     [Route("api/v1/[controller]")]
+    [Route("api/[controller]")]
     [Produces("application/json")]
     [Authorize]
     public class SectionsController : ControllerBase
@@ -23,13 +23,13 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Retrieves all sections.
+        /// Retrieves sections with optional filtering by Board, Academic Year, Group, Programme, AcademicLevel/YearOfStudy, and Search.
         /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<SectionResponse>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetSections()
+        public async Task<IActionResult> GetSections([FromQuery] SectionFilterDto filter)
         {
-            var sections = await _sectionService.GetAllSectionsAsync();
+            var sections = await _sectionService.GetAllSectionsAsync(filter);
             return Ok(sections);
         }
 

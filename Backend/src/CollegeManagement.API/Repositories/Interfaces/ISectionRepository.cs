@@ -7,13 +7,13 @@ namespace CollegeManagement.API.Repositories.Interfaces
 {
     public interface ISectionRepository
     {
-        Task<IEnumerable<SectionResponse>> GetAllSectionsAsync();
+        Task<IEnumerable<SectionResponse>> GetAllSectionsAsync(SectionFilterDto? filter = null);
         Task<SectionResponse?> GetSectionByIdAsync(int id);
         Task<int> CreateSectionAsync(Section section);
         Task<bool> UpdateSectionAsync(int id, Section section);
         Task<bool> DeleteSectionAsync(int id);
         Task<IEnumerable<SectionResponse>> GetSectionsByGroupAsync(int groupId);
-        Task<bool> IsSectionNameDuplicateAsync(string board, int academicYearId, string group, string academicLevel, string sectionName, int? excludeSectionId = null);
+        Task<bool> IsSectionNameDuplicateAsync(string board, int academicYearId, string group, string programme, string academicLevel, string sectionName, int? excludeSectionId = null);
         Task<bool> AcademicYearExistsAsync(int academicYearId);
         Task<AcademicYear?> GetAcademicYearByIdAsync(int academicYearId);
         Task<bool> FacultyExistsAsync(int facultyId);

@@ -100,7 +100,12 @@ builder.Services.AddMemoryCache();
 
 #region AutoMapper & FluentValidation
 
-builder.Services.AddAutoMapper(typeof(FacultyMappingProfile), typeof(MarksMappingProfile), typeof(AttendanceProfile), typeof(CollegeManagement.API.Profiles.TimetableMappingProfile));
+builder.Services.AddAutoMapper(
+    typeof(FacultyMappingProfile),
+    typeof(MarksMappingProfile),
+    typeof(AttendanceProfile),
+    typeof(CollegeManagement.API.Profiles.TimetableMappingProfile),
+    typeof(SectionMappingProfile));
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>();
 
@@ -360,6 +365,7 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 #region Forwarded Headers
+
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders =
@@ -378,12 +384,14 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 #region Database Migration
 
 var tempConnStr = builder.Configuration.GetConnectionString("DefaultConnection");
+
 if (!string.IsNullOrEmpty(tempConnStr))
 {
     try
     {
         using var conn = new MySqlConnector.MySqlConnection(tempConnStr);
         conn.Open();
+
         var colsToAdd = new string[]
         {
             "Board VARCHAR(100) NULL",
@@ -501,6 +509,7 @@ if (!string.IsNullOrEmpty(tempConnStr))
             "AcademicLevel VARCHAR(50) NOT NULL DEFAULT ''",
             "Board VARCHAR(100) NOT NULL DEFAULT ''",
             "Group VARCHAR(100) NOT NULL DEFAULT ''",
+            "Programme VARCHAR(100) NOT NULL DEFAULT ''",
             "RoomNumber VARCHAR(50) NULL",
             "ClassTeacherId INT NULL",
             "MaximumStrength INT NOT NULL DEFAULT 0",
@@ -611,6 +620,7 @@ if (!string.IsNullOrEmpty(tempConnStr))
             catch { }
 
             var colName = col.Split(' ')[0];
+
             try
             {
                 using var cmd = conn.CreateCommand();
@@ -623,16 +633,34 @@ if (!string.IsNullOrEmpty(tempConnStr))
         try
         {
             using var cmd = conn.CreateCommand();
+
             cmd.CommandText = @"
-                INSERT IGNORE INTO `Students` (`StudentId`, `AdmissionNo`, `RollNo`, `StudentName`, `FirstName`, `LastName`, `Gender`, `DateOfBirth`, `Mobile`, `Email`, `AcademicYearId`, `GroupId`, `SectionId`, `IsActive`, `CreatedAt`) 
-                VALUES 
-                (1, 'ADM001', 'MPCA001', 'Rahul', 'Rahul', 'Kumar', 'Male', '2006-01-01', '9876543210', 'rahul@example.com', 1, 1, 1, 1, NOW()),
-                (2, 'ADM002', 'MPCA002', 'Ramesh', 'Ramesh', 'Kumar', 'Male', '2006-01-01', '9876543211', 'ramesh@example.com', 1, 1, 1, 1, NOW()),
-                (3, 'ADM003', 'MPCA003', 'Sai Kiran', 'Sai', 'Kiran', 'Male', '2006-01-01', '9876543212', 'saikiran@example.com', 1, 1, 1, 1, NOW()),
-                (4, 'ADM004', 'MPCA004', 'Ananya Reddy', 'Ananya', 'Reddy', 'Female', '2006-01-01', '9876543213', 'ananya@example.com', 1, 1, 1, 1, NOW()),
-                (5, 'ADM005', 'MPCA005', 'Venkatesh', 'Venkatesh', 'Rao', 'Male', '2006-01-01', '9876543214', 'venkatesh@example.com', 1, 1, 1, 1, NOW()),
-                (6, 'ADM006', 'MPCA006', 'Priyanka', 'Priyanka', 'Sharma', 'Female', '2006-01-01', '9876543215', 'priyanka@example.com', 1, 1, 1, 1, NOW());
+                INSERT IGNORE INTO `Students`
+                (`StudentId`, `AdmissionNo`, `RollNo`, `StudentName`,
+                 `FirstName`, `LastName`, `Gender`, `DateOfBirth`,
+                 `Mobile`, `Email`, `AcademicYearId`, `GroupId`,
+                 `SectionId`, `IsActive`, `CreatedAt`)
+                VALUES
+                (1, 'ADM001', 'MPCA001', 'Rahul', 'Rahul', 'Kumar',
+                 'Male', '2006-01-01', '9876543210', 'rahul@example.com',
+                 1, 1, 1, 1, NOW()),
+                (2, 'ADM002', 'MPCA002', 'Ramesh', 'Ramesh', 'Kumar',
+                 'Male', '2006-01-01', '9876543211', 'ramesh@example.com',
+                 1, 1, 1, 1, NOW()),
+                (3, 'ADM003', 'MPCA003', 'Sai Kiran', 'Sai', 'Kiran',
+                 'Male', '2006-01-01', '9876543212', 'saikiran@example.com',
+                 1, 1, 1, 1, NOW()),
+                (4, 'ADM004', 'MPCA004', 'Ananya Reddy', 'Ananya', 'Reddy',
+                 'Female', '2006-01-01', '9876543213', 'ananya@example.com',
+                 1, 1, 1, 1, NOW()),
+                (5, 'ADM005', 'MPCA005', 'Venkatesh', 'Venkatesh', 'Rao',
+                 'Male', '2006-01-01', '9876543214', 'venkatesh@example.com',
+                 1, 1, 1, 1, NOW()),
+                (6, 'ADM006', 'MPCA006', 'Priyanka', 'Priyanka', 'Sharma',
+                 'Female', '2006-01-01', '9876543215', 'priyanka@example.com',
+                 1, 1, 1, 1, NOW());
             ";
+
             cmd.ExecuteNonQuery();
         }
         catch { }
@@ -672,11 +700,35 @@ if (!string.IsNullOrEmpty(tempConnStr))
         try
         {
             using var cmd = conn.CreateCommand();
-            try { cmd.CommandText = "ALTER TABLE Groups ADD COLUMN BoardId INT NOT NULL DEFAULT 1;"; cmd.ExecuteNonQuery(); } catch { }
-            try { cmd.CommandText = "ALTER TABLE Groups ADD COLUMN AcademicLevelId INT NOT NULL DEFAULT 1;"; cmd.ExecuteNonQuery(); } catch { }
-            try { cmd.CommandText = "UPDATE Groups g JOIN Boards b ON (b.BoardName = g.Board OR b.BoardCode = g.Board OR CAST(b.BoardId AS CHAR) = g.Board) SET g.BoardId = b.BoardId WHERE g.BoardId = 1 OR g.BoardId = 0;"; cmd.ExecuteNonQuery(); } catch { }
-            try { cmd.CommandText = "UPDATE Groups g JOIN AcademicLevels al ON (al.LevelName = g.AcademicLevel OR CAST(al.AcademicLevelId AS CHAR) = g.AcademicLevel) SET g.AcademicLevelId = al.AcademicLevelId WHERE g.AcademicLevelId = 1 OR g.AcademicLevelId = 0;"; cmd.ExecuteNonQuery(); } catch { }
-            
+
+            try
+            {
+                cmd.CommandText = "ALTER TABLE Groups ADD COLUMN BoardId INT NOT NULL DEFAULT 1;";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+
+            try
+            {
+                cmd.CommandText = "ALTER TABLE Groups ADD COLUMN AcademicLevelId INT NOT NULL DEFAULT 1;";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+
+            try
+            {
+                cmd.CommandText = "UPDATE Groups g JOIN Boards b ON (b.BoardName = g.Board OR b.BoardCode = g.Board OR CAST(b.BoardId AS CHAR) = g.Board) SET g.BoardId = b.BoardId WHERE g.BoardId = 1 OR g.BoardId = 0;";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+
+            try
+            {
+                cmd.CommandText = "UPDATE Groups g JOIN AcademicLevels al ON (al.LevelName = g.AcademicLevel OR CAST(al.AcademicLevelId AS CHAR) = g.AcademicLevel) SET g.AcademicLevelId = al.AcademicLevelId WHERE g.AcademicLevelId = 1 OR g.AcademicLevelId = 0;";
+                cmd.ExecuteNonQuery();
+            }
+            catch { }
+
             cmd.CommandText = @"
                 DROP PROCEDURE IF EXISTS sp_GetAllGroups;
                 CREATE PROCEDURE sp_GetAllGroups(
@@ -698,25 +750,32 @@ if (!string.IsNullOrEmpty(tempConnStr))
                         g.GroupName,
                         g.GroupCode,
                         g.Description,
-                        (SELECT COUNT(*) FROM Subjects sub WHERE sub.GroupId = g.GroupId AND sub.IsActive = 1) AS TotalSubjects,
+                        (SELECT COUNT(*) FROM Subjects sub
+                         WHERE sub.GroupId = g.GroupId
+                         AND sub.IsActive = 1) AS TotalSubjects,
                         g.IsActive,
-                        CASE WHEN g.IsActive = 1 THEN 'Active' ELSE 'Inactive' END AS Status,
+                        CASE WHEN g.IsActive = 1 THEN 'Active'
+                             ELSE 'Inactive' END AS Status,
                         g.CreatedAt,
                         g.UpdatedAt
                     FROM Groups g
                     LEFT JOIN Boards b ON b.BoardId = g.BoardId
-                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = g.AcademicYearId
-                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = g.AcademicLevelId
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = g.AcademicYearId
+                    LEFT JOIN AcademicLevels al
+                        ON al.AcademicLevelId = g.AcademicLevelId
                     WHERE (p_Search IS NULL OR TRIM(p_Search) = ''
                            OR g.GroupName LIKE CONCAT('%', TRIM(p_Search), '%')
                            OR g.GroupCode LIKE CONCAT('%', TRIM(p_Search), '%'))
                       AND (p_BoardId IS NULL OR g.BoardId = p_BoardId)
-                      AND (p_AcademicYearId IS NULL OR g.AcademicYearId = p_AcademicYearId)
-                      AND (p_AcademicLevelId IS NULL OR g.AcademicLevelId = p_AcademicLevelId)
+                      AND (p_AcademicYearId IS NULL
+                           OR g.AcademicYearId = p_AcademicYearId)
+                      AND (p_AcademicLevelId IS NULL
+                           OR g.AcademicLevelId = p_AcademicLevelId)
                       AND (p_IsActive IS NULL OR g.IsActive = p_IsActive)
                     ORDER BY g.GroupId DESC;
                 END;
-                
+
                 DROP PROCEDURE IF EXISTS sp_GetGroupById;
                 CREATE PROCEDURE sp_GetGroupById(IN p_GroupId INT)
                 BEGIN
@@ -731,19 +790,24 @@ if (!string.IsNullOrEmpty(tempConnStr))
                         g.GroupName,
                         g.GroupCode,
                         g.Description,
-                        (SELECT COUNT(*) FROM Subjects sub WHERE sub.GroupId = g.GroupId AND sub.IsActive = 1) AS TotalSubjects,
+                        (SELECT COUNT(*) FROM Subjects sub
+                         WHERE sub.GroupId = g.GroupId
+                         AND sub.IsActive = 1) AS TotalSubjects,
                         g.IsActive,
-                        CASE WHEN g.IsActive = 1 THEN 'Active' ELSE 'Inactive' END AS Status,
+                        CASE WHEN g.IsActive = 1 THEN 'Active'
+                             ELSE 'Inactive' END AS Status,
                         g.CreatedAt,
                         g.UpdatedAt
                     FROM Groups g
                     LEFT JOIN Boards b ON b.BoardId = g.BoardId
-                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = g.AcademicYearId
-                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = g.AcademicLevelId
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = g.AcademicYearId
+                    LEFT JOIN AcademicLevels al
+                        ON al.AcademicLevelId = g.AcademicLevelId
                     WHERE g.GroupId = p_GroupId
                     LIMIT 1;
                 END;
-                
+
                 DROP PROCEDURE IF EXISTS sp_GetGroupsByBoard;
                 CREATE PROCEDURE sp_GetGroupsByBoard(IN p_BoardId INT)
                 BEGIN
@@ -758,19 +822,25 @@ if (!string.IsNullOrEmpty(tempConnStr))
                         g.GroupName,
                         g.GroupCode,
                         g.Description,
-                        (SELECT COUNT(*) FROM Subjects sub WHERE sub.GroupId = g.GroupId AND sub.IsActive = 1) AS TotalSubjects,
+                        (SELECT COUNT(*) FROM Subjects sub
+                         WHERE sub.GroupId = g.GroupId
+                         AND sub.IsActive = 1) AS TotalSubjects,
                         g.IsActive,
-                        CASE WHEN g.IsActive = 1 THEN 'Active' ELSE 'Inactive' END AS Status,
+                        CASE WHEN g.IsActive = 1 THEN 'Active'
+                             ELSE 'Inactive' END AS Status,
                         g.CreatedAt,
                         g.UpdatedAt
                     FROM Groups g
                     LEFT JOIN Boards b ON b.BoardId = g.BoardId
-                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = g.AcademicYearId
-                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = g.AcademicLevelId
-                    WHERE g.BoardId = p_BoardId AND g.IsActive = 1
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = g.AcademicYearId
+                    LEFT JOIN AcademicLevels al
+                        ON al.AcademicLevelId = g.AcademicLevelId
+                    WHERE g.BoardId = p_BoardId
+                      AND g.IsActive = 1
                     ORDER BY g.GroupId DESC;
                 END;
-                
+
                 DROP PROCEDURE IF EXISTS sp_GetGroupDropdown;
                 CREATE PROCEDURE sp_GetGroupDropdown()
                 BEGIN
@@ -786,12 +856,14 @@ if (!string.IsNullOrEmpty(tempConnStr))
                         COALESCE(al.LevelName, '') AS AcademicLevelName
                     FROM Groups g
                     LEFT JOIN Boards b ON b.BoardId = g.BoardId
-                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = g.AcademicYearId
-                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = g.AcademicLevelId
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = g.AcademicYearId
+                    LEFT JOIN AcademicLevels al
+                        ON al.AcademicLevelId = g.AcademicLevelId
                     WHERE g.IsActive = 1
                     ORDER BY g.GroupName ASC;
                 END;
-                
+
                 DROP PROCEDURE IF EXISTS sp_GetGroupSummary;
                 CREATE PROCEDURE sp_GetGroupSummary(IN p_GroupId INT)
                 BEGIN
@@ -805,24 +877,35 @@ if (!string.IsNullOrEmpty(tempConnStr))
                         COALESCE(al.LevelName, '') AS AcademicLevelName,
                         g.AcademicYearId,
                         COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
-                        (SELECT COUNT(*) FROM Students st WHERE st.GroupId = g.GroupId) AS TotalStudents,
-                        (SELECT COUNT(*) FROM Students st WHERE st.GroupId = g.GroupId AND st.IsActive = 1) AS ActiveStudents,
-                        (SELECT COUNT(*) FROM Subjects sub WHERE sub.GroupId = g.GroupId) AS TotalSubjects,
-                        (SELECT COUNT(*) FROM Subjects sub WHERE sub.GroupId = g.GroupId AND sub.IsActive = 1) AS ActiveSubjects
+                        (SELECT COUNT(*) FROM Students st
+                         WHERE st.GroupId = g.GroupId) AS TotalStudents,
+                        (SELECT COUNT(*) FROM Students st
+                         WHERE st.GroupId = g.GroupId
+                         AND st.IsActive = 1) AS ActiveStudents,
+                        (SELECT COUNT(*) FROM Subjects sub
+                         WHERE sub.GroupId = g.GroupId) AS TotalSubjects,
+                        (SELECT COUNT(*) FROM Subjects sub
+                         WHERE sub.GroupId = g.GroupId
+                         AND sub.IsActive = 1) AS ActiveSubjects
                     FROM Groups g
                     LEFT JOIN Boards b ON b.BoardId = g.BoardId
-                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = g.AcademicYearId
-                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = g.AcademicLevelId
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = g.AcademicYearId
+                    LEFT JOIN AcademicLevels al
+                        ON al.AcademicLevelId = g.AcademicLevelId
                     WHERE g.GroupId = p_GroupId
                     LIMIT 1;
                 END;
             ";
+
             cmd.ExecuteNonQuery();
         }
         catch { }
+
         try
         {
             using var cmd = conn.CreateCommand();
+
             cmd.CommandText = "DROP PROCEDURE IF EXISTS sp_GetAdminByEmail;";
             cmd.ExecuteNonQuery();
 
@@ -831,8 +914,297 @@ CREATE PROCEDURE sp_GetAdminByEmail(
     IN p_Email VARCHAR(255)
 )
 BEGIN
-    SELECT * FROM `admins` WHERE Email = p_Email LIMIT 1;
+    SELECT *
+    FROM `admins`
+    WHERE Email = p_Email
+    LIMIT 1;
 END;";
+
+            cmd.ExecuteNonQuery();
+        }
+        catch { }
+
+        try
+        {
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = @"
+                DROP PROCEDURE IF EXISTS sp_GetAllSections;
+
+                CREATE PROCEDURE sp_GetAllSections(
+                    IN p_Board VARCHAR(100),
+                    IN p_AcademicYearId INT,
+                    IN p_Group VARCHAR(100),
+                    IN p_GroupId INT,
+                    IN p_Programme VARCHAR(100),
+                    IN p_AcademicLevel VARCHAR(50),
+                    IN p_SearchTerm VARCHAR(100),
+                    IN p_IsActive TINYINT(1)
+                )
+                BEGIN
+                    SELECT s.SectionId,
+                           s.BoardId,
+                           s.Board,
+                           s.AcademicYearId,
+                           COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
+                           s.GroupId,
+                           s.`Group`,
+                           COALESCE(s.Programme, '') AS Programme,
+                           s.AcademicLevel,
+                           s.SectionName,
+                           s.RoomNumber,
+                           s.RoomId,
+                           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+                           s.ClassTeacherId,
+                           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+                           s.MaximumStrength,
+                           s.IsActive,
+                           s.CreatedAt,
+                           s.UpdatedAt
+                    FROM Sections s
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = s.AcademicYearId
+                    LEFT JOIN Faculties f
+                        ON f.Id = s.ClassTeacherId
+                    LEFT JOIN Rooms r
+                        ON r.RoomId = s.RoomId
+                    WHERE (p_Board IS NULL
+                           OR p_Board = ''
+                           OR s.Board = p_Board)
+                      AND (p_AcademicYearId IS NULL
+                           OR p_AcademicYearId = 0
+                           OR s.AcademicYearId = p_AcademicYearId)
+                      AND (p_Group IS NULL
+                           OR p_Group = ''
+                           OR s.`Group` = p_Group)
+                      AND (p_GroupId IS NULL
+                           OR p_GroupId = 0
+                           OR s.GroupId = p_GroupId)
+                      AND (p_Programme IS NULL
+                           OR p_Programme = ''
+                           OR s.Programme = p_Programme)
+                      AND (p_AcademicLevel IS NULL
+                           OR p_AcademicLevel = ''
+                           OR s.AcademicLevel = p_AcademicLevel)
+                      AND (p_IsActive IS NULL
+                           OR s.IsActive = p_IsActive)
+                      AND (
+                           p_SearchTerm IS NULL
+                           OR p_SearchTerm = ''
+                           OR s.SectionName LIKE CONCAT('%', p_SearchTerm, '%')
+                           OR s.`Group` LIKE CONCAT('%', p_SearchTerm, '%')
+                           OR s.Programme LIKE CONCAT('%', p_SearchTerm, '%')
+                           OR CONCAT(f.FirstName, ' ', f.LastName)
+                              LIKE CONCAT('%', p_SearchTerm, '%')
+                           OR s.RoomNumber LIKE CONCAT('%', p_SearchTerm, '%')
+                           OR r.RoomName LIKE CONCAT('%', p_SearchTerm, '%')
+                      )
+                    ORDER BY s.SectionId DESC;
+                END;
+
+                DROP PROCEDURE IF EXISTS sp_GetSectionById;
+
+                CREATE PROCEDURE sp_GetSectionById(IN p_SectionId INT)
+                BEGIN
+                    SELECT s.SectionId,
+                           s.BoardId,
+                           s.Board,
+                           s.AcademicYearId,
+                           COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
+                           s.GroupId,
+                           s.`Group`,
+                           COALESCE(s.Programme, '') AS Programme,
+                           s.AcademicLevel,
+                           s.SectionName,
+                           s.RoomNumber,
+                           s.RoomId,
+                           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+                           s.ClassTeacherId,
+                           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+                           s.MaximumStrength,
+                           s.IsActive,
+                           s.CreatedAt,
+                           s.UpdatedAt
+                    FROM Sections s
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = s.AcademicYearId
+                    LEFT JOIN Faculties f
+                        ON f.Id = s.ClassTeacherId
+                    LEFT JOIN Rooms r
+                        ON r.RoomId = s.RoomId
+                    WHERE s.SectionId = p_SectionId;
+                END;
+
+                DROP PROCEDURE IF EXISTS sp_CreateSection;
+
+                CREATE PROCEDURE sp_CreateSection(
+                    IN p_Board VARCHAR(100),
+                    IN p_BoardId INT,
+                    IN p_AcademicYearId INT,
+                    IN p_Group VARCHAR(100),
+                    IN p_GroupId INT,
+                    IN p_Programme VARCHAR(100),
+                    IN p_AcademicLevel VARCHAR(50),
+                    IN p_SectionName VARCHAR(50),
+                    IN p_RoomNumber VARCHAR(50),
+                    IN p_ClassTeacherId INT,
+                    IN p_MaximumStrength INT,
+                    IN p_IsActive TINYINT(1),
+                    IN p_RoomId INT
+                )
+                BEGIN
+                    INSERT INTO Sections (
+                        Board,
+                        BoardId,
+                        AcademicYearId,
+                        `Group`,
+                        GroupId,
+                        Programme,
+                        AcademicLevel,
+                        SectionName,
+                        RoomNumber,
+                        ClassTeacherId,
+                        MaximumStrength,
+                        IsActive,
+                        RoomId,
+                        CreatedAt
+                    )
+                    VALUES (
+                        p_Board,
+                        p_BoardId,
+                        p_AcademicYearId,
+                        p_Group,
+                        p_GroupId,
+                        COALESCE(p_Programme, ''),
+                        p_AcademicLevel,
+                        p_SectionName,
+                        p_RoomNumber,
+                        p_ClassTeacherId,
+                        p_MaximumStrength,
+                        p_IsActive,
+                        p_RoomId,
+                        UTC_TIMESTAMP()
+                    );
+
+                    SELECT LAST_INSERT_ID();
+                END;
+
+                DROP PROCEDURE IF EXISTS sp_UpdateSection;
+
+                CREATE PROCEDURE sp_UpdateSection(
+                    IN p_SectionId INT,
+                    IN p_Board VARCHAR(100),
+                    IN p_BoardId INT,
+                    IN p_AcademicYearId INT,
+                    IN p_Group VARCHAR(100),
+                    IN p_GroupId INT,
+                    IN p_Programme VARCHAR(100),
+                    IN p_AcademicLevel VARCHAR(50),
+                    IN p_SectionName VARCHAR(50),
+                    IN p_RoomNumber VARCHAR(50),
+                    IN p_ClassTeacherId INT,
+                    IN p_MaximumStrength INT,
+                    IN p_IsActive TINYINT(1),
+                    IN p_RoomId INT
+                )
+                BEGIN
+                    UPDATE Sections
+                    SET Board = p_Board,
+                        BoardId = COALESCE(p_BoardId, BoardId),
+                        AcademicYearId = p_AcademicYearId,
+                        `Group` = p_Group,
+                        GroupId = COALESCE(p_GroupId, GroupId),
+                        Programme = COALESCE(p_Programme, ''),
+                        AcademicLevel = p_AcademicLevel,
+                        SectionName = p_SectionName,
+                        RoomNumber = p_RoomNumber,
+                        ClassTeacherId = p_ClassTeacherId,
+                        MaximumStrength = p_MaximumStrength,
+                        IsActive = p_IsActive,
+                        RoomId = p_RoomId,
+                        UpdatedAt = UTC_TIMESTAMP()
+                    WHERE SectionId = p_SectionId;
+                END;
+
+                DROP PROCEDURE IF EXISTS sp_DeleteSection;
+
+                CREATE PROCEDURE sp_DeleteSection(IN p_SectionId INT)
+                BEGIN
+                    DELETE FROM Sections
+                    WHERE SectionId = p_SectionId;
+                END;
+
+                DROP PROCEDURE IF EXISTS sp_ValidateSectionName;
+
+                CREATE PROCEDURE sp_ValidateSectionName(
+                    IN p_Board VARCHAR(100),
+                    IN p_AcademicYearId INT,
+                    IN p_Group VARCHAR(100),
+                    IN p_Programme VARCHAR(100),
+                    IN p_AcademicLevel VARCHAR(50),
+                    IN p_SectionName VARCHAR(50),
+                    IN p_ExcludeSectionId INT
+                )
+                BEGIN
+                    SELECT COUNT(1)
+                    FROM Sections
+                    WHERE Board = p_Board
+                      AND AcademicYearId = p_AcademicYearId
+                      AND `Group` = p_Group
+                      AND (
+                          Programme = p_Programme
+                          OR (Programme IS NULL AND p_Programme = '')
+                          OR (Programme = '' AND p_Programme IS NULL)
+                      )
+                      AND AcademicLevel = p_AcademicLevel
+                      AND SectionName = p_SectionName
+                      AND (
+                          p_ExcludeSectionId IS NULL
+                          OR SectionId <> p_ExcludeSectionId
+                      );
+                END;
+
+                DROP PROCEDURE IF EXISTS sp_GetSectionsByGroup;
+
+                CREATE PROCEDURE sp_GetSectionsByGroup(IN p_GroupId INT)
+                BEGIN
+                    SELECT s.SectionId,
+                           s.BoardId,
+                           s.Board,
+                           s.AcademicYearId,
+                           COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
+                           s.GroupId,
+                           s.`Group`,
+                           COALESCE(s.Programme, '') AS Programme,
+                           s.AcademicLevel,
+                           s.SectionName,
+                           s.RoomNumber,
+                           s.RoomId,
+                           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+                           s.ClassTeacherId,
+                           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+                           s.MaximumStrength,
+                           s.IsActive,
+                           s.CreatedAt,
+                           s.UpdatedAt
+                    FROM Sections s
+                    LEFT JOIN AcademicYears ay
+                        ON ay.AcademicYearId = s.AcademicYearId
+                    LEFT JOIN Faculties f
+                        ON f.Id = s.ClassTeacherId
+                    LEFT JOIN Rooms r
+                        ON r.RoomId = s.RoomId
+                    WHERE s.GroupId = p_GroupId
+                       OR s.`Group` = (
+                           SELECT GroupName
+                           FROM `Groups`
+                           WHERE GroupId = p_GroupId
+                           LIMIT 1
+                       )
+                    ORDER BY s.SectionName ASC;
+                END;
+            ";
+
             cmd.ExecuteNonQuery();
         }
         catch { }
@@ -873,20 +1245,47 @@ app.UseAuthentication();
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value ?? "";
-    if (path.Equals("/detail", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/detail", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/Evaluations/detail", StringComparison.OrdinalIgnoreCase))
+
+    if (path.Equals("/detail", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/detail", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/api/Evaluations/detail", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/admin/detail";
-    else if (path.Equals("/status", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/status", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/Evaluations/status", StringComparison.OrdinalIgnoreCase))
+    }
+    else if (path.Equals("/status", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/status", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/Evaluations/status", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/admin/status";
-    else if (path.Equals("/global-approval", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/global-approval", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/Evaluations/global-approval", StringComparison.OrdinalIgnoreCase))
+    }
+    else if (path.Equals("/global-approval", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/global-approval", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/Evaluations/global-approval", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/admin/global-approval";
-    else if (path.Equals("/student-matrix", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/student-matrix", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/Evaluations/student-matrix", StringComparison.OrdinalIgnoreCase))
+    }
+    else if (path.Equals("/student-matrix", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/student-matrix", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/Evaluations/student-matrix", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/admin/student-matrix";
-    else if (path.Equals("/subject-analysis", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/subject-analysis", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/Evaluations/subject-analysis", StringComparison.OrdinalIgnoreCase))
+    }
+    else if (path.Equals("/subject-analysis", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/subject-analysis", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/Evaluations/subject-analysis", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/admin/subject-analysis";
-    else if (path.Equals("/faculty/entry", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/faculty/entry", StringComparison.OrdinalIgnoreCase))
+    }
+    else if (path.Equals("/faculty/entry", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/faculty/entry", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/faculty/entry";
-    else if (path.Equals("/list", StringComparison.OrdinalIgnoreCase) || path.Equals("/api/list", StringComparison.OrdinalIgnoreCase))
+    }
+    else if (path.Equals("/list", StringComparison.OrdinalIgnoreCase) ||
+             path.Equals("/api/list", StringComparison.OrdinalIgnoreCase))
+    {
         context.Request.Path = "/api/Evaluations/admin/list";
+    }
 
     await next();
 });

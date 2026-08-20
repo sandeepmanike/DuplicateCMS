@@ -1,6 +1,6 @@
-DROP PROCEDURE IF EXISTS sp_GetSectionById;
+DROP PROCEDURE IF EXISTS sp_GetSectionsByGroup;
 DELIMITER //
-CREATE PROCEDURE sp_GetSectionById(IN p_SectionId INT)
+CREATE PROCEDURE sp_GetSectionsByGroup(IN p_GroupId INT)
 BEGIN
     SELECT s.SectionId,
            s.BoardId,
@@ -25,6 +25,8 @@ BEGIN
     LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
     LEFT JOIN Faculties f ON f.Id = s.ClassTeacherId
     LEFT JOIN Rooms r ON r.RoomId = s.RoomId
-    WHERE s.SectionId = p_SectionId;
+    WHERE s.GroupId = p_GroupId 
+       OR s.`Group` = (SELECT GroupName FROM `Groups` WHERE GroupId = p_GroupId LIMIT 1)
+    ORDER BY s.SectionName ASC;
 END //
 DELIMITER ;

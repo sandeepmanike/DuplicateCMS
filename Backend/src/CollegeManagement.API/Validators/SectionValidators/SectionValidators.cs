@@ -1,4 +1,4 @@
-﻿using CollegeManagement.API.DTOs.Sections;
+using CollegeManagement.API.DTOs.Sections;
 using FluentValidation;
 
 namespace CollegeManagement.API.Validators
@@ -18,9 +18,8 @@ namespace CollegeManagement.API.Validators
                 .NotEmpty().WithMessage("Group is required.")
                 .MaximumLength(100).WithMessage("Group cannot exceed 100 characters.");
 
-            RuleFor(x => x.AcademicLevel)
-                .NotEmpty().WithMessage("Academic Level is required.")
-                .MaximumLength(50).WithMessage("Academic Level cannot exceed 50 characters.");
+            RuleFor(x => x.Programme)
+                .MaximumLength(100).WithMessage("Programme cannot exceed 100 characters.");
 
             RuleFor(x => x.SectionName)
                 .NotEmpty().WithMessage("Section Name is required.")
@@ -53,9 +52,8 @@ namespace CollegeManagement.API.Validators
                 .NotEmpty().WithMessage("Group is required.")
                 .MaximumLength(100).WithMessage("Group cannot exceed 100 characters.");
 
-            RuleFor(x => x.AcademicLevel)
-                .NotEmpty().WithMessage("Academic Level is required.")
-                .MaximumLength(50).WithMessage("Academic Level cannot exceed 50 characters.");
+            RuleFor(x => x.Programme)
+                .MaximumLength(100).WithMessage("Programme cannot exceed 100 characters.");
 
             RuleFor(x => x.SectionName)
                 .NotEmpty().WithMessage("Section Name is required.")
