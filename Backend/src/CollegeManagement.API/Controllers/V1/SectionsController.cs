@@ -10,7 +10,6 @@ namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
     [Route("api/v1/[controller]")]
-    [Route("api/[controller]")]
     [Produces("application/json")]
     [Authorize]
     public class SectionsController : ControllerBase
