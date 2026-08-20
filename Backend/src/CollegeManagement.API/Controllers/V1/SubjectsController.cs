@@ -1,5 +1,7 @@
-using CollegeManagement.API.DTOs;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Subject;
+using CollegeManagement.API.Models;
 using CollegeManagement.API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,10 +9,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace CollegeManagement.API.Controllers
 {
     /// <summary>
-    /// API controller for Subject management, handling creation, retrieval, updates, and deletion of subjects.
+    /// API controller for Subject management, handling creation, retrieval, updates, and deletion of subjects by academic context (Board + Group + Academic Level).
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Route("api/v1/[controller]")]
     [Authorize]
     public class SubjectsController : ControllerBase
     {
@@ -21,18 +24,83 @@ namespace CollegeManagement.API.Controllers
             _service = service;
         }
 
+        /// <summary>
+        /// Retrieves all subjects, optionally filtered by BoardId, GroupId, and AcademicLevelId.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetAllSubjects(
+            [FromQuery] int? boardId = null,
+            [FromQuery] int? groupId = null,
+            [FromQuery] int? academicLevelId = null)
+        {
+            if (boardId.HasValue && groupId.HasValue && academicLevelId.HasValue)
+            {
+                var contextSubjects = await _service.GetByContextAsync(boardId.Value, groupId.Value, academicLevelId.Value);
+                return Ok(contextSubjects);
+            }
+
+            var subjects = await _service.GetAllAsync();
+            return Ok(subjects);
+        }
+
+        /// <summary>
+        /// Searches subjects with filters for search keyword, BoardId, GroupId, AcademicLevelId, and active status.
+        /// </summary>
         [HttpGet("search")]
         public async Task<IActionResult> Search(
             [FromQuery] string? search = null,
             [FromQuery] int? boardId = null,
-            [FromQuery] int? academicYearId = null,
             [FromQuery] int? groupId = null,
+            [FromQuery] int? academicLevelId = null,
             [FromQuery] bool? isActive = null)
-            => Ok(await _service.SearchAsync(search, boardId, academicYearId, groupId, isActive));
+        {
+            var results = await _service.SearchAsync(search, boardId, groupId, academicLevelId, isActive);
+            return Ok(results);
+        }
 
+        /// <summary>
+        /// Retrieves subjects for a specific academic context (Board + Group + Academic Level).
+        /// </summary>
+        [HttpGet("context")]
+        public async Task<IActionResult> GetByContext(
+            [FromQuery] int boardId,
+            [FromQuery] int groupId,
+            [FromQuery] int academicLevelId)
+        {
+            if (boardId <= 0 || groupId <= 0 || academicLevelId <= 0)
+                return BadRequest(new { message = "Valid BoardId, GroupId, and AcademicLevelId are required." });
+
+            var subjects = await _service.GetByContextAsync(boardId, groupId, academicLevelId);
+            return Ok(subjects);
+        }
+
+        /// <summary>
+        /// Checks if a subject code already exists in the given context.
+        /// </summary>
+        [HttpGet("check-code")]
+        public async Task<IActionResult> CheckCode(
+            [FromQuery] string subjectCode,
+            [FromQuery] int boardId = 0,
+            [FromQuery] int groupId = 0,
+            [FromQuery] int academicLevelId = 0,
+            [FromQuery] int? excludeSubjectId = null)
+        {
+            if (string.IsNullOrWhiteSpace(subjectCode))
+                return BadRequest(new { message = "Subject code is required." });
+
+            var exists = await _service.SubjectCodeExistsAsync(subjectCode, boardId, groupId, academicLevelId, excludeSubjectId);
+            return Ok(new { subjectCode, exists, isAvailable = !exists });
+        }
+
+        /// <summary>
+        /// Retrieves all active subjects.
+        /// </summary>
         [HttpGet("active")]
         public async Task<IActionResult> GetActive() => Ok(await _service.GetActiveAsync());
 
+        /// <summary>
+        /// Retrieves subjects associated with a specific board.
+        /// </summary>
         [HttpGet("board/{boardId:int}")]
         public async Task<IActionResult> GetByBoard(int boardId)
         {
@@ -40,62 +108,22 @@ namespace CollegeManagement.API.Controllers
             return Ok(await _service.GetByBoardIdAsync(boardId));
         }
 
-        [HttpGet("academic-year/{academicYearId:int}")]
-        public async Task<IActionResult> GetByAcademicYear(int academicYearId)
-        {
-            if (academicYearId <= 0) return BadRequest(new { message = "Valid AcademicYearId is required." });
-            return Ok(await _service.GetByAcademicYearIdAsync(academicYearId));
-        }
-
-        [HttpGet("check-code")]
-        public async Task<IActionResult> CheckCode([FromQuery] string subjectCode, [FromQuery] int? excludeSubjectId = null)
-        {
-            if (string.IsNullOrWhiteSpace(subjectCode)) return BadRequest(new { message = "Subject code is required." });
-            var exists = await _service.SubjectCodeExistsAsync(subjectCode, excludeSubjectId);
-            return Ok(new { subjectCode, exists, isAvailable = !exists });
-        }
-
-        // ==========================
-        // GET ALL SUBJECTS
-        // ==========================
-        /// <summary>
-        /// Retrieves all subjects.
-        /// </summary>
-        [HttpGet]
-        public async Task<IActionResult> GetAllSubjects()
-        {
-            var subjects = await _service.GetAllAsync();
-            return Ok(subjects);
-        }
-
-        // ==========================
-        // GET SUBJECT BY ID
-        // ==========================
         /// <summary>
         /// Retrieves a specific subject by its identifier.
         /// </summary>
-        /// <param name="id">The subject identifier.</param>
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetSubjectById(int id)
         {
             var subject = await _service.GetByIdAsync(id);
-
             if (subject == null)
-                return NotFound(new
-                {
-                    message = "Subject not found."
-                });
+                return NotFound(new { message = "Subject not found." });
 
             return Ok(subject);
         }
 
-        // ==========================
-        // GET SUBJECTS BY GROUP
-        // ==========================
         /// <summary>
-        /// Retrieves subjects associated with a specific academic group name.
+        /// Retrieves subjects associated with a specific academic group identifier.
         /// </summary>
-        /// <param name="group">The group name.</param>
         [HttpGet("group/{groupId:int}")]
         public async Task<IActionResult> GetSubjectsByGroupId(int groupId)
         {
@@ -105,13 +133,9 @@ namespace CollegeManagement.API.Controllers
             return Ok(await _service.GetByGroupIdAsync(groupId));
         }
 
-        // ==========================
-        // CREATE SUBJECT
-        // ==========================
         /// <summary>
-        /// Creates a new subject.
+        /// Creates a new subject in the specified academic context (Board + Group + Academic Level).
         /// </summary>
-        /// <param name="dto">The subject details to create.</param>
         [HttpPost]
         public async Task<IActionResult> CreateSubject([FromBody] CreateSubjectDto dto)
         {
@@ -124,14 +148,9 @@ namespace CollegeManagement.API.Controllers
                 subject);
         }
 
-        // ==========================
-        // UPDATE SUBJECT
-        // ==========================
         /// <summary>
-        /// Updates an existing subject.
+        /// Updates an existing subject in the specified academic context.
         /// </summary>
-        /// <param name="id">The subject identifier to update.</param>
-        /// <param name="dto">The updated subject details.</param>
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateSubject(int id, [FromBody] UpdateSubjectDto dto)
         {
@@ -139,40 +158,22 @@ namespace CollegeManagement.API.Controllers
             var subject = await _service.UpdateAsync(id, dto);
 
             if (subject == null)
-            {
-                return NotFound(new
-                {
-                    message = "Subject not found."
-                });
-            }
+                return NotFound(new { message = "Subject not found." });
 
             return Ok(subject);
         }
 
-        // ==========================
-        // DELETE SUBJECT
-        // ==========================
         /// <summary>
-        /// Deletes a specific subject by its identifier.
+        /// Deletes/deactivates a specific subject by its identifier.
         /// </summary>
-        /// <param name="id">The subject identifier to delete.</param>
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteSubject(int id)
         {
             var deleted = await _service.DeleteAsync(id);
-
             if (!deleted)
-            {
-                return NotFound(new
-                {
-                    message = "Subject not found."
-                });
-            }
+                return NotFound(new { message = "Subject not found." });
 
-            return Ok(new
-            {
-                message = "Subject deleted successfully."
-            });
+            return Ok(new { message = "Subject deleted successfully." });
         }
     }
 }

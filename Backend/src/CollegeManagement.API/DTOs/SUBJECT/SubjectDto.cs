@@ -1,16 +1,16 @@
-﻿namespace CollegeManagement.API.DTOs.Subject
+using System;
+
+namespace CollegeManagement.API.DTOs.Subject
 {
     public class SubjectDto
     {
         public int SubjectId { get; set; }
         public int BoardId { get; set; }
         public string? BoardName { get; set; }
-        public int AcademicYearId { get; set; }
-        public string? AcademicYearName { get; set; }
-        public int AcademicLevelId { get; set; }
-        public string? AcademicLevelName { get; set; }
         public int GroupId { get; set; }
         public string? GroupName { get; set; }
+        public int AcademicLevelId { get; set; }
+        public string? AcademicLevelName { get; set; }
         public string SubjectName { get; set; } = string.Empty;
         public string SubjectCode { get; set; } = string.Empty;
         public string SubjectType { get; set; } = string.Empty;

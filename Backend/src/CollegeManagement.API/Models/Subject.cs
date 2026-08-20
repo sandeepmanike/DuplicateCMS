@@ -11,70 +11,20 @@ namespace CollegeManagement.API.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int SubjectId { get; set; }
 
-        public int? BoardId { get; set; }
+        public int BoardId { get; set; }
 
-        public int? AcademicYearId { get; set; }
+        public int GroupId { get; set; }
 
-        public int? GroupId { get; set; }
-
-        [MaxLength(100)]
-        public string Board { get; set; } = string.Empty;
-
-        [MaxLength(100)]
-        public string Group { get; set; } = string.Empty;
-
-        [MaxLength(100)]
-        public string AcademicLevel { get; set; } = string.Empty;
+        public int AcademicLevelId { get; set; }
 
         [NotMapped]
-        private int? _academicLevelId;
+        public string? BoardName { get; set; }
 
         [NotMapped]
-        public int AcademicLevelId
-        {
-            get
-            {
-                if (_academicLevelId.HasValue && _academicLevelId.Value > 0)
-                    return _academicLevelId.Value;
-
-                if (!string.IsNullOrEmpty(AcademicLevel))
-                {
-                    if (int.TryParse(AcademicLevel.Trim(), out var parsedId))
-                        return parsedId;
-
-                    if (AcademicLevel.Contains("2") || AcademicLevel.ToLower().Contains("2nd") || AcademicLevel.ToLower().Contains("second"))
-                        return 2;
-
-                    return 1;
-                }
-                return 1;
-            }
-            set => _academicLevelId = value;
-        }
+        public string? GroupName { get; set; }
 
         [NotMapped]
-        public string? BoardName
-        {
-            get => Board;
-            set => Board = value ?? string.Empty;
-        }
-
-        [NotMapped]
-        public string? AcademicYearName { get; set; }
-
-        [NotMapped]
-        public string? AcademicLevelName
-        {
-            get => AcademicLevel;
-            set => AcademicLevel = value ?? string.Empty;
-        }
-
-        [NotMapped]
-        public string? GroupName
-        {
-            get => Group;
-            set => Group = value ?? string.Empty;
-        }
+        public string? AcademicLevelName { get; set; }
 
         [Required, MaxLength(150)]
         public string SubjectName { get; set; } = string.Empty;
@@ -99,12 +49,12 @@ namespace CollegeManagement.API.Models
         public DateTime? UpdatedAt { get; set; }
 
         [ForeignKey(nameof(BoardId))]
-        public Board? BoardNavigation { get; set; }
-
-        [ForeignKey(nameof(AcademicYearId))]
-        public AcademicYear? AcademicYear { get; set; }
+        public virtual Board? BoardNavigation { get; set; }
 
         [ForeignKey(nameof(GroupId))]
-        public Group? GroupNavigation { get; set; }
+        public virtual Group? GroupNavigation { get; set; }
+
+        [ForeignKey(nameof(AcademicLevelId))]
+        public virtual AcademicLevel? AcademicLevelNavigation { get; set; }
     }
 }

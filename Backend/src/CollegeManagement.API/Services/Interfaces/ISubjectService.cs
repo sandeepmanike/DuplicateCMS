@@ -1,4 +1,6 @@
-﻿using CollegeManagement.API.DTOs.Subject;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using CollegeManagement.API.DTOs.Subject;
 using CollegeManagement.API.Models;
 
 namespace CollegeManagement.API.Services
@@ -11,10 +13,10 @@ namespace CollegeManagement.API.Services
         Task<Subject?> UpdateAsync(int subjectId, UpdateSubjectDto dto);
         Task<bool> DeleteAsync(int subjectId);
         Task<IEnumerable<Subject>> GetByGroupIdAsync(int groupId);
-        Task<IEnumerable<Subject>> SearchAsync(string? search, int? boardId, int? academicYearId, int? groupId, bool? isActive);
+        Task<IEnumerable<Subject>> GetByContextAsync(int boardId, int groupId, int academicLevelId);
+        Task<IEnumerable<Subject>> SearchAsync(string? search, int? boardId, int? groupId, int? academicLevelId, bool? isActive);
         Task<IEnumerable<Subject>> GetActiveAsync();
         Task<IEnumerable<Subject>> GetByBoardIdAsync(int boardId);
-        Task<IEnumerable<Subject>> GetByAcademicYearIdAsync(int academicYearId);
-        Task<bool> SubjectCodeExistsAsync(string subjectCode, int? excludeSubjectId = null);
+        Task<bool> SubjectCodeExistsAsync(string subjectCode, int boardId, int groupId, int academicLevelId, int? excludeSubjectId = null);
     }
 }

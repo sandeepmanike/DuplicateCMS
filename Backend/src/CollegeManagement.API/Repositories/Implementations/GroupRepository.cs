@@ -58,8 +58,8 @@ namespace CollegeManagement.API.Repositories
 
                 var groupIds = groups.Select(g => g.GroupId).ToList();
                 var subjectCounts = await _context.Subjects
-                    .Where(s => s.GroupId.HasValue && groupIds.Contains(s.GroupId.Value) && s.IsActive)
-                    .GroupBy(s => s.GroupId!.Value)
+                    .Where(s => groupIds.Contains(s.GroupId) && s.IsActive)
+                    .GroupBy(s => s.GroupId)
                     .Select(g => new { GroupId = g.Key, Count = g.Count() })
                     .ToDictionaryAsync(x => x.GroupId, x => x.Count);
 
@@ -144,8 +144,8 @@ namespace CollegeManagement.API.Repositories
 
                 var groupIds = groups.Select(g => g.GroupId).ToList();
                 var subjectCounts = await _context.Subjects
-                    .Where(s => s.GroupId.HasValue && groupIds.Contains(s.GroupId.Value) && s.IsActive)
-                    .GroupBy(s => s.GroupId!.Value)
+                    .Where(s => groupIds.Contains(s.GroupId) && s.IsActive)
+                    .GroupBy(s => s.GroupId)
                     .Select(g => new { GroupId = g.Key, Count = g.Count() })
                     .ToDictionaryAsync(x => x.GroupId, x => x.Count);
 
