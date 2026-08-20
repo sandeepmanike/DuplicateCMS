@@ -23,7 +23,8 @@ namespace CollegeManagement.API.Profiles
             // Section Entity -> SectionResponse
             CreateMap<Section, SectionResponse>()
                 .ForMember(dest => dest.AcademicYearName, opt => opt.Ignore())
-                .ForMember(dest => dest.ClassTeacherName, opt => opt.Ignore());
+                .ForMember(dest => dest.ClassTeacherName, opt => opt.Ignore())
+                .ForMember(dest => dest.RoomName, opt => opt.Ignore());
         }
     }
 }

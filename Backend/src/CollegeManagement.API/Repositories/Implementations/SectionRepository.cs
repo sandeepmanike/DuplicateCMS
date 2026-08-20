@@ -22,10 +22,21 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         private IDbConnection Connection => _context.Database.GetDbConnection();
 
-        public async Task<IEnumerable<SectionResponse>> GetAllSectionsAsync()
+        public async Task<IEnumerable<SectionResponse>> GetAllSectionsAsync(SectionFilterDto? filter = null)
         {
+            var parameters = new DynamicParameters();
+            parameters.Add("p_Board", string.IsNullOrWhiteSpace(filter?.Board) ? null : filter.Board.Trim());
+            parameters.Add("p_AcademicYearId", (filter?.AcademicYearId.HasValue == true && filter.AcademicYearId.Value > 0) ? filter.AcademicYearId.Value : null);
+            parameters.Add("p_Group", string.IsNullOrWhiteSpace(filter?.Group) ? null : filter.Group.Trim());
+            parameters.Add("p_GroupId", (filter?.GroupId.HasValue == true && filter.GroupId.Value > 0) ? filter.GroupId.Value : null);
+            parameters.Add("p_Programme", string.IsNullOrWhiteSpace(filter?.Programme) ? null : filter.Programme.Trim());
+            parameters.Add("p_AcademicLevel", string.IsNullOrWhiteSpace(filter?.AcademicLevel) ? null : filter.AcademicLevel.Trim());
+            parameters.Add("p_SearchTerm", string.IsNullOrWhiteSpace(filter?.SearchTerm) ? null : filter.SearchTerm.Trim());
+            parameters.Add("p_IsActive", filter?.IsActive);
+
             var result = await Connection.QueryAsync<SectionResponse>(
                 "sp_GetAllSections",
+                parameters,
                 commandType: CommandType.StoredProcedure);
             return result;
         }
@@ -45,8 +56,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 new
                 {
                     p_Board = section.Board,
+                    p_BoardId = section.BoardId,
                     p_AcademicYearId = section.AcademicYearId,
                     p_Group = section.Group,
+                    p_GroupId = section.GroupId,
+                    p_Programme = section.Programme ?? string.Empty,
                     p_AcademicLevel = section.AcademicLevel,
                     p_SectionName = section.SectionName,
                     p_RoomNumber = section.RoomNumber,
@@ -66,8 +80,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 {
                     p_SectionId = id,
                     p_Board = section.Board,
+                    p_BoardId = section.BoardId,
                     p_AcademicYearId = section.AcademicYearId,
                     p_Group = section.Group,
+                    p_GroupId = section.GroupId,
+                    p_Programme = section.Programme ?? string.Empty,
                     p_AcademicLevel = section.AcademicLevel,
                     p_SectionName = section.SectionName,
                     p_RoomNumber = section.RoomNumber,
@@ -98,7 +115,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             return result;
         }
 
-        public async Task<bool> IsSectionNameDuplicateAsync(string board, int academicYearId, string group, string academicLevel, string sectionName, int? excludeSectionId = null)
+        public async Task<bool> IsSectionNameDuplicateAsync(string board, int academicYearId, string group, string programme, string academicLevel, string sectionName, int? excludeSectionId = null)
         {
             var count = await Connection.ExecuteScalarAsync<int>(
                 "sp_ValidateSectionName",
@@ -107,6 +124,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_Board = board,
                     p_AcademicYearId = academicYearId,
                     p_Group = group,
+                    p_Programme = programme ?? string.Empty,
                     p_AcademicLevel = academicLevel,
                     p_SectionName = sectionName,
                     p_ExcludeSectionId = excludeSectionId
@@ -132,7 +150,6 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<bool> FacultyExistsAsync(int facultyId)
         {
-            // First we try querying Faculty table
             try
             {
                 var count = await Connection.ExecuteScalarAsync<int>(
@@ -142,7 +159,6 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                // In case the DB pluralized it to Faculties
                 var count = await Connection.ExecuteScalarAsync<int>(
                     "SELECT COUNT(1) FROM Faculties WHERE Id = @Id AND IsDeleted = 0",
                     new { Id = facultyId });
