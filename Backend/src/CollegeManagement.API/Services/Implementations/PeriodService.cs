@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using AutoMapper;
 using CollegeManagement.API.DTOs.Timetable;
@@ -19,8 +19,14 @@ namespace CollegeManagement.API.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<PeriodResponseDto>> GetAllAsync()
+        public async Task<IEnumerable<PeriodResponseDto>> GetAllAsync(int? boardId = null, int? academicLevelId = null, int? academicYearId = null, int? groupId = null)
         {
+            if (boardId.HasValue || academicLevelId.HasValue || academicYearId.HasValue || groupId.HasValue)
+            {
+                var contextPeriods = await _periodRepository.GetByContextAsync(boardId, academicLevelId, academicYearId, groupId);
+                return _mapper.Map<IEnumerable<PeriodResponseDto>>(contextPeriods);
+            }
+
             var periods = await _periodRepository.GetAllAsync();
             return _mapper.Map<IEnumerable<PeriodResponseDto>>(periods);
         }

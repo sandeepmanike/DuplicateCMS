@@ -14,6 +14,7 @@ namespace CollegeManagement.API.DTOs.Faculty.Request
         public string? BloodGroup { get; set; }
         public string Qualification { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
+        public int? DesignationId { get; set; }
         public string FacultyType { get; set; } = "Teaching";
         public int? DepartmentId { get; set; }
         public string Department { get; set; } = string.Empty;

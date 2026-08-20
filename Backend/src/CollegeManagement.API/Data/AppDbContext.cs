@@ -38,6 +38,7 @@ namespace CollegeManagement.API.Data
         public DbSet<FeeStructureItems> FeeStructureItems { get; set; }
         public DbSet<Student> Students { get; set; }
         public DbSet<StudentAdmission> StudentAdmissions { get; set; }
+        public DbSet<Designation> Designations { get; set; }
         public DbSet<Faculty> Faculties { get; set; }
         public DbSet<FacultySubjectAllocation> FacultySubjectAllocations { get; set; }
         public DbSet<Assignment> Assignments { get; set; }
@@ -55,9 +56,15 @@ namespace CollegeManagement.API.Data
         public DbSet<Section> Sections { get; set; }
 
         public DbSet<StudentFee> StudentFees { get; set; }
+        public DbSet<BreakType> BreakTypes { get; set; }
+        public DbSet<PeriodStructure> PeriodStructures { get; set; }
+        public DbSet<PeriodStructureItem> PeriodStructureItems { get; set; }
+        public DbSet<PeriodStructureAssignment> PeriodStructureAssignments { get; set; }
         public DbSet<Period> Periods { get; set; }
         public DbSet<Room> Rooms { get; set; }
         public DbSet<Timetable> Timetables { get; set; }
+        public DbSet<TimetableBackup> TimetableBackups { get; set; }
+        public DbSet<TimetableBackupSlot> TimetableBackupSlots { get; set; }
         public DbSet<Certificate> Certificates { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
@@ -307,28 +314,28 @@ namespace CollegeManagement.API.Data
                     .IsRequired(false);
 
 
-                // Board → FeeStructure
+// Board -> FeeStructure
                 entity.HasOne(x => x.Board)
                     .WithMany()
                     .HasForeignKey(x => x.BoardId)
                     .OnDelete(DeleteBehavior.Restrict);
 
 
-                // AcademicYear → FeeStructure
+// AcademicYear -> FeeStructure
                 entity.HasOne(x => x.AcademicYear)
                     .WithMany()
                     .HasForeignKey(x => x.AcademicYearId)
                     .OnDelete(DeleteBehavior.Restrict);
 
 
-                // AcademicLevel → FeeStructure
+// AcademicLevel -> FeeStructure
                 entity.HasOne(x => x.AcademicLevel)
                     .WithMany()
                     .HasForeignKey(x => x.AcademicLevelId)
                     .OnDelete(DeleteBehavior.Restrict);
 
 
-                // Group → FeeStructure
+// Group -> FeeStructure
                 entity.HasOne(x => x.Group)
                     .WithMany()
                     .HasForeignKey(x => x.GroupId)
@@ -345,7 +352,6 @@ namespace CollegeManagement.API.Data
                 })
                 .IsUnique();
             });
-
 
             // FeeStructureItem
             modelBuilder.Entity<FeeStructureItems>(entity =>
@@ -371,60 +377,17 @@ namespace CollegeManagement.API.Data
                 entity.Property(x => x.UpdatedAt)
                     .IsRequired(false);
 
-
-                // FeeStructure → FeeStructureItems
+                // FeeStructure -> FeeStructureItems
                 entity.HasOne(x => x.FeeStructure)
                     .WithMany(x => x.Items)
                     .HasForeignKey(x => x.FeeStructureId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-
-                // FeeStructureItem
-                modelBuilder.Entity<FeeStructureItems>(entity =>
-                {
-                    entity.HasKey(x => x.FeeStructureItemId);
-
-                    entity.Property(x => x.Amount)
-                        .HasPrecision(10, 2)
-                        .IsRequired();
-
-                    entity.Property(x => x.DueDate)
-                        .IsRequired(false);
-
-                    entity.Property(x => x.IsMandatory)
-                        .HasDefaultValue(false);
-
-                    entity.Property(x => x.IsActive)
-                        .HasDefaultValue(true);
-
-                    entity.Property(x => x.CreatedAt)
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    entity.Property(x => x.UpdatedAt)
-                        .IsRequired(false);
-
-                    // FeeStructure → FeeStructureItems
-                    entity.HasOne(x => x.FeeStructure)
-                        .WithMany(x => x.Items)
-                        .HasForeignKey(x => x.FeeStructureId)
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    // FeeType → FeeStructureItems
-                    entity.HasOne(x => x.FeeType)
-                        .WithMany()
-                        .HasForeignKey(x => x.FeeTypeId)
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    // Same FeeType cannot be added twice
-                    // to the same FeeStructure
-                    entity.HasIndex(x => new
-                    {
-                        x.FeeStructureId,
-                        x.FeeTypeId
-                    })
-                    .IsUnique();
-                });
-
+                // FeeType -> FeeStructureItems
+                entity.HasOne(x => x.FeeType)
+                    .WithMany()
+                    .HasForeignKey(x => x.FeeTypeId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
                 // Same FeeType cannot be added twice
                 // to the same FeeStructure
@@ -842,6 +805,123 @@ namespace CollegeManagement.API.Data
                 entity.Property(x => x.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
                 entity.HasIndex(x => x.CreatedAt);
                 entity.HasIndex(x => new { x.EntityName, x.EntityId });
+            });
+            #endregion
+
+            #region TimetableBackup
+            modelBuilder.Entity<TimetableBackup>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.ArchiveReason).HasMaxLength(250);
+                entity.Property(x => x.ArchivedBy).HasMaxLength(100);
+                entity.HasIndex(x => new
+                {
+                    x.BoardId,
+                    x.AcademicLevelId,
+                    x.AcademicYearId,
+                    x.GroupId,
+                    x.SectionId
+                }).IsUnique();
+                entity.HasOne(x => x.Board).WithMany().HasForeignKey(x => x.BoardId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.AcademicLevel).WithMany().HasForeignKey(x => x.AcademicLevelId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Section).WithMany().HasForeignKey(x => x.SectionId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<TimetableBackupSlot>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Remarks).HasMaxLength(250);
+                entity.HasIndex(x => x.TimetableBackupId);
+                entity.HasOne(x => x.Board).WithMany().HasForeignKey(x => x.BoardId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.AcademicLevel).WithMany().HasForeignKey(x => x.AcademicLevelId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Section).WithMany().HasForeignKey(x => x.SectionId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Period).WithMany().HasForeignKey(x => x.PeriodId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Faculty).WithMany().HasForeignKey(x => x.FacultyId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Room).WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
+            });
+            #endregion
+
+            #region PeriodStructure
+            modelBuilder.Entity<BreakType>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Name).IsRequired().HasMaxLength(50);
+                entity.HasIndex(x => x.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<PeriodStructure>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Name).IsRequired().HasMaxLength(100);
+            });
+
+            modelBuilder.Entity<PeriodStructureItem>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.HasOne(x => x.PeriodStructure)
+                    .WithMany(s => s.Items)
+                    .HasForeignKey(x => x.PeriodStructureId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(x => x.BreakType)
+                    .WithMany()
+                    .HasForeignKey(x => x.BreakTypeId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<PeriodStructureAssignment>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.HasOne(x => x.PeriodStructure)
+                    .WithMany(s => s.Assignments)
+                    .HasForeignKey(x => x.PeriodStructureId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(x => x.Board)
+                    .WithMany()
+                    .HasForeignKey(x => x.BoardId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.AcademicLevel)
+                    .WithMany()
+                    .HasForeignKey(x => x.AcademicLevelId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.AcademicYear)
+                    .WithMany()
+                    .HasForeignKey(x => x.AcademicYearId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Group)
+                    .WithMany()
+                    .HasForeignKey(x => x.GroupId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Period>(entity =>
+            {
+                entity.HasKey(x => x.PeriodId);
+                entity.HasOne(x => x.PeriodStructure)
+                    .WithMany(s => s.Periods)
+                    .HasForeignKey(x => x.PeriodStructureId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+            #endregion
+
+            #region Designation & Faculty
+            modelBuilder.Entity<Designation>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+                entity.Property(x => x.Name).IsRequired().HasMaxLength(100);
+                entity.HasIndex(x => x.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<Faculty>(entity =>
+            {
+                entity.HasOne(f => f.DesignationRef)
+                    .WithMany(d => d.Faculties)
+                    .HasForeignKey(f => f.DesignationId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
             #endregion
         }

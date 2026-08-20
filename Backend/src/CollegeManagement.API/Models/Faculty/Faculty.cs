@@ -61,6 +61,11 @@ namespace CollegeManagement.API.Models.Faculty
         [StringLength(100)]
         public string Designation { get; set; } = string.Empty;
 
+        public int? DesignationId { get; set; }
+
+        [ForeignKey(nameof(DesignationId))]
+        public Designation? DesignationRef { get; set; }
+
         [Required]
         [StringLength(20)]
         public string FacultyType { get; set; } = "Teaching";

@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 
 namespace CollegeManagement.API.DTOs.Timetable
 {
     public class CreatePeriodDto
     {
+        public int? PeriodStructureId { get; set; }
         public string PeriodName { get; set; } = string.Empty;
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
@@ -14,6 +15,7 @@ namespace CollegeManagement.API.DTOs.Timetable
 
     public class UpdatePeriodDto
     {
+        public int? PeriodStructureId { get; set; }
         public string PeriodName { get; set; } = string.Empty;
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }
@@ -25,6 +27,7 @@ namespace CollegeManagement.API.DTOs.Timetable
     public class PeriodResponseDto
     {
         public int PeriodId { get; set; }
+        public int? PeriodStructureId { get; set; }
         public string PeriodName { get; set; } = string.Empty;
         public TimeSpan StartTime { get; set; }
         public TimeSpan EndTime { get; set; }

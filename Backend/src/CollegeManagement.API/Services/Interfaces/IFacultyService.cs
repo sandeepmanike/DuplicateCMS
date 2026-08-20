@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.DTOs.Faculty.Request;
@@ -8,6 +9,7 @@ namespace CollegeManagement.API.Services.Interfaces
     public interface IFacultyService
     {
         Task<PagedResult<FacultyResponseDto>> GetPagedFacultiesAsync(FacultyQueryParams queryParams);
+        Task<IEnumerable<FacultyDropdownDto>> GetFacultyDropdownAsync(string? facultyType = null);
         Task<FacultyResponseDto?> GetFacultyByIdAsync(int id);
         Task<FacultyResponseDto?> GetFacultyByEmployeeIdAsync(string employeeId);
         Task<FacultyResponseDto> CreateFacultyAsync(CreateFacultyDto dto);
@@ -19,7 +21,7 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<FacultySubjectAllocationResponseDto> AssignSubjectAsync(AssignSubjectDto dto);
         Task<FacultySubjectAllocationResponseDto> UpdateSubjectAllocationAsync(int id, UpdateSubjectAllocationDto dto);
         Task<bool> DeleteSubjectAllocationAsync(int id);
-        Task<System.Collections.Generic.List<FacultySubjectAllocationResponseDto>> GetFacultySubjectAllocationsAsync(int facultyId);
+        Task<List<FacultySubjectAllocationResponseDto>> GetFacultySubjectAllocationsAsync(int facultyId);
 
         Task<FacultyWorkloadResponseDto?> GetFacultyWorkloadAsync(int facultyId);
     }

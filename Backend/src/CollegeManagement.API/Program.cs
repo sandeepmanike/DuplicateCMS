@@ -100,7 +100,7 @@ builder.Services.AddMemoryCache();
 
 #region AutoMapper & FluentValidation
 
-builder.Services.AddAutoMapper(typeof(FacultyMappingProfile), typeof(MarksMappingProfile), typeof(AttendanceProfile));
+builder.Services.AddAutoMapper(typeof(FacultyMappingProfile), typeof(MarksMappingProfile), typeof(AttendanceProfile), typeof(CollegeManagement.API.Profiles.TimetableMappingProfile));
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>();
 
@@ -121,6 +121,7 @@ builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
 // Faculty
+builder.Services.AddScoped<IDesignationRepository, DesignationRepository>();
 builder.Services.AddScoped<IFacultyRepository, FacultyRepository>();
 builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAllocationRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
@@ -147,13 +148,14 @@ builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+builder.Services.AddScoped<ITimetableBackupRepository, TimetableBackupRepository>();
 builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
+builder.Services.AddScoped<IPeriodStructureRepository, PeriodStructureRepository>();
+builder.Services.AddScoped<IBreakTypeRepository, BreakTypeRepository>();
 builder.Services.AddScoped<IRoomRepository, RoomRepository>();
 
-// Reports & Dashboard Module (Merged)
+// Reports, Study Materials & Certificates
 builder.Services.AddScoped<IReportRepository, ReportRepository>();
-
-// Study Materials & Certificates
 builder.Services.AddScoped<IStudyMaterialRepository, StudyMaterialRepository>();
 builder.Services.AddScoped<ICertificateRepository, CertificateRepository>();
 
@@ -171,6 +173,7 @@ builder.Services.AddScoped<IBoardService, BoardService>();
 builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
 builder.Services.AddScoped<IBoardExportService, BoardExportService>();
 
+builder.Services.AddScoped<IDesignationService, DesignationService>();
 builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
@@ -201,12 +204,12 @@ builder.Services.AddScoped<IPromotionService, PromotionService>();
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableService, TimetableService>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
+builder.Services.AddScoped<IPeriodStructureService, PeriodStructureService>();
+builder.Services.AddScoped<IBreakTypeService, BreakTypeService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 
-// Reports & Dashboard Module (Merged)
+// Reports, Study Materials & Certificates
 builder.Services.AddScoped<IReportService, ReportService>();
-
-// Study Materials & Certificates
 builder.Services.AddScoped<IStudyMaterialService, StudyMaterialService>();
 builder.Services.AddScoped<ICertificateService, CertificateService>();
 

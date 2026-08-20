@@ -1,4 +1,5 @@
 using AutoMapper;
+using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.DTOs.Faculty.Request;
 using CollegeManagement.API.DTOs.Faculty.Response;
 using CollegeManagement.API.Models.Faculty;
@@ -9,6 +10,21 @@ namespace CollegeManagement.API.Profiles
     {
         public FacultyMappingProfile()
         {
+            // Designation Mappings
+            CreateMap<CreateDesignationDto, Designation>()
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => System.DateTime.UtcNow))
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.Faculties, opt => opt.Ignore());
+
+            CreateMap<UpdateDesignationDto, Designation>()
+                .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(_ => System.DateTime.UtcNow))
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.Faculties, opt => opt.Ignore());
+
+            CreateMap<Designation, DesignationResponseDto>();
+
             // CreateFacultyDto -> Faculty Entity
             CreateMap<CreateFacultyDto, Faculty>()
                 .ForMember(dest => dest.FacultyType, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.FacultyType) ? "Teaching" : src.FacultyType))
@@ -17,7 +33,8 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.MapFrom(_ => false))
                 .ForMember(dest => dest.PhotoPath, opt => opt.Ignore())
-                .ForMember(dest => dest.Id, opt => opt.Ignore());
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.DesignationRef, opt => opt.Ignore());
 
             // UpdateFacultyDto -> Faculty Entity
             CreateMap<UpdateFacultyDto, Faculty>()
@@ -26,7 +43,8 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.EmployeeId, opt => opt.Ignore())
                 .ForMember(dest => dest.PhotoPath, opt => opt.Ignore())
-                .ForMember(dest => dest.Id, opt => opt.Ignore());
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.DesignationRef, opt => opt.Ignore());
 
             // Faculty Entity -> FacultyResponseDto
             CreateMap<Faculty, FacultyResponseDto>();

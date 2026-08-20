@@ -21,6 +21,7 @@ namespace CollegeManagement.API.Services.Implementations
         private readonly IFacultySubjectAllocationRepository _allocationRepository;
         private readonly IDepartmentRepository _departmentRepository;
         private readonly ITimetableRepository _timetableRepository;
+        private readonly IDesignationRepository _designationRepository;
         private readonly IMapper _mapper;
         private readonly IWebHostEnvironment _environment;
 
@@ -33,6 +34,7 @@ namespace CollegeManagement.API.Services.Implementations
             IFacultySubjectAllocationRepository allocationRepository,
             IDepartmentRepository departmentRepository,
             ITimetableRepository timetableRepository,
+            IDesignationRepository designationRepository,
             IMapper mapper,
             IWebHostEnvironment environment)
         {
@@ -40,6 +42,7 @@ namespace CollegeManagement.API.Services.Implementations
             _allocationRepository = allocationRepository;
             _departmentRepository = departmentRepository;
             _timetableRepository = timetableRepository;
+            _designationRepository = designationRepository;
             _mapper = mapper;
             _environment = environment;
         }
@@ -56,6 +59,11 @@ namespace CollegeManagement.API.Services.Implementations
                 PageNumber = queryParams.PageNumber,
                 PageSize = queryParams.PageSize
             };
+        }
+
+        public async Task<IEnumerable<FacultyDropdownDto>> GetFacultyDropdownAsync(string? facultyType = null)
+        {
+            return await _facultyRepository.GetFacultyDropdownAsync(facultyType);
         }
 
         public async Task<FacultyResponseDto?> GetFacultyByIdAsync(int id)
@@ -106,8 +114,35 @@ namespace CollegeManagement.API.Services.Implementations
                 }
             }
 
+            // Designation resolution & synchronization
+            int? resolvedDesignationId = dto.DesignationId;
+            string resolvedDesignationName = dto.Designation?.Trim() ?? string.Empty;
+
+            if (resolvedDesignationId.HasValue && resolvedDesignationId.Value > 0)
+            {
+                var desig = await _designationRepository.GetByIdAsync(resolvedDesignationId.Value);
+                if (desig == null)
+                    throw new NotFoundException($"Designation with ID {resolvedDesignationId.Value} not found.");
+
+                if (!desig.IsActive)
+                    throw new ValidationException($"Designation '{desig.Name}' is inactive and cannot be assigned.");
+
+                resolvedDesignationName = desig.Name;
+            }
+            else if (!string.IsNullOrWhiteSpace(resolvedDesignationName))
+            {
+                var desig = await _designationRepository.GetByNameAsync(resolvedDesignationName);
+                if (desig != null)
+                {
+                    resolvedDesignationId = desig.Id;
+                    resolvedDesignationName = desig.Name;
+                }
+            }
+
             var faculty = _mapper.Map<Faculty>(dto);
             faculty.DepartmentId = resolvedDepartmentId;
+            faculty.DesignationId = resolvedDesignationId;
+            faculty.Designation = resolvedDesignationName;
 
             var createdFaculty = await _facultyRepository.AddAsync(faculty);
             return _mapper.Map<FacultyResponseDto>(createdFaculty);
@@ -144,8 +179,40 @@ namespace CollegeManagement.API.Services.Implementations
                 }
             }
 
+            // Designation resolution & synchronization
+            int? resolvedDesignationId = dto.DesignationId;
+            string resolvedDesignationName = dto.Designation?.Trim() ?? string.Empty;
+
+            if (resolvedDesignationId.HasValue && resolvedDesignationId.Value > 0)
+            {
+                var desig = await _designationRepository.GetByIdAsync(resolvedDesignationId.Value);
+                if (desig == null)
+                    throw new NotFoundException($"Designation with ID {resolvedDesignationId.Value} not found.");
+
+                if (!desig.IsActive && existingFaculty.DesignationId != desig.Id)
+                    throw new ValidationException($"Designation '{desig.Name}' is inactive and cannot be assigned.");
+
+                resolvedDesignationName = desig.Name;
+            }
+            else if (!string.IsNullOrWhiteSpace(resolvedDesignationName))
+            {
+                var desig = await _designationRepository.GetByNameAsync(resolvedDesignationName);
+                if (desig != null)
+                {
+                    resolvedDesignationId = desig.Id;
+                    resolvedDesignationName = desig.Name;
+                }
+            }
+            else
+            {
+                resolvedDesignationId = existingFaculty.DesignationId;
+                resolvedDesignationName = existingFaculty.Designation;
+            }
+
             _mapper.Map(dto, existingFaculty);
             existingFaculty.DepartmentId = resolvedDepartmentId;
+            existingFaculty.DesignationId = resolvedDesignationId;
+            existingFaculty.Designation = resolvedDesignationName;
             existingFaculty.UpdatedAt = DateTime.UtcNow;
 
             await _facultyRepository.UpdateAsync(existingFaculty);
@@ -169,82 +236,81 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new NotFoundException($"Faculty record with ID {dto.FacultyId} not found.");
 
             if (dto.Photo == null || dto.Photo.Length == 0)
-                throw new ValidationException("Please provide a valid non-empty photo file.");
+                throw new ValidationException("Please select a valid image file to upload.");
 
             if (dto.Photo.Length > MaxPhotoFileSizeBytes)
-                throw new ValidationException("Photo file size cannot exceed 5 MB.");
+                throw new ValidationException("Photo size exceeds the maximum allowed limit of 5 MB.");
 
-            var fileExtension = Path.GetExtension(dto.Photo.FileName).ToLowerInvariant();
-            if (!AllowedPhotoExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase))
-                throw new ValidationException("Invalid photo file format. Only .jpg, .jpeg, and .png are allowed.");
+            var ext = Path.GetExtension(dto.Photo.FileName).ToLowerInvariant();
+            if (!AllowedPhotoExtensions.Contains(ext))
+                throw new ValidationException("Invalid photo file format. Only JPG, JPEG, and PNG images are allowed.");
 
-            var webRootPath = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            var uploadsDirectory = Path.Combine(webRootPath, "uploads", "faculties");
+            var uploadsFolder = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "faculty");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
 
-            if (!Directory.Exists(uploadsDirectory))
-                Directory.CreateDirectory(uploadsDirectory);
+            var uniqueFileName = $"faculty_{faculty.Id}_{DateTime.UtcNow.Ticks}{ext}";
+            var physicalPath = Path.Combine(uploadsFolder, uniqueFileName);
 
-            var fileName = $"faculty_{faculty.Id}_{DateTime.UtcNow.Ticks}{fileExtension}";
-            var fullPath = Path.Combine(uploadsDirectory, fileName);
-
-            using (var stream = new FileStream(fullPath, FileMode.Create))
+            using (var stream = new FileStream(physicalPath, FileMode.Create))
             {
                 await dto.Photo.CopyToAsync(stream);
             }
 
-            var relativePhotoPath = $"/uploads/faculties/{fileName}";
-            await _facultyRepository.UpdatePhotoPathAsync(faculty.Id, relativePhotoPath);
+            // Remove previous photo if it exists
+            if (!string.IsNullOrWhiteSpace(faculty.PhotoPath))
+            {
+                var oldFullPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), faculty.PhotoPath.TrimStart('/', '\\'));
+                if (File.Exists(oldFullPath))
+                {
+                    try { File.Delete(oldFullPath); } catch { /* Ignore delete exceptions */ }
+                }
+            }
 
-            faculty.PhotoPath = relativePhotoPath;
+            var relativePath = $"/uploads/faculty/{uniqueFileName}";
+            await _facultyRepository.UpdatePhotoPathAsync(faculty.Id, relativePath);
+
+            faculty.PhotoPath = relativePath;
             return _mapper.Map<FacultyResponseDto>(faculty);
         }
 
         public async Task<(string PhysicalPath, string ContentType)> GetPhotoAsync(int id)
         {
-            var photoPath = await _facultyRepository.GetPhotoPathAsync(id);
-            if (string.IsNullOrWhiteSpace(photoPath))
-            {
-                throw new NotFoundException($"Photo for faculty ID {id} does not exist.");
-            }
+            var faculty = await _facultyRepository.GetByIdAsync(id);
+            if (faculty == null)
+                throw new NotFoundException($"Faculty record with ID {id} not found.");
 
-            var webRootPath = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            var relativePath = photoPath.TrimStart('/', '\\');
-            var physicalPath = Path.Combine(webRootPath, relativePath);
+            if (string.IsNullOrWhiteSpace(faculty.PhotoPath))
+                throw new NotFoundException("No photo available for this faculty member.");
 
-            if (!File.Exists(physicalPath))
-            {
-                throw new NotFoundException($"Photo file for faculty ID {id} not found on disk.");
-            }
+            var fullPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), faculty.PhotoPath.TrimStart('/', '\\'));
+            if (!File.Exists(fullPath))
+                throw new NotFoundException("The photo file could not be found on the server.");
 
-            var extension = Path.GetExtension(physicalPath).ToLowerInvariant();
-            var contentType = extension switch
+            var ext = Path.GetExtension(fullPath).ToLowerInvariant();
+            var contentType = ext switch
             {
                 ".jpg" or ".jpeg" => "image/jpeg",
                 ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
                 _ => "application/octet-stream"
             };
 
-            return (physicalPath, contentType);
+            return (fullPath, contentType);
         }
 
         public async Task<FacultySubjectAllocationResponseDto> AssignSubjectAsync(AssignSubjectDto dto)
         {
-            // Verify Faculty Exists
             var faculty = await _facultyRepository.GetByIdAsync(dto.FacultyId);
             if (faculty == null)
                 throw new NotFoundException($"Faculty record with ID {dto.FacultyId} not found.");
 
-            // Verify Faculty is Active
             if (string.Equals(faculty.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
-                throw new ValidationException("Cannot assign subject allocation to an inactive faculty member.");
+                throw new ValidationException("Cannot assign subjects to an inactive faculty member.");
 
             // Verify Faculty is Teaching type
             if (string.Equals(faculty.FacultyType, "Non-Teaching", StringComparison.OrdinalIgnoreCase))
                 throw new ValidationException("Non-Teaching faculty cannot be assigned subject allocations.");
 
-            // Resolve Subject ID (supports direct SubjectId or string name/code fallback)
             var targetSubjectName = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (!string.IsNullOrWhiteSpace(dto.SubjectName) ? dto.SubjectName : dto.SubjectCode);
             var resolvedSubjectId = await _allocationRepository.ResolveSubjectIdAsync(
                 dto.SubjectId, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, targetSubjectName ?? string.Empty);
@@ -401,7 +467,7 @@ namespace CollegeManagement.API.Services.Implementations
                 TotalAssignedSubjects = totalAssignedSubjects,
                 TotalSections = totalSections,
                 WeeklyClasses = weeklyClasses,
-                TotalWorkloadHours = Math.Round(totalWorkloadHours, 2),
+                TotalWorkloadHours = totalWorkloadHours,
                 Allocations = allocationDtos
             };
         }

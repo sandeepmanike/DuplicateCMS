@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -9,6 +9,8 @@ namespace CollegeManagement.API.Models.Timetable
     {
         [Key]
         public int PeriodId { get; set; }
+
+        public int? PeriodStructureId { get; set; }
 
         [Required]
         [MaxLength(50)]
@@ -29,5 +31,9 @@ namespace CollegeManagement.API.Models.Timetable
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
+
+        // Navigation
+        [ForeignKey(nameof(PeriodStructureId))]
+        public virtual PeriodStructure? PeriodStructure { get; set; }
     }
 }

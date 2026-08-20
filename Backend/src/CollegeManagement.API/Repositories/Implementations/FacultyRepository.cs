@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -121,14 +122,14 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             try
             {
-                return await Connection.QueryFirstOrDefaultAsync<string?>(
+                return await Connection.QueryFirstOrDefaultAsync<string>(
                     "sp_GetFacultyPhotoPath",
                     new { p_Id = id },
                     commandType: CommandType.StoredProcedure);
             }
             catch
             {
-                var f = await _context.Faculties.FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
+                var f = await _context.Faculties.FindAsync(id);
                 return f?.PhotoPath;
             }
         }
@@ -212,6 +213,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_SearchTerm = queryParams.SearchTerm,
                         p_Department = queryParams.Department,
                         p_Designation = queryParams.Designation,
+                        p_DesignationId = queryParams.DesignationId,
+                        p_FacultyType = queryParams.FacultyType,
                         p_Status = queryParams.Status,
                         p_SortBy = queryParams.SortBy,
                         p_SortOrder = queryParams.SortOrder,
@@ -240,9 +243,18 @@ namespace CollegeManagement.API.Repositories.Implementations
                         f.Mobile.Contains(term));
                 }
 
-                if (!string.IsNullOrWhiteSpace(queryParams.Designation))
+                if (queryParams.DesignationId.HasValue && queryParams.DesignationId.Value > 0)
+                {
+                    query = query.Where(f => f.DesignationId == queryParams.DesignationId.Value);
+                }
+                else if (!string.IsNullOrWhiteSpace(queryParams.Designation))
                 {
                     query = query.Where(f => f.Designation == queryParams.Designation.Trim());
+                }
+
+                if (!string.IsNullOrWhiteSpace(queryParams.FacultyType) && !string.Equals(queryParams.FacultyType, "All", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(f => f.FacultyType == queryParams.FacultyType.Trim());
                 }
 
                 if (!string.IsNullOrWhiteSpace(queryParams.Status))
@@ -281,6 +293,39 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
         }
 
+        public async Task<IEnumerable<FacultyDropdownDto>> GetFacultyDropdownAsync(string? facultyType = null)
+        {
+            try
+            {
+                return await Connection.QueryAsync<FacultyDropdownDto>(
+                    "sp_GetFacultyDropdown",
+                    new { p_FacultyType = facultyType },
+                    commandType: CommandType.StoredProcedure);
+            }
+            catch
+            {
+                var query = _context.Faculties.Where(f => !f.IsDeleted && f.Status == "Active");
+
+                if (!string.IsNullOrWhiteSpace(facultyType) && !string.Equals(facultyType, "All", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(f => f.FacultyType == facultyType.Trim());
+                }
+
+                return await query
+                    .OrderBy(f => f.FirstName)
+                    .Select(f => new FacultyDropdownDto
+                    {
+                        Id = f.Id,
+                        EmployeeId = f.EmployeeId,
+                        FullName = $"{f.FirstName} {f.LastName}".Trim(),
+                        Designation = f.Designation,
+                        DesignationId = f.DesignationId,
+                        FacultyType = f.FacultyType
+                    })
+                    .ToListAsync();
+            }
+        }
+
         public async Task<Faculty> AddAsync(Faculty faculty)
         {
             try
@@ -300,6 +345,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_BloodGroup = faculty.BloodGroup,
                         p_Qualification = faculty.Qualification,
                         p_Designation = faculty.Designation,
+                        p_DesignationId = faculty.DesignationId,
                         p_FacultyType = faculty.FacultyType,
                         p_DepartmentId = faculty.DepartmentId,
                         p_JoiningDate = faculty.JoiningDate,
@@ -339,6 +385,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_BloodGroup = faculty.BloodGroup,
                         p_Qualification = faculty.Qualification,
                         p_Designation = faculty.Designation,
+                        p_DesignationId = faculty.DesignationId,
                         p_FacultyType = faculty.FacultyType,
                         p_DepartmentId = faculty.DepartmentId,
                         p_JoiningDate = faculty.JoiningDate,

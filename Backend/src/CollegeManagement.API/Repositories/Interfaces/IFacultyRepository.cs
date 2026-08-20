@@ -21,6 +21,7 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<bool> IsAadhaarUniqueAsync(string aadhaar, int? excludeId = null);
 
         Task<(List<Faculty> Items, int TotalCount)> GetPagedFacultiesAsync(FacultyQueryParams queryParams);
+        Task<IEnumerable<FacultyDropdownDto>> GetFacultyDropdownAsync(string? facultyType = null);
         Task<Faculty> AddAsync(Faculty faculty);
         Task UpdateAsync(Faculty faculty);
         Task UpdatePhotoPathAsync(int id, string photoPath);

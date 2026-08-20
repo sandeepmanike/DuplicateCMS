@@ -1,17 +1,19 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Asp.Versioning;
 using CollegeManagement.API.DTOs.Faculty;
 using CollegeManagement.API.DTOs.Faculty.Request;
 using CollegeManagement.API.DTOs.Faculty.Response;
-using CollegeManagement.API.Services;
 using CollegeManagement.API.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CollegeManagement.API.Controllers
+namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
-    [Route("api/v1/faculty")]
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/faculty")]
     [Authorize]
     [Produces("application/json")]
     public class FacultyController : ControllerBase
@@ -36,7 +38,19 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 2. GET /api/v1/faculty/{id}
+        /// 2. GET /api/v1/faculty/dropdown
+        /// Get list of faculties for dropdown selection with optional FacultyType filter (Teaching/Non-Teaching/All).
+        /// </summary>
+        [HttpGet("dropdown")]
+        [ProducesResponseType(typeof(IEnumerable<FacultyDropdownDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetFacultyDropdown([FromQuery] string? facultyType = null)
+        {
+            var result = await _facultyService.GetFacultyDropdownAsync(facultyType);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 3. GET /api/v1/faculty/{id}
         /// Get detailed faculty record by ID.
         /// </summary>
         [HttpGet("{id:int}")]
@@ -49,7 +63,7 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 3. POST /api/v1/faculty
+        /// 4. POST /api/v1/faculty
         /// Create a new faculty member record.
         /// </summary>
         [HttpPost]
@@ -63,7 +77,7 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 4. PUT /api/v1/faculty/{id}
+        /// 5. PUT /api/v1/faculty/{id}
         /// Update an existing faculty member record.
         /// </summary>
         [HttpPut("{id:int}")]
@@ -78,7 +92,7 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 5. DELETE /api/v1/faculty/{id}
+        /// 6. DELETE /api/v1/faculty/{id}
         /// Soft delete a faculty member record.
         /// </summary>
         [HttpDelete("{id:int}")]
@@ -91,7 +105,7 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 6. POST /api/v1/faculty/upload-photo
+        /// 7. POST /api/v1/faculty/upload-photo
         /// Upload/replace a faculty member profile photo.
         /// </summary>
         [HttpPost("upload-photo")]
@@ -106,7 +120,7 @@ namespace CollegeManagement.API.Controllers
         }
 
         /// <summary>
-        /// 7. GET /api/v1/faculty/photo/{id}
+        /// 8. GET /api/v1/faculty/photo/{id}
         /// Preview/stream faculty member profile photo.
         /// </summary>
         [HttpGet("photo/{id:int}")]

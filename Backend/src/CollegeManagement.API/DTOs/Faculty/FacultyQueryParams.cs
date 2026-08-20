@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace CollegeManagement.API.DTOs.Faculty
@@ -18,6 +19,8 @@ namespace CollegeManagement.API.DTOs.Faculty
         public string? SearchTerm { get; set; }
         public string? Department { get; set; }
         public string? Designation { get; set; }
+        public int? DesignationId { get; set; }
+        public string? FacultyType { get; set; }
         public string? Status { get; set; }
         public string? SortBy { get; set; } = "FirstName";
         public string? SortOrder { get; set; } = "asc"; // "asc" or "desc"
@@ -29,7 +32,7 @@ namespace CollegeManagement.API.DTOs.Faculty
         public int TotalCount { get; set; }
         public int PageNumber { get; set; }
         public int PageSize { get; set; }
-        public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+        public int TotalPages => (int)Math.Ceiling((double)TotalCount / (PageSize > 0 ? PageSize : 1));
         public bool HasPreviousPage => PageNumber > 1;
         public bool HasNextPage => PageNumber < TotalPages;
 
