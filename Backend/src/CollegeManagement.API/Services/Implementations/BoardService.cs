@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
+using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Board.Requests;
 using CollegeManagement.API.DTOs.Board.Responses;
 using CollegeManagement.API.Exceptions;
@@ -11,6 +12,8 @@ using CollegeManagement.API.Models.Reports;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace CollegeManagement.API.Services.Implementations
@@ -31,6 +34,7 @@ namespace CollegeManagement.API.Services.Implementations
         private readonly IAuditLogRepository _auditRepository;
         private readonly IMemoryCache _memoryCache;
         private readonly IBoardExportService _exportService;
+        private readonly AppDbContext _context;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BoardService"/> class.
@@ -46,7 +50,8 @@ namespace CollegeManagement.API.Services.Implementations
             ILookupCacheService cacheService,
             IAuditLogRepository auditRepository,
             IMemoryCache memoryCache,
-            IBoardExportService exportService)
+            IBoardExportService exportService,
+            AppDbContext context)
         {
             _boardRepository = boardRepository;
             _mapper = mapper;
@@ -59,6 +64,7 @@ namespace CollegeManagement.API.Services.Implementations
             _auditRepository = auditRepository;
             _memoryCache = memoryCache;
             _exportService = exportService;
+            _context = context;
         }
 
         #region Core Board Actions
@@ -95,44 +101,48 @@ namespace CollegeManagement.API.Services.Implementations
         {
             await ValidateCreateRequestAsync(request);
 
-            using var transaction = await _boardRepository.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                var board = _mapper.Map<Board>(request);
-                var savedBoard = await _boardRepository.CreateBoardAsync(board, transaction);
-
-                await _boardRepository.ReplaceAcademicLevelsAsync(savedBoard.BoardId, request.AcademicLevelIds, transaction);
-
-                // Insert CREATE AuditLog entry
-                var audit = new AuditLog
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    UserName = userName,
-                    Action = "CREATE",
-                    EntityName = "Board",
-                    EntityId = savedBoard.BoardId,
-                    Description = $"Board '{savedBoard.BoardName}' was created.",
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _auditRepository.InsertAsync(audit, transaction);
+                    var board = _mapper.Map<Board>(request);
+                    var savedBoard = await _boardRepository.CreateBoardAsync(board);
 
-                var fullyLoadedBoard = await _boardRepository.GetBoardByIdAsync(savedBoard.BoardId, transaction);
-                if (fullyLoadedBoard == null)
-                {
-                    throw new InvalidOperationException("Unable to retrieve the saved board.");
+                    await _boardRepository.ReplaceAcademicLevelsAsync(savedBoard.BoardId, request.AcademicLevelIds);
+
+                    // Insert CREATE AuditLog entry
+                    var audit = new AuditLog
+                    {
+                        UserName = userName,
+                        Action = "CREATE",
+                        EntityName = "Board",
+                        EntityId = savedBoard.BoardId,
+                        Description = $"Board '{savedBoard.BoardName}' was created.",
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _auditRepository.InsertAsync(audit);
+
+                    await transaction.CommitAsync();
+
+                    var fullyLoadedBoard = await _boardRepository.GetBoardByIdAsync(savedBoard.BoardId);
+                    if (fullyLoadedBoard == null)
+                    {
+                        throw new InvalidOperationException("Unable to retrieve the saved board.");
+                    }
+
+                    // Evict dashboard cache on success
+                    _memoryCache.Remove("dashboard:board-summary");
+
+                    return _mapper.Map<BoardResponse>(fullyLoadedBoard);
                 }
-
-                transaction.Commit();
-
-                // Evict dashboard cache on success
-                _memoryCache.Remove("dashboard:board-summary");
-
-                return _mapper.Map<BoardResponse>(fullyLoadedBoard);
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         /// <summary>
@@ -142,69 +152,73 @@ namespace CollegeManagement.API.Services.Implementations
         {
             await ValidateUpdateRequestAsync(boardId, request);
 
-            using var transaction = await _boardRepository.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                // Retrieve current state from DB inside the active transaction before mapping mutation
-                var oldBoard = await _boardRepository.GetBoardByIdAsync(boardId, transaction);
-                if (oldBoard == null)
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    throw new NotFoundException($"Board with ID {boardId} was not found.");
+                    // Retrieve current state from DB inside the active transaction before mapping mutation
+                    var oldBoard = await _boardRepository.GetBoardByIdAsync(boardId);
+                    if (oldBoard == null)
+                    {
+                        throw new NotFoundException($"Board with ID {boardId} was not found.");
+                    }
+
+                    if (oldBoard.RowVersion != request.RowVersion)
+                    {
+                        throw new ConflictException("Board was modified by another user. Please refresh and try again.");
+                    }
+
+                    var boardToUpdate = _mapper.Map<Board>(request);
+                    boardToUpdate.BoardId = boardId;
+
+                    var (updatedBoard, affectedRows) = await _boardRepository.UpdateBoardAsync(boardToUpdate, request.RowVersion);
+                    if (affectedRows == -1)
+                    {
+                        throw new NotFoundException($"Board with ID {boardId} was not found.");
+                    }
+                    if (affectedRows == 0)
+                    {
+                        throw new ConflictException("Board was modified by another user. Please refresh and try again.");
+                    }
+
+                    await _boardRepository.ReplaceAcademicLevelsAsync(boardId, request.AcademicLevelIds);
+
+                    // Construct human-readable field comparison summary
+                    var auditDescription = BuildUpdateDescription(oldBoard, request);
+
+                    // Insert UPDATE AuditLog entry
+                    var audit = new AuditLog
+                    {
+                        UserName = userName,
+                        Action = "UPDATE",
+                        EntityName = "Board",
+                        EntityId = boardId,
+                        Description = auditDescription,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _auditRepository.InsertAsync(audit);
+
+                    await transaction.CommitAsync();
+
+                    var fullyLoadedBoard = await _boardRepository.GetBoardByIdAsync(boardId);
+                    if (fullyLoadedBoard == null)
+                    {
+                        throw new InvalidOperationException("Unable to retrieve the updated board.");
+                    }
+
+                    // Evict dashboard cache on success
+                    _memoryCache.Remove("dashboard:board-summary");
+
+                    return _mapper.Map<BoardResponse>(fullyLoadedBoard);
                 }
-
-                if (oldBoard.RowVersion != request.RowVersion)
+                catch
                 {
-                    throw new ConflictException("Board was modified by another user. Please refresh and try again.");
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                var boardToUpdate = _mapper.Map<Board>(request);
-                boardToUpdate.BoardId = boardId;
-
-                var (updatedBoard, affectedRows) = await _boardRepository.UpdateBoardAsync(boardToUpdate, request.RowVersion, transaction);
-                if (affectedRows == -1)
-                {
-                    throw new NotFoundException($"Board with ID {boardId} was not found.");
-                }
-                if (affectedRows == 0)
-                {
-                    throw new ConflictException("Board was modified by another user. Please refresh and try again.");
-                }
-
-                await _boardRepository.ReplaceAcademicLevelsAsync(boardId, request.AcademicLevelIds, transaction);
-
-                // Construct human-readable field comparison summary
-                var auditDescription = BuildUpdateDescription(oldBoard, request);
-
-                // Insert UPDATE AuditLog entry
-                var audit = new AuditLog
-                {
-                    UserName = userName,
-                    Action = "UPDATE",
-                    EntityName = "Board",
-                    EntityId = boardId,
-                    Description = auditDescription,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _auditRepository.InsertAsync(audit, transaction);
-
-                var fullyLoadedBoard = await _boardRepository.GetBoardByIdAsync(boardId, transaction);
-                if (fullyLoadedBoard == null)
-                {
-                    throw new InvalidOperationException("Unable to retrieve the updated board.");
-                }
-
-                transaction.Commit();
-
-                // Evict dashboard cache on success
-                _memoryCache.Remove("dashboard:board-summary");
-
-                return _mapper.Map<BoardResponse>(fullyLoadedBoard);
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
+            });
         }
 
         /// <summary>
@@ -261,46 +275,50 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ConflictException("Board was modified by another user. Please refresh and try again.");
             }
 
-            using var transaction = await _boardRepository.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                var affected = await _boardRepository.ChangeBoardStatusAsync(boardId, request.RowVersion, request.Status, transaction);
-                if (affected == -1)
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    throw new NotFoundException($"Board with ID {boardId} was not found.");
+                    var affected = await _boardRepository.ChangeBoardStatusAsync(boardId, request.RowVersion, request.Status);
+                    if (affected == -1)
+                    {
+                        throw new NotFoundException($"Board with ID {boardId} was not found.");
+                    }
+                    if (affected == 0)
+                    {
+                        throw new ConflictException("Board was modified by another user. Please refresh and try again.");
+                    }
+
+                    var oldStatusStr = board.IsActive ? "Active" : "Inactive";
+                    var newStatusStr = request.Status ? "Active" : "Inactive";
+                    var description = $"Board status changed from {oldStatusStr} to {newStatusStr}.";
+
+                    var audit = new AuditLog
+                    {
+                        UserName = userName,
+                        Action = "STATUS_CHANGE",
+                        EntityName = "Board",
+                        EntityId = boardId,
+                        Description = description,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    await _auditRepository.InsertAsync(audit);
+
+                    await transaction.CommitAsync();
+
+                    // Evict dashboard cache on success
+                    _memoryCache.Remove("dashboard:board-summary");
+
+                    return true;
                 }
-                if (affected == 0)
+                catch
                 {
-                    throw new ConflictException("Board was modified by another user. Please refresh and try again.");
+                    await transaction.RollbackAsync();
+                    throw;
                 }
-
-                var oldStatusStr = board.IsActive ? "Active" : "Inactive";
-                var newStatusStr = request.Status ? "Active" : "Inactive";
-                var description = $"Board status changed from {oldStatusStr} to {newStatusStr}.";
-
-                var audit = new AuditLog
-                {
-                    UserName = userName,
-                    Action = "STATUS_CHANGE",
-                    EntityName = "Board",
-                    EntityId = boardId,
-                    Description = description,
-                    CreatedAt = DateTime.UtcNow
-                };
-                await _auditRepository.InsertAsync(audit, transaction);
-
-                transaction.Commit();
-
-                // Evict dashboard cache on success
-                _memoryCache.Remove("dashboard:board-summary");
-
-                return true;
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
+            });
         }
 
         /// <summary>
