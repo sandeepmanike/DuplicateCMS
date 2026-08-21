@@ -11,4 +11,5 @@ public class GroupDropdownDto
     public string? AcademicYearName { get; set; }
     public int AcademicLevelId { get; set; }
     public string? AcademicLevelName { get; set; }
+
 }

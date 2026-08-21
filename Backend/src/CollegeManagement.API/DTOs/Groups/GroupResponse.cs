@@ -17,5 +17,8 @@
         public string Status { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
+        public List<int> ProgramIds { get; set; } = new();
+        public List<CollegeManagement.API.DTOs.Program.GroupProgramDto> Programs { get; set; }
+    = new();
     }
 }

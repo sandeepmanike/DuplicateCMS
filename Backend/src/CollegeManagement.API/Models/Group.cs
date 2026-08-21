@@ -44,5 +44,7 @@ namespace CollegeManagement.API.Models
 
         [ForeignKey(nameof(AcademicLevelId))]
         public AcademicLevel? AcademicLevelNavigation { get; set; }
+        public virtual ICollection<GroupProgram> GroupPrograms { get; set; }
+    = new List<GroupProgram>();
     }
 }

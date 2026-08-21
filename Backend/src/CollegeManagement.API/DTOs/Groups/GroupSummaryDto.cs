@@ -15,4 +15,6 @@ public class GroupSummaryDto
     public int ActiveStudents { get; set; }
     public int TotalSubjects { get; set; }
     public int ActiveSubjects { get; set; }
+    public List<CollegeManagement.API.DTOs.Program.GroupProgramDto> Programs { get; set; }
+    = new();
 }

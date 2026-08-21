@@ -24,5 +24,6 @@ namespace CollegeManagement.API.DTOs.Groups
         public string? Description { get; set; }
 
         public bool IsActive { get; set; } = true;
+        public List<int> ProgramIds { get; set; } = new();
     }
 }

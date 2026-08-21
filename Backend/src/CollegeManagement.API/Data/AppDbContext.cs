@@ -20,6 +20,9 @@ namespace CollegeManagement.API.Data
         public DbSet<OTP> OTPs { get; set; }
         public DbSet<AcademicYear> AcademicYears { get; set; }
         public DbSet<Group> Groups { get; set; }
+        public DbSet<AcademicProgram> Programs { get; set; }
+
+        public DbSet<GroupProgram> GroupPrograms { get; set; }
         public DbSet<Subject> Subjects { get; set; }
         public DbSet<Country> Countries { get; set; }
         public DbSet<State> States { get; set; }
@@ -89,40 +92,35 @@ namespace CollegeManagement.API.Data
                 .HasForeignKey(u => u.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
             #endregion
-
             #region Subject
-            modelBuilder.Entity<Subject>(entity =>
-            {
-                entity.HasKey(s => s.SubjectId);
 
-                entity.HasIndex(s => new { s.BoardId, s.GroupId, s.AcademicLevelId, s.SubjectCode })
-                    .IsUnique()
-                    .HasDatabaseName("UX_Subjects_Context_Code");
+            modelBuilder.Entity<Subject>()
+                .HasIndex(s => s.SubjectCode)
+                .IsUnique();
 
-                entity.HasIndex(s => s.BoardId)
-                    .HasDatabaseName("IX_Subjects_BoardId");
+            modelBuilder.Entity<Subject>()
+                .HasIndex(s => s.BoardId);
 
-                entity.HasIndex(s => s.GroupId)
-                    .HasDatabaseName("IX_Subjects_GroupId");
+           
 
-                entity.HasIndex(s => s.AcademicLevelId)
-                    .HasDatabaseName("IX_Subjects_AcademicLevelId");
+            modelBuilder.Entity<Subject>()
+                .Ignore(s => s.AcademicLevelId);
 
-                entity.HasOne(s => s.BoardNavigation)
-                    .WithMany()
-                    .HasForeignKey(s => s.BoardId)
-                    .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Subject>()
+                .HasIndex(s => s.GroupId);
 
-                entity.HasOne(s => s.GroupNavigation)
-                    .WithMany()
-                    .HasForeignKey(s => s.GroupId)
-                    .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Subject>()
+                .HasOne(s => s.BoardNavigation)
+                .WithMany()
+                .HasForeignKey(s => s.BoardId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-                entity.HasOne(s => s.AcademicLevelNavigation)
-                    .WithMany()
-                    .HasForeignKey(s => s.AcademicLevelId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
+            modelBuilder.Entity<Subject>()
+                .HasOne(s => s.GroupNavigation)
+                .WithMany()
+                .HasForeignKey(s => s.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             #endregion
 
             #region Group
@@ -189,6 +187,44 @@ namespace CollegeManagement.API.Data
                 .WithMany()
                 .HasForeignKey(g => g.AcademicLevelId)
                 .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<GroupProgram>()
+    .HasOne(gp => gp.Group)
+    .WithMany(g => g.GroupPrograms)
+    .HasForeignKey(gp => gp.GroupId)
+    .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<GroupProgram>()
+                .HasOne(gp => gp.AcademicProgram)
+                .WithMany(p => p.GroupPrograms)
+                .HasForeignKey(gp => gp.ProgramId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<GroupProgram>()
+                .HasIndex(gp => new { gp.GroupId, gp.ProgramId })
+                .IsUnique();
+
+            modelBuilder.Entity<AcademicProgram>(entity =>
+            {
+                entity.ToTable("Programs");
+
+                entity.HasKey(p => p.ProgramId);
+
+                entity.Property(p => p.ProgramName)
+                    .IsRequired()
+                    .HasMaxLength(100);
+
+                entity.Property(p => p.IsActive)
+                    .HasDefaultValue(true);
+
+                entity.Property(p => p.CreatedAt)
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                entity.Property(p => p.UpdatedAt)
+                    .IsRequired(false);
+
+                entity.HasIndex(p => p.ProgramName)
+                    .IsUnique();
+            });
             #endregion
 
             #region StudentAdmission / Student relations
@@ -313,28 +349,28 @@ namespace CollegeManagement.API.Data
                     .IsRequired(false);
 
 
-// Board -> FeeStructure
+                // Board -> FeeStructure
                 entity.HasOne(x => x.Board)
                     .WithMany()
                     .HasForeignKey(x => x.BoardId)
                     .OnDelete(DeleteBehavior.Restrict);
 
 
-// AcademicYear -> FeeStructure
+                // AcademicYear -> FeeStructure
                 entity.HasOne(x => x.AcademicYear)
                     .WithMany()
                     .HasForeignKey(x => x.AcademicYearId)
                     .OnDelete(DeleteBehavior.Restrict);
 
 
-// AcademicLevel -> FeeStructure
+                // AcademicLevel -> FeeStructure
                 entity.HasOne(x => x.AcademicLevel)
                     .WithMany()
                     .HasForeignKey(x => x.AcademicLevelId)
                     .OnDelete(DeleteBehavior.Restrict);
 
 
-// Group -> FeeStructure
+                // Group -> FeeStructure
                 entity.HasOne(x => x.Group)
                     .WithMany()
                     .HasForeignKey(x => x.GroupId)
@@ -926,4 +962,3 @@ namespace CollegeManagement.API.Data
         }
     }
 }
-
