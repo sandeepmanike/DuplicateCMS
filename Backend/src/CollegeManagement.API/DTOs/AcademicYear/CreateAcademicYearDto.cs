@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace CollegeManagement.API.DTOs.AcademicYear
@@ -15,12 +15,13 @@ namespace CollegeManagement.API.DTOs.AcademicYear
         [Required]
         public DateOnly EndDate { get; set; }
 
-        [Required]
-        public DateOnly AdmissionStartDate { get; set; }
+        public DateOnly? AdmissionStartDate { get; set; }
 
-        [Required]
-        public DateOnly AdmissionEndDate { get; set; }
+        public DateOnly? AdmissionEndDate { get; set; }
 
         public bool IsActive { get; set; } = false;
+
+        [StringLength(500)]
+        public string? Description { get; set; }
     }
 }

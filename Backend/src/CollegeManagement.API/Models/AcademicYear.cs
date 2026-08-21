@@ -18,13 +18,14 @@ namespace CollegeManagement.API.Models
         [Required]
         public DateOnly EndDate { get; set; }
 
-        [Required]
-        public DateOnly AdmissionStartDate { get; set; }
+        public DateOnly? AdmissionStartDate { get; set; }
 
-        [Required]
-        public DateOnly AdmissionEndDate { get; set; }
+        public DateOnly? AdmissionEndDate { get; set; }
 
         [Required]
         public bool IsActive { get; set; }
+
+        [StringLength(500)]
+        public string? Description { get; set; }
     }
 }
