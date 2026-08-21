@@ -92,9 +92,27 @@ namespace CollegeManagement.API.DTOs.Sections
             set => InchargeId = value;
         }
 
+        public int? FacultyId
+        {
+            get => InchargeId;
+            set => InchargeId = value;
+        }
+
         public string? Incharge { get; set; }
 
         public string? Teacher
+        {
+            get => Incharge;
+            set => Incharge = value;
+        }
+
+        public string? Faculty
+        {
+            get => Incharge;
+            set => Incharge = value;
+        }
+
+        public string? FacultyName
         {
             get => Incharge;
             set => Incharge = value;

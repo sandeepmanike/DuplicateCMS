@@ -4,19 +4,37 @@ namespace CollegeManagement.API.DTOs.Timetable
 {
     public class CreateRoomDto
     {
-        public string RoomCode { get; set; } = string.Empty;
-        public string RoomName { get; set; } = string.Empty;
+        private string? _roomCode;
+        public string RoomCode
+        {
+            get => !string.IsNullOrWhiteSpace(_roomCode) ? _roomCode : (!string.IsNullOrWhiteSpace(_roomNumber) ? _roomNumber! : (_roomName ?? string.Empty));
+            set => _roomCode = value;
+        }
 
+        private string? _roomNumber;
         public string? RoomNumber
         {
-            get => RoomCode;
-            set
-            {
-                if (string.IsNullOrWhiteSpace(RoomCode) && !string.IsNullOrWhiteSpace(value))
-                {
-                    RoomCode = value;
-                }
-            }
+            get => !string.IsNullOrWhiteSpace(_roomNumber) ? _roomNumber : _roomCode;
+            set => _roomNumber = value;
+        }
+
+        public string? Room
+        {
+            get => RoomNumber;
+            set => RoomNumber = value;
+        }
+
+        private string? _roomName;
+        public string RoomName
+        {
+            get => !string.IsNullOrWhiteSpace(_roomName) ? _roomName : (!string.IsNullOrWhiteSpace(_roomCode) ? _roomCode! : (_roomNumber ?? string.Empty));
+            set => _roomName = value;
+        }
+
+        public string? Name
+        {
+            get => RoomName;
+            set => RoomName = value ?? string.Empty;
         }
 
         public int Capacity { get; set; } = 60;
@@ -28,7 +46,7 @@ namespace CollegeManagement.API.DTOs.Timetable
             get => BlockName;
             set
             {
-                if (string.IsNullOrWhiteSpace(BlockName) && !string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value))
                 {
                     BlockName = value;
                 }
@@ -40,7 +58,7 @@ namespace CollegeManagement.API.DTOs.Timetable
             get => BlockName;
             set
             {
-                if (string.IsNullOrWhiteSpace(BlockName) && !string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value))
                 {
                     BlockName = value;
                 }
@@ -52,7 +70,7 @@ namespace CollegeManagement.API.DTOs.Timetable
             get => BlockName;
             set
             {
-                if (string.IsNullOrWhiteSpace(BlockName) && !string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value))
                 {
                     BlockName = value;
                 }
@@ -77,19 +95,37 @@ namespace CollegeManagement.API.DTOs.Timetable
 
     public class UpdateRoomDto
     {
-        public string RoomCode { get; set; } = string.Empty;
-        public string RoomName { get; set; } = string.Empty;
+        private string? _roomCode;
+        public string RoomCode
+        {
+            get => !string.IsNullOrWhiteSpace(_roomCode) ? _roomCode : (!string.IsNullOrWhiteSpace(_roomNumber) ? _roomNumber! : (_roomName ?? string.Empty));
+            set => _roomCode = value;
+        }
 
+        private string? _roomNumber;
         public string? RoomNumber
         {
-            get => RoomCode;
-            set
-            {
-                if (string.IsNullOrWhiteSpace(RoomCode) && !string.IsNullOrWhiteSpace(value))
-                {
-                    RoomCode = value;
-                }
-            }
+            get => !string.IsNullOrWhiteSpace(_roomNumber) ? _roomNumber : _roomCode;
+            set => _roomNumber = value;
+        }
+
+        public string? Room
+        {
+            get => RoomNumber;
+            set => RoomNumber = value;
+        }
+
+        private string? _roomName;
+        public string RoomName
+        {
+            get => !string.IsNullOrWhiteSpace(_roomName) ? _roomName : (!string.IsNullOrWhiteSpace(_roomCode) ? _roomCode! : (_roomNumber ?? string.Empty));
+            set => _roomName = value;
+        }
+
+        public string? Name
+        {
+            get => RoomName;
+            set => RoomName = value ?? string.Empty;
         }
 
         public int Capacity { get; set; } = 60;
@@ -101,7 +137,7 @@ namespace CollegeManagement.API.DTOs.Timetable
             get => BlockName;
             set
             {
-                if (string.IsNullOrWhiteSpace(BlockName) && !string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value))
                 {
                     BlockName = value;
                 }
@@ -113,7 +149,7 @@ namespace CollegeManagement.API.DTOs.Timetable
             get => BlockName;
             set
             {
-                if (string.IsNullOrWhiteSpace(BlockName) && !string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value))
                 {
                     BlockName = value;
                 }
@@ -125,7 +161,7 @@ namespace CollegeManagement.API.DTOs.Timetable
             get => BlockName;
             set
             {
-                if (string.IsNullOrWhiteSpace(BlockName) && !string.IsNullOrWhiteSpace(value))
+                if (!string.IsNullOrWhiteSpace(value))
                 {
                     BlockName = value;
                 }

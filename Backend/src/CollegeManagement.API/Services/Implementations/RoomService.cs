@@ -34,14 +34,27 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<RoomResponseDto> CreateAsync(CreateRoomDto dto)
         {
-            var existingByCode = await _roomRepository.GetByCodeAsync(dto.RoomCode.Trim());
+            var effectiveCode = (dto.RoomCode ?? dto.RoomNumber ?? dto.RoomName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(effectiveCode))
+            {
+                throw new InvalidOperationException("Room number or room code is required.");
+            }
+
+            var existingByCode = await _roomRepository.GetByCodeAsync(effectiveCode);
             if (existingByCode != null)
             {
-                throw new InvalidOperationException($"Room with code '{dto.RoomCode}' already exists.");
+                throw new InvalidOperationException($"Room with code '{effectiveCode}' already exists.");
             }
 
             var entity = _mapper.Map<Room>(dto);
-            entity.RoomCode = entity.RoomCode?.Trim() ?? dto.RoomCode.Trim();
+            entity.RoomCode = effectiveCode;
+            entity.RoomNumber = effectiveCode;
+            entity.RoomName = !string.IsNullOrWhiteSpace(dto.RoomName) ? dto.RoomName.Trim() : effectiveCode;
+            entity.BlockName = !string.IsNullOrWhiteSpace(dto.BlockName) ? dto.BlockName.Trim() : (!string.IsNullOrWhiteSpace(dto.Building) ? dto.Building.Trim() : string.Empty);
+            entity.Capacity = dto.Capacity > 0 ? dto.Capacity : 60;
+            entity.RoomType = !string.IsNullOrWhiteSpace(dto.RoomType) ? dto.RoomType.Trim() : "Classroom";
+            entity.IsActive = dto.IsActive;
+
             var result = await _roomRepository.AddAsync(entity);
             return _mapper.Map<RoomResponseDto>(result);
         }
@@ -51,10 +64,16 @@ namespace CollegeManagement.API.Services.Implementations
             var existing = await _roomRepository.GetByIdAsync(id);
             if (existing == null) return null;
 
-            var existingByCode = await _roomRepository.GetByCodeAsync(dto.RoomCode.Trim());
+            var effectiveCode = (dto.RoomCode ?? dto.RoomNumber ?? dto.RoomName ?? existing.RoomCode ?? existing.RoomNumber ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(effectiveCode))
+            {
+                throw new InvalidOperationException("Room number or room code is required.");
+            }
+
+            var existingByCode = await _roomRepository.GetByCodeAsync(effectiveCode);
             if (existingByCode != null && existingByCode.RoomId != id)
             {
-                throw new InvalidOperationException($"Room with code '{dto.RoomCode}' already exists.");
+                throw new InvalidOperationException($"Room with code '{effectiveCode}' already exists.");
             }
 
             // Check active section assignments for protection safeguards
@@ -62,7 +81,7 @@ namespace CollegeManagement.API.Services.Implementations
             if (assignedSections.Count > 0)
             {
                 var existingCode = (existing.RoomCode ?? existing.RoomNumber ?? string.Empty).Trim();
-                var newCode = (dto.RoomCode ?? string.Empty).Trim();
+                var newCode = effectiveCode;
                 if (!string.Equals(existingCode, newCode, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidOperationException("Room code cannot be changed because this room is assigned to an active section.");
@@ -87,7 +106,14 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             _mapper.Map(dto, existing);
-            existing.RoomCode = existing.RoomCode?.Trim() ?? dto.RoomCode?.Trim() ?? string.Empty;
+            existing.RoomCode = effectiveCode;
+            existing.RoomNumber = effectiveCode;
+            existing.RoomName = !string.IsNullOrWhiteSpace(dto.RoomName) ? dto.RoomName.Trim() : effectiveCode;
+            existing.BlockName = !string.IsNullOrWhiteSpace(dto.BlockName) ? dto.BlockName.Trim() : (!string.IsNullOrWhiteSpace(dto.Building) ? dto.Building.Trim() : existing.BlockName);
+            if (dto.Capacity > 0) existing.Capacity = dto.Capacity;
+            if (!string.IsNullOrWhiteSpace(dto.RoomType)) existing.RoomType = dto.RoomType.Trim();
+            existing.IsActive = dto.IsActive;
+
             await _roomRepository.UpdateAsync(existing);
             return _mapper.Map<RoomResponseDto>(existing);
         }

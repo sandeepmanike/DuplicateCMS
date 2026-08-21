@@ -184,14 +184,14 @@ namespace CollegeManagement.API.Repositories.Implementations
             try
             {
                 var count = await Connection.ExecuteScalarAsync<int>(
-                    "SELECT COUNT(1) FROM Faculty WHERE Id = @Id AND IsDeleted = 0",
+                    "SELECT COUNT(1) FROM Faculties WHERE Id = @Id AND (IsDeleted = 0 OR IsDeleted IS NULL)",
                     new { Id = facultyId });
                 return count > 0;
             }
             catch
             {
                 var count = await Connection.ExecuteScalarAsync<int>(
-                    "SELECT COUNT(1) FROM Faculties WHERE Id = @Id AND IsDeleted = 0",
+                    "SELECT COUNT(1) FROM Faculty WHERE Id = @Id AND (IsDeleted = 0 OR IsDeleted IS NULL)",
                     new { Id = facultyId });
                 return count > 0;
             }
@@ -210,7 +210,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             if (roomId.HasValue && roomId.Value > 0)
             {
                 return await Connection.QueryFirstOrDefaultAsync<CollegeManagement.API.Models.Timetable.Room>(
-                    "SELECT RoomId, RoomNumber, RoomCode, RoomName, Floor, Capacity, RoomType, IsActive FROM Rooms WHERE RoomId = @Id",
+                    "SELECT RoomId, RoomNumber, RoomCode, RoomName, BlockName, BlockName AS BuildingName, Floor, Capacity, RoomType, IsActive FROM Rooms WHERE RoomId = @Id",
                     new { Id = roomId.Value });
             }
 
@@ -218,7 +218,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             {
                 var trimmed = roomCode.Trim();
                 return await Connection.QueryFirstOrDefaultAsync<CollegeManagement.API.Models.Timetable.Room>(
-                    "SELECT RoomId, RoomNumber, RoomCode, RoomName, Floor, Capacity, RoomType, IsActive FROM Rooms WHERE RoomCode = @Code OR RoomNumber = @Code LIMIT 1",
+                    "SELECT RoomId, RoomNumber, RoomCode, RoomName, BlockName, BlockName AS BuildingName, Floor, Capacity, RoomType, IsActive FROM Rooms WHERE RoomCode = @Code OR RoomNumber = @Code LIMIT 1",
                     new { Code = trimmed });
             }
 
