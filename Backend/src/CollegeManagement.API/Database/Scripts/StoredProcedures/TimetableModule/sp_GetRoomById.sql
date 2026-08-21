@@ -1,6 +1,6 @@
-DROP PROCEDURE IF EXISTS sp_GetRooms;
+DROP PROCEDURE IF EXISTS sp_GetRoomById;
 DELIMITER //
-CREATE PROCEDURE sp_GetRooms()
+CREATE PROCEDURE sp_GetRoomById(IN p_RoomId INT)
 BEGIN
     SELECT 
         RoomId,
@@ -16,6 +16,6 @@ BEGIN
         CreatedAt,
         UpdatedAt
     FROM Rooms
-    ORDER BY COALESCE(RoomCode, RoomNumber) ASC;
+    WHERE RoomId = p_RoomId;
 END //
 DELIMITER ;

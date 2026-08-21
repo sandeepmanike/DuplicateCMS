@@ -7,6 +7,11 @@ namespace CollegeManagement.API.DTOs.Sections
         public string? Group { get; set; }
         public int? GroupId { get; set; }
         public string? Programme { get; set; }
+        public string? Program
+        {
+            get => Programme;
+            set => Programme = value;
+        }
         public string? AcademicLevel { get; set; }
         public string? YearOfStudy
         {

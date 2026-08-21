@@ -23,7 +23,7 @@ BEGIN
            s.SectionName,
            s.RoomNumber,
            s.RoomId,
-           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+           COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
            s.ClassTeacherId,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
            s.MaximumStrength,
@@ -47,7 +47,8 @@ BEGIN
            s.Programme LIKE CONCAT('%', p_SearchTerm, '%') OR
            CONCAT(f.FirstName, ' ', f.LastName) LIKE CONCAT('%', p_SearchTerm, '%') OR
            s.RoomNumber LIKE CONCAT('%', p_SearchTerm, '%') OR
-           r.RoomName LIKE CONCAT('%', p_SearchTerm, '%')
+           r.RoomName LIKE CONCAT('%', p_SearchTerm, '%') OR
+           r.RoomNumber LIKE CONCAT('%', p_SearchTerm, '%')
       ))
     ORDER BY s.SectionId DESC;
 END //

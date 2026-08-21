@@ -42,7 +42,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                 "sp_GetRooms",
                 commandType: CommandType.StoredProcedure);
 
-            return rooms.FirstOrDefault(r => r.RoomCode.Equals(roomCode, System.StringComparison.OrdinalIgnoreCase));
+            return rooms.FirstOrDefault(r => (r.RoomCode ?? r.RoomNumber).Equals(roomCode, System.StringComparison.OrdinalIgnoreCase));
         }
 
         public async Task<Room> AddAsync(Room room)
@@ -51,11 +51,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 "sp_CreateRoom",
                 new
                 {
-                    p_RoomCode = room.RoomCode,
-                    p_RoomName = room.RoomName,
+                    p_RoomCode = room.RoomCode ?? room.RoomNumber,
+                    p_RoomName = room.RoomName ?? room.RoomCode ?? room.RoomNumber,
                     p_Capacity = room.Capacity,
                     p_RoomType = room.RoomType,
-                    p_Building = room.Building,
+                    p_Building = room.Building ?? room.BuildingName,
                     p_Floor = room.Floor,
                     p_IsActive = room.IsActive
                 },
@@ -72,11 +72,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 new
                 {
                     p_RoomId = room.RoomId,
-                    p_RoomCode = room.RoomCode,
-                    p_RoomName = room.RoomName,
+                    p_RoomCode = room.RoomCode ?? room.RoomNumber,
+                    p_RoomName = room.RoomName ?? room.RoomCode ?? room.RoomNumber,
                     p_Capacity = room.Capacity,
                     p_RoomType = room.RoomType,
-                    p_Building = room.Building,
+                    p_Building = room.Building ?? room.BuildingName,
                     p_Floor = room.Floor,
                     p_IsActive = room.IsActive
                 },

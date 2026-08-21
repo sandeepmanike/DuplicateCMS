@@ -6,9 +6,35 @@ namespace CollegeManagement.API.DTOs.Timetable
     {
         public string RoomCode { get; set; } = string.Empty;
         public string RoomName { get; set; } = string.Empty;
+
+        public string? RoomNumber
+        {
+            get => RoomCode;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(RoomCode) && !string.IsNullOrWhiteSpace(value))
+                {
+                    RoomCode = value;
+                }
+            }
+        }
+
         public int Capacity { get; set; } = 60;
         public string RoomType { get; set; } = "Classroom";
         public string? Building { get; set; }
+
+        public string? BuildingName
+        {
+            get => Building;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(Building) && !string.IsNullOrWhiteSpace(value))
+                {
+                    Building = value;
+                }
+            }
+        }
+
         public string? Floor { get; set; }
         public bool IsActive { get; set; } = true;
     }
@@ -17,9 +43,35 @@ namespace CollegeManagement.API.DTOs.Timetable
     {
         public string RoomCode { get; set; } = string.Empty;
         public string RoomName { get; set; } = string.Empty;
+
+        public string? RoomNumber
+        {
+            get => RoomCode;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(RoomCode) && !string.IsNullOrWhiteSpace(value))
+                {
+                    RoomCode = value;
+                }
+            }
+        }
+
         public int Capacity { get; set; } = 60;
         public string RoomType { get; set; } = "Classroom";
         public string? Building { get; set; }
+
+        public string? BuildingName
+        {
+            get => Building;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(Building) && !string.IsNullOrWhiteSpace(value))
+                {
+                    Building = value;
+                }
+            }
+        }
+
         public string? Floor { get; set; }
         public bool IsActive { get; set; } = true;
     }
@@ -29,9 +81,11 @@ namespace CollegeManagement.API.DTOs.Timetable
         public int RoomId { get; set; }
         public string RoomCode { get; set; } = string.Empty;
         public string RoomName { get; set; } = string.Empty;
+        public string RoomNumber => RoomCode;
         public int Capacity { get; set; }
         public string RoomType { get; set; } = string.Empty;
         public string? Building { get; set; }
+        public string? BuildingName => Building;
         public string? Floor { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }

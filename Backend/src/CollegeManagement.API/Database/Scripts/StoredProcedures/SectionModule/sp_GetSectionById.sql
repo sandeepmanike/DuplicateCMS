@@ -14,7 +14,7 @@ BEGIN
            s.SectionName,
            s.RoomNumber,
            s.RoomId,
-           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+           COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
            s.ClassTeacherId,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
            s.MaximumStrength,

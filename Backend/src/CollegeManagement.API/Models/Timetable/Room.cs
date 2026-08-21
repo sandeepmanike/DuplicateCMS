@@ -15,20 +15,45 @@ namespace CollegeManagement.API.Models.Timetable
         [MaxLength(50)]
         public string RoomNumber { get; set; } = string.Empty;
 
-        [NotMapped]
-        public string RoomCode { get => RoomNumber; set => RoomNumber = value; }
+        [Column("RoomCode")]
+        [MaxLength(50)]
+        public string? RoomCode
+        {
+            get => !string.IsNullOrWhiteSpace(_roomCode) ? _roomCode : RoomNumber;
+            set
+            {
+                _roomCode = value;
+                if (string.IsNullOrWhiteSpace(RoomNumber) && !string.IsNullOrWhiteSpace(value))
+                {
+                    RoomNumber = value;
+                }
+            }
+        }
+        private string? _roomCode;
 
-        [NotMapped]
-        public string RoomName { get => RoomNumber; set => RoomNumber = value; }
+        [Column("RoomName")]
+        [MaxLength(100)]
+        public string? RoomName
+        {
+            get => !string.IsNullOrWhiteSpace(_roomName) ? _roomName : (!string.IsNullOrWhiteSpace(RoomNumber) ? RoomNumber : (_roomCode ?? string.Empty));
+            set => _roomName = value;
+        }
+        private string? _roomName;
 
         [Column("BuildingName")]
         [MaxLength(100)]
         public string? BuildingName { get; set; }
 
         [NotMapped]
-        public string? Building { get => BuildingName; set => BuildingName = value; }
+        public string? Building
+        {
+            get => BuildingName;
+            set => BuildingName = value;
+        }
 
-        public int? Floor { get; set; }
+        [Column("Floor")]
+        [MaxLength(50)]
+        public string? Floor { get; set; }
 
         [Required]
         public int Capacity { get; set; } = 60;

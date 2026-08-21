@@ -23,6 +23,18 @@ namespace CollegeManagement.API.DTOs.Sections
         [MaxLength(100, ErrorMessage = "Programme cannot exceed 100 characters.")]
         public string Programme { get; set; } = string.Empty;
 
+        public string? Program
+        {
+            get => Programme;
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    Programme = value;
+                }
+            }
+        }
+
         [MaxLength(50, ErrorMessage = "Academic Level cannot exceed 50 characters.")]
         public string AcademicLevel { get; set; } = string.Empty;
 

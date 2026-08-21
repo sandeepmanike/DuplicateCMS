@@ -41,7 +41,7 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             var entity = _mapper.Map<Room>(dto);
-            entity.RoomCode = entity.RoomCode.Trim();
+            entity.RoomCode = entity.RoomCode?.Trim() ?? dto.RoomCode.Trim();
             var result = await _roomRepository.AddAsync(entity);
             return _mapper.Map<RoomResponseDto>(result);
         }
@@ -58,7 +58,7 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             _mapper.Map(dto, existing);
-            existing.RoomCode = existing.RoomCode.Trim();
+            existing.RoomCode = existing.RoomCode?.Trim() ?? dto.RoomCode.Trim();
             await _roomRepository.UpdateAsync(existing);
             return _mapper.Map<RoomResponseDto>(existing);
         }

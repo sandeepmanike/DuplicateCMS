@@ -12,6 +12,7 @@ namespace CollegeManagement.API.DTOs.Sections
         public int? GroupId { get; set; }
         public string Group { get; set; } = string.Empty;
         public string Programme { get; set; } = string.Empty;
+        public string Program => Programme;
         public string AcademicLevel { get; set; } = string.Empty;
         public string YearOfStudy => AcademicLevel;
         public string SectionName { get; set; } = string.Empty;

@@ -1,11 +1,11 @@
 -- =============================================================================
--- FIX SECTIONS TABLE SCHEMA & STORED PROCEDURES
--- DATABASE: u819242402_CLM_System
+-- SECTION & ROOM MANAGEMENT DATABASE SCHEMA & STORED PROCEDURES
+-- SAFE & IDEMPOTENT (NO DATA LOSS)
 -- =============================================================================
 
-USE `u819242402_CLM_System`;
-
--- 1. Safely add missing columns to Sections table if they do not exist
+-- -----------------------------------------------------------------------------
+-- 1. SECTIONS TABLE: Ensure Columns Exist
+-- -----------------------------------------------------------------------------
 SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Sections' AND COLUMN_NAME = 'Board');
 SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `Board` VARCHAR(100) NOT NULL DEFAULT \'\' AFTER `SectionId`', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
@@ -50,7 +50,29 @@ SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEM
 SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `MaximumStrength` INT NOT NULL DEFAULT 60 AFTER `ClassTeacherId`', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- 2. sp_GetAllSections
+-- -----------------------------------------------------------------------------
+-- 2. ROOMS TABLE: Ensure Columns Exist & Align Datatypes
+-- -----------------------------------------------------------------------------
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Rooms' AND COLUMN_NAME = 'RoomCode');
+SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Rooms` ADD COLUMN `RoomCode` VARCHAR(50) NULL AFTER `RoomId`', 'SELECT 1');
+PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Rooms' AND COLUMN_NAME = 'RoomName');
+SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Rooms` ADD COLUMN `RoomName` VARCHAR(100) NULL AFTER `RoomNumber`', 'SELECT 1');
+PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Align Floor datatype to VARCHAR(50) to safely accept numeric & text floor entries
+ALTER TABLE `Rooms` MODIFY COLUMN `Floor` VARCHAR(50) NULL;
+
+-- Backfill RoomCode and RoomName from RoomNumber if empty
+UPDATE `Rooms` SET `RoomCode` = `RoomNumber` WHERE (`RoomCode` IS NULL OR `RoomCode` = '') AND `RoomNumber` IS NOT NULL;
+UPDATE `Rooms` SET `RoomName` = `RoomNumber` WHERE (`RoomName` IS NULL OR `RoomName` = '') AND `RoomNumber` IS NOT NULL;
+
+-- -----------------------------------------------------------------------------
+-- 3. STORED PROCEDURES: Section Module
+-- -----------------------------------------------------------------------------
+
+-- 3.1 sp_GetAllSections
 DROP PROCEDURE IF EXISTS sp_GetAllSections;
 DELIMITER //
 CREATE PROCEDURE sp_GetAllSections(
@@ -76,7 +98,7 @@ BEGIN
            s.SectionName,
            s.RoomNumber,
            s.RoomId,
-           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+           COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
            s.ClassTeacherId,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
            s.MaximumStrength,
@@ -100,13 +122,14 @@ BEGIN
            s.Programme LIKE CONCAT('%', p_SearchTerm, '%') OR
            CONCAT(f.FirstName, ' ', f.LastName) LIKE CONCAT('%', p_SearchTerm, '%') OR
            s.RoomNumber LIKE CONCAT('%', p_SearchTerm, '%') OR
-           r.RoomName LIKE CONCAT('%', p_SearchTerm, '%')
+           r.RoomName LIKE CONCAT('%', p_SearchTerm, '%') OR
+           r.RoomNumber LIKE CONCAT('%', p_SearchTerm, '%')
       ))
     ORDER BY s.SectionId DESC;
 END //
 DELIMITER ;
 
--- 3. sp_GetSectionById
+-- 3.2 sp_GetSectionById
 DROP PROCEDURE IF EXISTS sp_GetSectionById;
 DELIMITER //
 CREATE PROCEDURE sp_GetSectionById(IN p_SectionId INT)
@@ -123,7 +146,7 @@ BEGIN
            s.SectionName,
            s.RoomNumber,
            s.RoomId,
-           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+           COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
            s.ClassTeacherId,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
            s.MaximumStrength,
@@ -138,7 +161,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- 4. sp_CreateSection
+-- 3.3 sp_CreateSection
 DROP PROCEDURE IF EXISTS sp_CreateSection;
 DELIMITER //
 CREATE PROCEDURE sp_CreateSection(
@@ -169,7 +192,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- 5. sp_UpdateSection
+-- 3.4 sp_UpdateSection
 DROP PROCEDURE IF EXISTS sp_UpdateSection;
 DELIMITER //
 CREATE PROCEDURE sp_UpdateSection(
@@ -208,7 +231,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- 6. sp_DeleteSection
+-- 3.5 sp_DeleteSection
 DROP PROCEDURE IF EXISTS sp_DeleteSection;
 DELIMITER //
 CREATE PROCEDURE sp_DeleteSection(IN p_SectionId INT)
@@ -217,7 +240,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- 7. sp_ValidateSectionName
+-- 3.6 sp_ValidateSectionName
 DROP PROCEDURE IF EXISTS sp_ValidateSectionName;
 DELIMITER //
 CREATE PROCEDURE sp_ValidateSectionName(
@@ -242,7 +265,7 @@ BEGIN
 END //
 DELIMITER ;
 
--- 8. sp_GetSectionsByGroup
+-- 3.7 sp_GetSectionsByGroup
 DROP PROCEDURE IF EXISTS sp_GetSectionsByGroup;
 DELIMITER //
 CREATE PROCEDURE sp_GetSectionsByGroup(IN p_GroupId INT)
@@ -259,7 +282,7 @@ BEGIN
            s.SectionName,
            s.RoomNumber,
            s.RoomId,
-           COALESCE(r.RoomName, s.RoomNumber, '') AS RoomName,
+           COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
            s.ClassTeacherId,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
            s.MaximumStrength,
@@ -273,5 +296,131 @@ BEGIN
     WHERE s.GroupId = p_GroupId 
        OR s.`Group` = (SELECT GroupName FROM `Groups` WHERE GroupId = p_GroupId LIMIT 1)
     ORDER BY s.SectionName ASC;
+END //
+DELIMITER ;
+
+-- -----------------------------------------------------------------------------
+-- 4. STORED PROCEDURES: Room Module
+-- -----------------------------------------------------------------------------
+
+-- 4.1 sp_GetRooms
+DROP PROCEDURE IF EXISTS sp_GetRooms;
+DELIMITER //
+CREATE PROCEDURE sp_GetRooms()
+BEGIN
+    SELECT 
+        RoomId,
+        COALESCE(RoomCode, RoomNumber, '') AS RoomCode,
+        COALESCE(RoomName, RoomNumber, '') AS RoomName,
+        RoomNumber,
+        BuildingName AS Building,
+        BuildingName,
+        Floor,
+        Capacity,
+        RoomType,
+        IsActive,
+        CreatedAt,
+        UpdatedAt
+    FROM Rooms
+    ORDER BY COALESCE(RoomCode, RoomNumber) ASC;
+END //
+DELIMITER ;
+
+-- 4.2 sp_GetRoomById
+DROP PROCEDURE IF EXISTS sp_GetRoomById;
+DELIMITER //
+CREATE PROCEDURE sp_GetRoomById(IN p_RoomId INT)
+BEGIN
+    SELECT 
+        RoomId,
+        COALESCE(RoomCode, RoomNumber, '') AS RoomCode,
+        COALESCE(RoomName, RoomNumber, '') AS RoomName,
+        RoomNumber,
+        BuildingName AS Building,
+        BuildingName,
+        Floor,
+        Capacity,
+        RoomType,
+        IsActive,
+        CreatedAt,
+        UpdatedAt
+    FROM Rooms
+    WHERE RoomId = p_RoomId;
+END //
+DELIMITER ;
+
+-- 4.3 sp_CreateRoom
+DROP PROCEDURE IF EXISTS sp_CreateRoom;
+DELIMITER //
+CREATE PROCEDURE sp_CreateRoom(
+    IN p_RoomCode VARCHAR(50),
+    IN p_RoomName VARCHAR(100),
+    IN p_Capacity INT,
+    IN p_RoomType VARCHAR(50),
+    IN p_Building VARCHAR(100),
+    IN p_Floor VARCHAR(50),
+    IN p_IsActive TINYINT(1)
+)
+BEGIN
+    INSERT INTO Rooms (
+        RoomNumber,
+        RoomCode,
+        RoomName,
+        BuildingName,
+        Floor,
+        Capacity,
+        RoomType,
+        IsActive,
+        CreatedAt
+    )
+    VALUES (
+        p_RoomCode,
+        p_RoomCode,
+        COALESCE(p_RoomName, p_RoomCode),
+        p_Building,
+        p_Floor,
+        IFNULL(p_Capacity, 60),
+        IFNULL(p_RoomType, 'Classroom'),
+        IFNULL(p_IsActive, 1),
+        UTC_TIMESTAMP()
+    );
+    SELECT LAST_INSERT_ID();
+END //
+DELIMITER ;
+
+-- 4.4 sp_UpdateRoom
+DROP PROCEDURE IF EXISTS sp_UpdateRoom;
+DELIMITER //
+CREATE PROCEDURE sp_UpdateRoom(
+    IN p_RoomId INT,
+    IN p_RoomCode VARCHAR(50),
+    IN p_RoomName VARCHAR(100),
+    IN p_Capacity INT,
+    IN p_RoomType VARCHAR(50),
+    IN p_Building VARCHAR(100),
+    IN p_Floor VARCHAR(50),
+    IN p_IsActive TINYINT(1)
+)
+BEGIN
+    UPDATE Rooms
+    SET RoomNumber = p_RoomCode,
+        RoomCode = p_RoomCode,
+        RoomName = COALESCE(p_RoomName, p_RoomCode),
+        BuildingName = p_Building,
+        Floor = p_Floor,
+        Capacity = p_Capacity,
+        RoomType = p_RoomType,
+        IsActive = p_IsActive,
+        UpdatedAt = UTC_TIMESTAMP()
+    WHERE RoomId = p_RoomId;
+END //
+DELIMITER ;
+
+-- 4.5 sp_DeleteRoom
+DROP PROCEDURE IF EXISTS sp_DeleteRoom;
+DELIMITER //
+CREATE PROCEDURE sp_DeleteRoom(IN p_RoomId INT)
+BEGIN
+    DELETE FROM Rooms WHERE RoomId = p_RoomId;
 END //
 DELIMITER ;
