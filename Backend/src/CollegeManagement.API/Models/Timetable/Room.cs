@@ -40,15 +40,29 @@ namespace CollegeManagement.API.Models.Timetable
         }
         private string? _roomName;
 
-        [Column("BuildingName")]
+        [Column("BlockName")]
         [MaxLength(100)]
-        public string? BuildingName { get; set; }
+        public string? BlockName { get; set; }
+
+        [NotMapped]
+        public string? BuildingName
+        {
+            get => BlockName;
+            set => BlockName = value;
+        }
 
         [NotMapped]
         public string? Building
         {
-            get => BuildingName;
-            set => BuildingName = value;
+            get => BlockName;
+            set => BlockName = value;
+        }
+
+        [NotMapped]
+        public string? Block
+        {
+            get => BlockName;
+            set => BlockName = value;
         }
 
         [Column("Floor")]

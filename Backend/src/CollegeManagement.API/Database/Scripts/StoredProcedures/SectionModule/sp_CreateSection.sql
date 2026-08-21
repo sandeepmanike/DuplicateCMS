@@ -10,7 +10,7 @@ CREATE PROCEDURE sp_CreateSection(
     IN p_AcademicLevel VARCHAR(50),
     IN p_SectionName VARCHAR(50),
     IN p_RoomNumber VARCHAR(50),
-    IN p_ClassTeacherId INT,
+    IN p_InchargeId INT,
     IN p_MaximumStrength INT,
     IN p_IsActive TINYINT(1),
     IN p_RoomId INT
@@ -18,11 +18,11 @@ CREATE PROCEDURE sp_CreateSection(
 BEGIN
     INSERT INTO Sections (
         Board, BoardId, AcademicYearId, `Group`, GroupId, Programme, AcademicLevel, 
-        SectionName, RoomNumber, ClassTeacherId, MaximumStrength, IsActive, RoomId, CreatedAt
+        SectionName, RoomNumber, InchargeId, MaximumStrength, IsActive, RoomId, CreatedAt
     )
     VALUES (
         p_Board, p_BoardId, p_AcademicYearId, p_Group, p_GroupId, COALESCE(p_Programme, ''), p_AcademicLevel, 
-        p_SectionName, p_RoomNumber, p_ClassTeacherId, p_MaximumStrength, p_IsActive, p_RoomId, UTC_TIMESTAMP()
+        p_SectionName, p_RoomNumber, p_InchargeId, p_MaximumStrength, p_IsActive, p_RoomId, UTC_TIMESTAMP()
     );
     SELECT LAST_INSERT_ID();
 END //

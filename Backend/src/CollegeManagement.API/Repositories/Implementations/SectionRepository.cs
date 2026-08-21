@@ -64,7 +64,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_AcademicLevel = section.AcademicLevel,
                     p_SectionName = section.SectionName,
                     p_RoomNumber = section.RoomNumber,
-                    p_ClassTeacherId = section.ClassTeacherId,
+                    p_InchargeId = section.InchargeId ?? section.ClassTeacherId,
                     p_MaximumStrength = section.MaximumStrength,
                     p_IsActive = section.IsActive,
                     p_RoomId = section.RoomId
@@ -88,7 +88,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_AcademicLevel = section.AcademicLevel,
                     p_SectionName = section.SectionName,
                     p_RoomNumber = section.RoomNumber,
-                    p_ClassTeacherId = section.ClassTeacherId,
+                    p_InchargeId = section.InchargeId ?? section.ClassTeacherId,
                     p_MaximumStrength = section.MaximumStrength,
                     p_IsActive = section.IsActive,
                     p_RoomId = section.RoomId
@@ -143,9 +143,40 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<AcademicYear?> GetAcademicYearByIdAsync(int academicYearId)
         {
-            return await Connection.QueryFirstOrDefaultAsync<AcademicYear>(
+            var row = await Connection.QueryFirstOrDefaultAsync<dynamic>(
                 "SELECT AcademicYearId, AcademicYearName, StartDate, EndDate, AdmissionStartDate, AdmissionEndDate, IsActive FROM AcademicYears WHERE AcademicYearId = @Id",
                 new { Id = academicYearId });
+
+            if (row == null) return null;
+
+            DateOnly ToDateOnly(dynamic? val)
+            {
+                if (val == null) return default;
+                if (val is DateOnly d) return d;
+                if (val is DateTime dt) return DateOnly.FromDateTime(dt);
+                if (DateTime.TryParse(val.ToString(), out DateTime parsed)) return DateOnly.FromDateTime(parsed);
+                return default;
+            }
+
+            DateOnly? ToNullableDateOnly(dynamic? val)
+            {
+                if (val == null) return null;
+                if (val is DateOnly d) return d;
+                if (val is DateTime dt) return DateOnly.FromDateTime(dt);
+                if (DateTime.TryParse(val.ToString(), out DateTime parsed)) return DateOnly.FromDateTime(parsed);
+                return null;
+            }
+
+            return new AcademicYear
+            {
+                AcademicYearId = (int)row.AcademicYearId,
+                AcademicYearName = row.AcademicYearName?.ToString() ?? string.Empty,
+                StartDate = ToDateOnly(row.StartDate),
+                EndDate = ToDateOnly(row.EndDate),
+                AdmissionStartDate = ToNullableDateOnly(row.AdmissionStartDate),
+                AdmissionEndDate = ToNullableDateOnly(row.AdmissionEndDate),
+                IsActive = row.IsActive is bool b ? b : (row.IsActive is int i ? i == 1 : Convert.ToBoolean(row.IsActive))
+            };
         }
 
         public async Task<bool> FacultyExistsAsync(int facultyId)
@@ -172,6 +203,49 @@ namespace CollegeManagement.API.Repositories.Implementations
                 "SELECT COUNT(1) FROM Rooms WHERE RoomId = @Id AND IsActive = 1",
                 new { Id = roomId });
             return count > 0;
+        }
+
+        public async Task<CollegeManagement.API.Models.Timetable.Room?> GetRoomDetailsAsync(int? roomId, string? roomCode)
+        {
+            if (roomId.HasValue && roomId.Value > 0)
+            {
+                return await Connection.QueryFirstOrDefaultAsync<CollegeManagement.API.Models.Timetable.Room>(
+                    "SELECT RoomId, RoomNumber, RoomCode, RoomName, Floor, Capacity, RoomType, IsActive FROM Rooms WHERE RoomId = @Id",
+                    new { Id = roomId.Value });
+            }
+
+            if (!string.IsNullOrWhiteSpace(roomCode))
+            {
+                var trimmed = roomCode.Trim();
+                return await Connection.QueryFirstOrDefaultAsync<CollegeManagement.API.Models.Timetable.Room>(
+                    "SELECT RoomId, RoomNumber, RoomCode, RoomName, Floor, Capacity, RoomType, IsActive FROM Rooms WHERE RoomCode = @Code OR RoomNumber = @Code LIMIT 1",
+                    new { Code = trimmed });
+            }
+
+            return null;
+        }
+
+        public async Task<SectionResponse?> GetActiveSectionAssignedToRoomAsync(int? roomId, string? roomCode, int? excludeSectionId = null)
+        {
+            var sql = @"
+                SELECT SectionId, SectionName, RoomNumber, RoomId, IsActive
+                FROM Sections
+                WHERE IsActive = 1
+                  AND (
+                      (@RoomId IS NOT NULL AND @RoomId > 0 AND RoomId = @RoomId)
+                      OR (@RoomCode IS NOT NULL AND @RoomCode <> '' AND (RoomNumber = @RoomCode OR RoomId IN (SELECT RoomId FROM Rooms WHERE RoomCode = @RoomCode OR RoomNumber = @RoomCode)))
+                  )
+                  AND (@ExcludeSectionId IS NULL OR SectionId <> @ExcludeSectionId)
+                LIMIT 1";
+
+            return await Connection.QueryFirstOrDefaultAsync<SectionResponse>(
+                sql,
+                new
+                {
+                    RoomId = roomId,
+                    RoomCode = string.IsNullOrWhiteSpace(roomCode) ? null : roomCode.Trim(),
+                    ExcludeSectionId = excludeSectionId
+                });
         }
     }
 }

@@ -20,9 +20,9 @@ namespace CollegeManagement.API.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<RoomResponseDto>> GetAllAsync()
+        public async Task<IEnumerable<RoomResponseDto>> GetAllAsync(RoomFilterDto? filter = null)
         {
-            var rooms = await _roomRepository.GetAllAsync();
+            var rooms = await _roomRepository.GetAllFilteredAsync(filter);
             return _mapper.Map<IEnumerable<RoomResponseDto>>(rooms);
         }
 
@@ -57,8 +57,37 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new InvalidOperationException($"Room with code '{dto.RoomCode}' already exists.");
             }
 
+            // Check active section assignments for protection safeguards
+            var assignedSections = (await _roomRepository.GetAssignedActiveSectionsByRoomAsync(id, existing.RoomCode ?? existing.RoomNumber)).ToList();
+            if (assignedSections.Count > 0)
+            {
+                var existingCode = (existing.RoomCode ?? existing.RoomNumber ?? string.Empty).Trim();
+                var newCode = (dto.RoomCode ?? string.Empty).Trim();
+                if (!string.Equals(existingCode, newCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Room code cannot be changed because this room is assigned to an active section.");
+                }
+
+                if (string.Equals(existing.RoomType, "Classroom", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(dto.RoomType?.Trim(), "Classroom", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Room type cannot be changed because this room is assigned to an active section.");
+                }
+
+                var maxStrength = assignedSections.Max(s => s.MaximumStrength);
+                if (dto.Capacity < maxStrength)
+                {
+                    throw new InvalidOperationException("Room capacity cannot be reduced below the strength of an assigned active section.");
+                }
+
+                if (existing.IsActive && !dto.IsActive)
+                {
+                    throw new InvalidOperationException("Cannot deactivate this room because it is assigned to an active section.");
+                }
+            }
+
             _mapper.Map(dto, existing);
-            existing.RoomCode = existing.RoomCode?.Trim() ?? dto.RoomCode.Trim();
+            existing.RoomCode = existing.RoomCode?.Trim() ?? dto.RoomCode?.Trim() ?? string.Empty;
             await _roomRepository.UpdateAsync(existing);
             return _mapper.Map<RoomResponseDto>(existing);
         }
@@ -67,6 +96,12 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var existing = await _roomRepository.GetByIdAsync(id);
             if (existing == null) return false;
+
+            var assignedSections = (await _roomRepository.GetAssignedActiveSectionsByRoomAsync(id, existing.RoomCode ?? existing.RoomNumber)).ToList();
+            if (assignedSections.Count > 0)
+            {
+                throw new InvalidOperationException("Cannot delete this room because it is assigned to an active section.");
+            }
 
             await _roomRepository.DeleteAsync(id);
             return true;

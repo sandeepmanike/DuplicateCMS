@@ -42,12 +42,19 @@ SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEM
 SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `RoomId` INT NULL AFTER `RoomNumber`', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Sections' AND COLUMN_NAME = 'ClassTeacherId');
-SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `ClassTeacherId` INT NULL AFTER `RoomId`', 'SELECT 1');
+-- Rename ClassTeacherId to InchargeId if ClassTeacherId exists and InchargeId does not
+SET @has_ct := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Sections' AND COLUMN_NAME = 'ClassTeacherId');
+SET @has_inc := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Sections' AND COLUMN_NAME = 'InchargeId');
+SET @sqlstmt := IF(@has_ct > 0 AND @has_inc = 0, 'ALTER TABLE `Sections` CHANGE COLUMN `ClassTeacherId` `InchargeId` INT NULL', 'SELECT 1');
+PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Ensure InchargeId column exists
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Sections' AND COLUMN_NAME = 'InchargeId');
+SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `InchargeId` INT NULL AFTER `RoomId`', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Sections' AND COLUMN_NAME = 'MaximumStrength');
-SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `MaximumStrength` INT NOT NULL DEFAULT 60 AFTER `ClassTeacherId`', 'SELECT 1');
+SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Sections` ADD COLUMN `MaximumStrength` INT NOT NULL DEFAULT 40 AFTER `InchargeId`', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- -----------------------------------------------------------------------------
@@ -59,6 +66,17 @@ PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Rooms' AND COLUMN_NAME = 'RoomName');
 SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Rooms` ADD COLUMN `RoomName` VARCHAR(100) NULL AFTER `RoomNumber`', 'SELECT 1');
+PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Rename BuildingName to BlockName in Rooms table if BuildingName exists and BlockName does not
+SET @has_bn := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Rooms' AND COLUMN_NAME = 'BuildingName');
+SET @has_bl := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Rooms' AND COLUMN_NAME = 'BlockName');
+SET @sqlstmt := IF(@has_bn > 0 AND @has_bl = 0, 'ALTER TABLE `Rooms` CHANGE COLUMN `BuildingName` `BlockName` VARCHAR(100) NULL', 'SELECT 1');
+PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Ensure BlockName column exists
+SET @exist := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Rooms' AND COLUMN_NAME = 'BlockName');
+SET @sqlstmt := IF(@exist = 0, 'ALTER TABLE `Rooms` ADD COLUMN `BlockName` VARCHAR(100) NULL AFTER `RoomName`', 'SELECT 1');
 PREPARE stmt FROM @sqlstmt; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Align Floor datatype to VARCHAR(50) to safely accept numeric & text floor entries
@@ -99,15 +117,19 @@ BEGIN
            s.RoomNumber,
            s.RoomId,
            COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
-           s.ClassTeacherId,
+           s.InchargeId,
+           s.InchargeId AS ClassTeacherId,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS InchargeName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Incharge,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Teacher,
            s.MaximumStrength,
            s.IsActive,
            s.CreatedAt,
            s.UpdatedAt
     FROM Sections s
     LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
-    LEFT JOIN Faculties f ON f.Id = s.ClassTeacherId
+    LEFT JOIN Faculties f ON f.Id = s.InchargeId
     LEFT JOIN Rooms r ON r.RoomId = s.RoomId
     WHERE (p_Board IS NULL OR p_Board = '' OR s.Board = p_Board)
       AND (p_AcademicYearId IS NULL OR p_AcademicYearId = 0 OR s.AcademicYearId = p_AcademicYearId)
@@ -147,15 +169,19 @@ BEGIN
            s.RoomNumber,
            s.RoomId,
            COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
-           s.ClassTeacherId,
+           s.InchargeId,
+           s.InchargeId AS ClassTeacherId,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS InchargeName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Incharge,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Teacher,
            s.MaximumStrength,
            s.IsActive,
            s.CreatedAt,
            s.UpdatedAt
     FROM Sections s
     LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
-    LEFT JOIN Faculties f ON f.Id = s.ClassTeacherId
+    LEFT JOIN Faculties f ON f.Id = s.InchargeId
     LEFT JOIN Rooms r ON r.RoomId = s.RoomId
     WHERE s.SectionId = p_SectionId;
 END //
@@ -174,7 +200,7 @@ CREATE PROCEDURE sp_CreateSection(
     IN p_AcademicLevel VARCHAR(50),
     IN p_SectionName VARCHAR(50),
     IN p_RoomNumber VARCHAR(50),
-    IN p_ClassTeacherId INT,
+    IN p_InchargeId INT,
     IN p_MaximumStrength INT,
     IN p_IsActive TINYINT(1),
     IN p_RoomId INT
@@ -182,11 +208,11 @@ CREATE PROCEDURE sp_CreateSection(
 BEGIN
     INSERT INTO Sections (
         Board, BoardId, AcademicYearId, `Group`, GroupId, Programme, AcademicLevel, 
-        SectionName, RoomNumber, ClassTeacherId, MaximumStrength, IsActive, RoomId, CreatedAt
+        SectionName, RoomNumber, InchargeId, MaximumStrength, IsActive, RoomId, CreatedAt
     )
     VALUES (
         p_Board, p_BoardId, p_AcademicYearId, p_Group, p_GroupId, COALESCE(p_Programme, ''), p_AcademicLevel, 
-        p_SectionName, p_RoomNumber, p_ClassTeacherId, p_MaximumStrength, p_IsActive, p_RoomId, UTC_TIMESTAMP()
+        p_SectionName, p_RoomNumber, p_InchargeId, p_MaximumStrength, p_IsActive, p_RoomId, UTC_TIMESTAMP()
     );
     SELECT LAST_INSERT_ID();
 END //
@@ -206,7 +232,7 @@ CREATE PROCEDURE sp_UpdateSection(
     IN p_AcademicLevel VARCHAR(50),
     IN p_SectionName VARCHAR(50),
     IN p_RoomNumber VARCHAR(50),
-    IN p_ClassTeacherId INT,
+    IN p_InchargeId INT,
     IN p_MaximumStrength INT,
     IN p_IsActive TINYINT(1),
     IN p_RoomId INT
@@ -222,7 +248,7 @@ BEGIN
         AcademicLevel = p_AcademicLevel,
         SectionName = p_SectionName,
         RoomNumber = p_RoomNumber,
-        ClassTeacherId = p_ClassTeacherId,
+        InchargeId = p_InchargeId,
         MaximumStrength = p_MaximumStrength,
         IsActive = p_IsActive,
         RoomId = p_RoomId,
@@ -283,15 +309,19 @@ BEGIN
            s.RoomNumber,
            s.RoomId,
            COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
-           s.ClassTeacherId,
+           s.InchargeId,
+           s.InchargeId AS ClassTeacherId,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS InchargeName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Incharge,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Teacher,
            s.MaximumStrength,
            s.IsActive,
            s.CreatedAt,
            s.UpdatedAt
     FROM Sections s
     LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
-    LEFT JOIN Faculties f ON f.Id = s.ClassTeacherId
+    LEFT JOIN Faculties f ON f.Id = s.InchargeId
     LEFT JOIN Rooms r ON r.RoomId = s.RoomId
     WHERE s.GroupId = p_GroupId 
        OR s.`Group` = (SELECT GroupName FROM `Groups` WHERE GroupId = p_GroupId LIMIT 1)
@@ -313,8 +343,10 @@ BEGIN
         COALESCE(RoomCode, RoomNumber, '') AS RoomCode,
         COALESCE(RoomName, RoomNumber, '') AS RoomName,
         RoomNumber,
-        BuildingName AS Building,
-        BuildingName,
+        BlockName,
+        BlockName AS Block,
+        BlockName AS Building,
+        BlockName AS BuildingName,
         Floor,
         Capacity,
         RoomType,
@@ -336,8 +368,10 @@ BEGIN
         COALESCE(RoomCode, RoomNumber, '') AS RoomCode,
         COALESCE(RoomName, RoomNumber, '') AS RoomName,
         RoomNumber,
-        BuildingName AS Building,
-        BuildingName,
+        BlockName,
+        BlockName AS Block,
+        BlockName AS Building,
+        BlockName AS BuildingName,
         Floor,
         Capacity,
         RoomType,
@@ -366,7 +400,7 @@ BEGIN
         RoomNumber,
         RoomCode,
         RoomName,
-        BuildingName,
+        BlockName,
         Floor,
         Capacity,
         RoomType,
@@ -406,7 +440,7 @@ BEGIN
     SET RoomNumber = p_RoomCode,
         RoomCode = p_RoomCode,
         RoomName = COALESCE(p_RoomName, p_RoomCode),
-        BuildingName = p_Building,
+        BlockName = p_Building,
         Floor = p_Floor,
         Capacity = p_Capacity,
         RoomType = p_RoomType,

@@ -20,13 +20,13 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Gets all rooms.
+        /// Gets all rooms with optional filtering (Building/Block, Floor, RoomType, Status, Search).
         /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<RoomResponseDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] RoomFilterDto? filter)
         {
-            var result = await _roomService.GetAllAsync();
+            var result = await _roomService.GetAllAsync(filter);
             return Ok(result);
         }
 

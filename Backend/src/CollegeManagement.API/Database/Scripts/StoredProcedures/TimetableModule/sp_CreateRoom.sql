@@ -14,7 +14,7 @@ BEGIN
         RoomNumber,
         RoomCode,
         RoomName,
-        BuildingName,
+        BlockName,
         Floor,
         Capacity,
         RoomType,

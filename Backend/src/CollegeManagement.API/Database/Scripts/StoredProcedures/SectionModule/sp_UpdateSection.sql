@@ -11,7 +11,7 @@ CREATE PROCEDURE sp_UpdateSection(
     IN p_AcademicLevel VARCHAR(50),
     IN p_SectionName VARCHAR(50),
     IN p_RoomNumber VARCHAR(50),
-    IN p_ClassTeacherId INT,
+    IN p_InchargeId INT,
     IN p_MaximumStrength INT,
     IN p_IsActive TINYINT(1),
     IN p_RoomId INT
@@ -27,7 +27,7 @@ BEGIN
         AcademicLevel = p_AcademicLevel,
         SectionName = p_SectionName,
         RoomNumber = p_RoomNumber,
-        ClassTeacherId = p_ClassTeacherId,
+        InchargeId = p_InchargeId,
         MaximumStrength = p_MaximumStrength,
         IsActive = p_IsActive,
         RoomId = p_RoomId,

@@ -18,5 +18,7 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<AcademicYear?> GetAcademicYearByIdAsync(int academicYearId);
         Task<bool> FacultyExistsAsync(int facultyId);
         Task<bool> RoomExistsAsync(int roomId);
+        Task<CollegeManagement.API.Models.Timetable.Room?> GetRoomDetailsAsync(int? roomId, string? roomCode);
+        Task<SectionResponse?> GetActiveSectionAssignedToRoomAsync(int? roomId, string? roomCode, int? excludeSectionId = null);
     }
 }

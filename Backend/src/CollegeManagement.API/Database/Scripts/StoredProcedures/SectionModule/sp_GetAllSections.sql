@@ -24,15 +24,19 @@ BEGIN
            s.RoomNumber,
            s.RoomId,
            COALESCE(r.RoomName, r.RoomNumber, s.RoomNumber, '') AS RoomName,
-           s.ClassTeacherId,
+           s.InchargeId,
+           s.InchargeId AS ClassTeacherId,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS InchargeName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Incharge,
            COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS ClassTeacherName,
+           COALESCE(CONCAT(f.FirstName, ' ', f.LastName), '') AS Teacher,
            s.MaximumStrength,
            s.IsActive,
            s.CreatedAt,
            s.UpdatedAt
     FROM Sections s
     LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
-    LEFT JOIN Faculties f ON f.Id = s.ClassTeacherId
+    LEFT JOIN Faculties f ON f.Id = s.InchargeId
     LEFT JOIN Rooms r ON r.RoomId = s.RoomId
     WHERE (p_Board IS NULL OR p_Board = '' OR s.Board = p_Board)
       AND (p_AcademicYearId IS NULL OR p_AcademicYearId = 0 OR s.AcademicYearId = p_AcademicYearId)

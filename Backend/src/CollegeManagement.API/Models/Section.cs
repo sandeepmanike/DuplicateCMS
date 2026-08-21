@@ -42,7 +42,15 @@ namespace CollegeManagement.API.Models
 
         public int? RoomId { get; set; }
 
-        public int? ClassTeacherId { get; set; }
+        [Column("InchargeId")]
+        public int? InchargeId { get; set; }
+
+        [NotMapped]
+        public int? ClassTeacherId
+        {
+            get => InchargeId;
+            set => InchargeId = value;
+        }
 
         public int MaximumStrength { get; set; }
 

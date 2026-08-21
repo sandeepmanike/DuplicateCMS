@@ -15,7 +15,7 @@ BEGIN
     SET RoomNumber = p_RoomCode,
         RoomCode = p_RoomCode,
         RoomName = COALESCE(p_RoomName, p_RoomCode),
-        BuildingName = p_Building,
+        BlockName = p_Building,
         Floor = p_Floor,
         Capacity = p_Capacity,
         RoomType = p_RoomType,

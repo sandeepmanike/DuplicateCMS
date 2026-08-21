@@ -6,7 +6,7 @@ namespace CollegeManagement.API.Services.Interfaces
 {
     public interface IRoomService
     {
-        Task<IEnumerable<RoomResponseDto>> GetAllAsync();
+        Task<IEnumerable<RoomResponseDto>> GetAllAsync(RoomFilterDto? filter = null);
         Task<RoomResponseDto?> GetByIdAsync(int id);
         Task<RoomResponseDto> CreateAsync(CreateRoomDto dto);
         Task<RoomResponseDto?> UpdateAsync(int id, UpdateRoomDto dto);

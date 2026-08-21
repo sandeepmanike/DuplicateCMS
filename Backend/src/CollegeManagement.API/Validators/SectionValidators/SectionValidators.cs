@@ -23,17 +23,18 @@ namespace CollegeManagement.API.Validators
 
             RuleFor(x => x.SectionName)
                 .NotEmpty().WithMessage("Section Name is required.")
-                .MaximumLength(50).WithMessage("Section Name cannot exceed 50 characters.");
+                .MaximumLength(50).WithMessage("Section Name cannot exceed 50 characters.")
+                .Matches(@"^[A-Za-z0-9 -]+$").WithMessage("Section name may contain only letters, numbers, spaces, and hyphens.");
 
             RuleFor(x => x.RoomNumber)
                 .MaximumLength(50).WithMessage("Room Number cannot exceed 50 characters.");
 
-            RuleFor(x => x.ClassTeacherId)
-                .GreaterThan(0).When(x => x.ClassTeacherId.HasValue).WithMessage("Valid Class Teacher ID is required.");
+            RuleFor(x => x.InchargeId)
+                .GreaterThan(0).When(x => x.InchargeId.HasValue).WithMessage("Valid Incharge ID is required.");
 
             RuleFor(x => x.MaximumStrength)
-                .GreaterThan(0).WithMessage("Maximum Strength must be greater than 0.")
-                .LessThanOrEqualTo(1000).WithMessage("Maximum Strength cannot exceed 1000.");
+                .GreaterThan(0).WithMessage("Capacity is required and must be greater than 0.")
+                .InclusiveBetween(1, 150).WithMessage("Capacity must be between 1 and 150.");
         }
     }
 
@@ -57,17 +58,18 @@ namespace CollegeManagement.API.Validators
 
             RuleFor(x => x.SectionName)
                 .NotEmpty().WithMessage("Section Name is required.")
-                .MaximumLength(50).WithMessage("Section Name cannot exceed 50 characters.");
+                .MaximumLength(50).WithMessage("Section Name cannot exceed 50 characters.")
+                .Matches(@"^[A-Za-z0-9 -]+$").WithMessage("Section name may contain only letters, numbers, spaces, and hyphens.");
 
             RuleFor(x => x.RoomNumber)
                 .MaximumLength(50).WithMessage("Room Number cannot exceed 50 characters.");
 
-            RuleFor(x => x.ClassTeacherId)
-                .GreaterThan(0).When(x => x.ClassTeacherId.HasValue).WithMessage("Valid Class Teacher ID is required.");
+            RuleFor(x => x.InchargeId)
+                .GreaterThan(0).When(x => x.InchargeId.HasValue).WithMessage("Valid Incharge ID is required.");
 
             RuleFor(x => x.MaximumStrength)
-                .GreaterThan(0).WithMessage("Maximum Strength must be greater than 0.")
-                .LessThanOrEqualTo(1000).WithMessage("Maximum Strength cannot exceed 1000.");
+                .GreaterThan(0).WithMessage("Capacity is required and must be greater than 0.")
+                .InclusiveBetween(1, 150).WithMessage("Capacity must be between 1 and 150.");
         }
     }
 }

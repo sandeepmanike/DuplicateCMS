@@ -28,6 +28,75 @@ namespace CollegeManagement.API.Repositories.Implementations
                 commandType: CommandType.StoredProcedure);
         }
 
+        public async Task<IEnumerable<Room>> GetAllFilteredAsync(CollegeManagement.API.DTOs.Timetable.RoomFilterDto? filter)
+        {
+            var rooms = await GetAllAsync();
+            if (filter == null) return rooms;
+
+            var query = rooms.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(filter.Building))
+            {
+                var building = filter.Building.Trim();
+                query = query.Where(r => string.Equals(r.BlockName, building, System.StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(r.BuildingName, building, System.StringComparison.OrdinalIgnoreCase) ||
+                                         string.Equals(r.Building, building, System.StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Floor))
+            {
+                var floor = filter.Floor.Trim();
+                query = query.Where(r => string.Equals(r.Floor, floor, System.StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.RoomType))
+            {
+                var roomType = filter.RoomType.Trim();
+                query = query.Where(r => string.Equals(r.RoomType, roomType, System.StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (filter.IsActive.HasValue)
+            {
+                query = query.Where(r => r.IsActive == filter.IsActive.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
+            {
+                var search = filter.SearchTerm.Trim().ToLowerInvariant();
+                query = query.Where(r =>
+                    (r.RoomCode != null && r.RoomCode.ToLowerInvariant().Contains(search)) ||
+                    (r.RoomName != null && r.RoomName.ToLowerInvariant().Contains(search)) ||
+                    (r.RoomNumber != null && r.RoomNumber.ToLowerInvariant().Contains(search)) ||
+                    (r.BlockName != null && r.BlockName.ToLowerInvariant().Contains(search)) ||
+                    (r.BuildingName != null && r.BuildingName.ToLowerInvariant().Contains(search)) ||
+                    (r.Floor != null && r.Floor.ToLowerInvariant().Contains(search)) ||
+                    (r.RoomType != null && r.RoomType.ToLowerInvariant().Contains(search))
+                );
+            }
+
+            return query;
+        }
+
+        public async Task<IEnumerable<SectionAssignedDto>> GetAssignedActiveSectionsByRoomAsync(int roomId, string? roomCode)
+        {
+            var sql = @"
+                SELECT SectionId, SectionName, MaximumStrength, IsActive
+                FROM Sections
+                WHERE IsActive = 1
+                  AND (
+                      RoomId = @RoomId
+                      OR (@RoomCode IS NOT NULL AND @RoomCode <> '' AND RoomNumber = @RoomCode)
+                  )";
+
+            return await Connection.QueryAsync<SectionAssignedDto>(
+                sql,
+                new
+                {
+                    RoomId = roomId,
+                    RoomCode = string.IsNullOrWhiteSpace(roomCode) ? null : roomCode.Trim()
+                });
+        }
+
         public async Task<Room?> GetByIdAsync(int id)
         {
             return await Connection.QueryFirstOrDefaultAsync<Room>(
@@ -55,7 +124,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_RoomName = room.RoomName ?? room.RoomCode ?? room.RoomNumber,
                     p_Capacity = room.Capacity,
                     p_RoomType = room.RoomType,
-                    p_Building = room.Building ?? room.BuildingName,
+                    p_Building = room.BlockName ?? room.Building ?? room.BuildingName,
+                    p_BlockName = room.BlockName ?? room.Building ?? room.BuildingName,
                     p_Floor = room.Floor,
                     p_IsActive = room.IsActive
                 },
@@ -76,7 +146,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     p_RoomName = room.RoomName ?? room.RoomCode ?? room.RoomNumber,
                     p_Capacity = room.Capacity,
                     p_RoomType = room.RoomType,
-                    p_Building = room.Building ?? room.BuildingName,
+                    p_Building = room.BlockName ?? room.Building ?? room.BuildingName,
+                    p_BlockName = room.BlockName ?? room.Building ?? room.BuildingName,
                     p_Floor = room.Floor,
                     p_IsActive = room.IsActive
                 },
