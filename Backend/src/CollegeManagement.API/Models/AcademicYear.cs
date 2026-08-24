@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CollegeManagement.API.Models
 {
@@ -11,6 +12,8 @@ namespace CollegeManagement.API.Models
         [Required]
         [StringLength(50)]
         public string AcademicYearName { get; set; } = string.Empty;
+
+        public int? BoardId { get; set; }
 
         [Required]
         public DateOnly StartDate { get; set; }
@@ -27,5 +30,8 @@ namespace CollegeManagement.API.Models
 
         [StringLength(500)]
         public string? Description { get; set; }
+
+        [ForeignKey(nameof(BoardId))]
+        public virtual Board? Board { get; set; }
     }
 }

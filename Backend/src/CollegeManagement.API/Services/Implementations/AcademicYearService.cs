@@ -75,6 +75,7 @@ namespace CollegeManagement.API.Services.Implementations
             var academicYear = new AcademicYear
             {
                 AcademicYearName = dto.AcademicYearName.Trim(),
+                BoardId = dto.BoardId,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 AdmissionStartDate = dto.AdmissionStartDate,
@@ -84,7 +85,8 @@ namespace CollegeManagement.API.Services.Implementations
             };
 
             await _repository.AddAsync(academicYear);
-            return MapToResponseDto(academicYear);
+            var reloaded = await _repository.GetByIdAsync(academicYear.AcademicYearId);
+            return MapToResponseDto(reloaded ?? academicYear);
         }
 
         public async Task<AcademicYearResponseDto?> UpdateAsync(int id, UpdateAcademicYearDto dto)
@@ -107,6 +109,7 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             academicYear.AcademicYearName = dto.AcademicYearName.Trim();
+            academicYear.BoardId = dto.BoardId;
             academicYear.StartDate = dto.StartDate;
             academicYear.EndDate = dto.EndDate;
             academicYear.AdmissionStartDate = dto.AdmissionStartDate;
@@ -115,7 +118,8 @@ namespace CollegeManagement.API.Services.Implementations
             academicYear.Description = dto.Description?.Trim();
 
             await _repository.UpdateAsync(academicYear);
-            return MapToResponseDto(academicYear);
+            var reloaded = await _repository.GetByIdAsync(id);
+            return MapToResponseDto(reloaded ?? academicYear);
         }
 
         public async Task<bool> DeleteAsync(int id)
@@ -171,12 +175,12 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var years = await _repository.GetForExportAsync(search, status);
             var sb = new StringBuilder();
-            sb.AppendLine("AcademicYearId,AcademicYearName,StartDate,EndDate,AdmissionPeriod,Status,Description");
+            sb.AppendLine("AcademicYearId,AcademicYearName,BoardName,StartDate,EndDate,AdmissionPeriod,Status,Description");
 
             foreach (var y in years)
             {
                 var dto = MapToResponseDto(y);
-                sb.AppendLine($"\"{dto.AcademicYearId}\",\"{dto.AcademicYearName}\",\"{dto.StartDate:dd MMM yyyy}\",\"{dto.EndDate:dd MMM yyyy}\",\"{dto.AdmissionPeriod ?? "—"}\",\"{dto.Status}\",\"{dto.Description ?? ""}\"");
+                sb.AppendLine($"\"{dto.AcademicYearId}\",\"{dto.AcademicYearName}\",\"{dto.BoardName ?? "—"}\",\"{dto.StartDate:dd MMM yyyy}\",\"{dto.EndDate:dd MMM yyyy}\",\"{dto.AdmissionPeriod ?? "—"}\",\"{dto.Status}\",\"{dto.Description ?? ""}\"");
             }
 
             return Encoding.UTF8.GetBytes(sb.ToString());
@@ -194,6 +198,7 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     { "Academic Year ID", dto.AcademicYearId },
                     { "Academic Year Name", dto.AcademicYearName },
+                    { "Board Name", dto.BoardName ?? "—" },
                     { "Start Date", dto.StartDate.ToString("dd MMM yyyy") },
                     { "End Date", dto.EndDate.ToString("dd MMM yyyy") },
                     { "Admission Period", dto.AdmissionPeriod ?? "—" },
@@ -240,10 +245,18 @@ namespace CollegeManagement.API.Services.Implementations
                 admissionPeriod = $"{ay.AdmissionStartDate.Value:dd MMM yyyy} – {ay.AdmissionEndDate.Value:dd MMM yyyy}";
             }
 
+            var boardName = ay.Board != null ? ay.Board.BoardName : null;
+            var boardCode = ay.Board != null ? ay.Board.BoardCode : null;
+
             return new AcademicYearResponseDto
             {
                 AcademicYearId = ay.AcademicYearId,
                 AcademicYearName = ay.AcademicYearName,
+                BoardId = ay.BoardId,
+                BoardName = boardName,
+                BoardCode = boardCode,
+                Board = boardName,
+                BoardNames = boardName != null ? new List<string> { boardName } : new List<string>(),
                 StartDate = ay.StartDate,
                 EndDate = ay.EndDate,
                 AdmissionStartDate = ay.AdmissionStartDate,

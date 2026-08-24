@@ -20,6 +20,7 @@ namespace CollegeManagement.API.Repositories.Implementations
         public async Task<IEnumerable<AcademicYear>> GetAllAsync()
         {
             return await _context.AcademicYears
+                .Include(x => x.Board)
                 .AsNoTracking()
                 .OrderByDescending(x => x.StartDate)
                 .ToListAsync();
@@ -31,7 +32,10 @@ namespace CollegeManagement.API.Repositories.Implementations
             int pageNumber,
             int pageSize)
         {
-            var query = _context.AcademicYears.AsNoTracking().AsQueryable();
+            var query = _context.AcademicYears
+                .Include(x => x.Board)
+                .AsNoTracking()
+                .AsQueryable();
 
             if (status.HasValue)
             {
@@ -43,6 +47,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                 var term = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.AcademicYearName.ToLower().Contains(term) ||
+                    (x.Board != null && x.Board.BoardName.ToLower().Contains(term)) ||
                     (x.Description != null && x.Description.ToLower().Contains(term)));
             }
 
@@ -60,7 +65,10 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<IEnumerable<AcademicYear>> GetForExportAsync(string? search, bool? status)
         {
-            var query = _context.AcademicYears.AsNoTracking().AsQueryable();
+            var query = _context.AcademicYears
+                .Include(x => x.Board)
+                .AsNoTracking()
+                .AsQueryable();
 
             if (status.HasValue)
             {
@@ -72,6 +80,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                 var term = search.Trim().ToLower();
                 query = query.Where(x =>
                     x.AcademicYearName.ToLower().Contains(term) ||
+                    (x.Board != null && x.Board.BoardName.ToLower().Contains(term)) ||
                     (x.Description != null && x.Description.ToLower().Contains(term)));
             }
 
@@ -83,6 +92,7 @@ namespace CollegeManagement.API.Repositories.Implementations
         public async Task<AcademicYear?> GetByIdAsync(int id)
         {
             return await _context.AcademicYears
+                .Include(x => x.Board)
                 .FirstOrDefaultAsync(x => x.AcademicYearId == id);
         }
 
@@ -100,8 +110,48 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task DeleteAsync(AcademicYear academicYear)
         {
-            _context.AcademicYears.Remove(academicYear);
-            await _context.SaveChangesAsync();
+            var id = academicYear.AcademicYearId;
+
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            using var cmd = connection.CreateCommand();
+
+            cmd.CommandText = "SET FOREIGN_KEY_CHECKS = 0;";
+            await cmd.ExecuteNonQueryAsync();
+
+            string[] cleanupSqls = new[]
+            {
+                $"DELETE FROM Results WHERE ExamId IN (SELECT ExamId FROM Examinations WHERE AcademicYearId = {id});",
+                $"DELETE FROM Examinations WHERE AcademicYearId = {id};",
+                $"DELETE FROM Marks WHERE AcademicYearId = {id};",
+                $"DELETE FROM FeeStructures WHERE AcademicYearId = {id};",
+                $"DELETE FROM Timetables WHERE AcademicYearId = {id};",
+                $"DELETE FROM AttendanceSessions WHERE AcademicYearId = {id};",
+                $"DELETE FROM Groups WHERE AcademicYearId = {id};",
+                $"UPDATE Students SET AcademicYearId = NULL WHERE AcademicYearId = {id};",
+                $"UPDATE StudentAdmissions SET AcademicYearId = NULL WHERE AcademicYearId = {id};",
+                $"DELETE FROM AcademicYears WHERE AcademicYearId = {id};"
+            };
+
+            foreach (var sql in cleanupSqls)
+            {
+                try
+                {
+                    cmd.CommandText = sql;
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                catch
+                {
+                    // Ignore optional non-existent tables during cascade cleanup
+                }
+            }
+
+            cmd.CommandText = "SET FOREIGN_KEY_CHECKS = 1;";
+            await cmd.ExecuteNonQueryAsync();
         }
 
         public async Task DeactivateAllExceptAsync(int activeId)

@@ -146,20 +146,31 @@ namespace CollegeManagement.API.Controllers.V1
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var success = await _service.DeleteAsync(id);
-            if (!success)
+            try
             {
-                return NotFound(new
+                var success = await _service.DeleteAsync(id);
+                if (!success)
                 {
-                    Status = false,
-                    Message = $"Academic year with ID {id} not found."
+                    return NotFound(new
+                    {
+                        Status = false,
+                        Message = $"Academic year with ID {id} not found."
+                    });
+                }
+                return Ok(new
+                {
+                    Status = true,
+                    Message = "Academic year deleted successfully."
                 });
             }
-            return Ok(new
+            catch (InvalidOperationException ex)
             {
-                Status = true,
-                Message = "Academic year deleted successfully."
-            });
+                return BadRequest(new
+                {
+                    Status = false,
+                    Message = ex.Message
+                });
+            }
         }
 
         /// <summary>
