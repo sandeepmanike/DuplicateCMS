@@ -31,16 +31,17 @@ function DashboardLayout() {
           </NavLink>
 
           <div className="sidebar-title">
-            Faculty Management
+            Staff Management
           </div>
 
-          <NavLink to="/dashboard/faculty">
-            Faculty List
+          <NavLink to="/dashboard/staff">
+            Staff List
           </NavLink>
 
-          <NavLink to="/dashboard/faculty/subject-allocation">
-            Faculty Subject Allocation
+          <NavLink to="/dashboard/staff/subject-allocation">
+            Staff Subject Allocation
           </NavLink>
+
 
 </nav>
 

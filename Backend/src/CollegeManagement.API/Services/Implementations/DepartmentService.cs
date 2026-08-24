@@ -19,5 +19,16 @@ namespace CollegeManagement.API.Services.Implementations
         {
             return await _departmentRepository.GetActiveDepartmentsAsync();
         }
+
+        public async Task<IEnumerable<Department>> GetDepartmentsAsync(string? staffType = null)
+        {
+            return await _departmentRepository.GetDepartmentsAsync(staffType);
+        }
+
+        public async Task<Department> CreateDepartmentAsync(Department department)
+        {
+            return await _departmentRepository.AddDepartmentAsync(department);
+        }
     }
 }
+

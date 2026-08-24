@@ -22,11 +22,12 @@ namespace CollegeManagement.API.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<DesignationResponseDto>> GetAllAsync(bool includeInactive = false)
+        public async Task<IEnumerable<DesignationResponseDto>> GetAllAsync(bool includeInactive = false, string? staffType = null)
         {
-            var entities = await _designationRepository.GetAllAsync(includeInactive);
+            var entities = await _designationRepository.GetAllAsync(includeInactive, staffType);
             return _mapper.Map<IEnumerable<DesignationResponseDto>>(entities);
         }
+
 
         public async Task<DesignationResponseDto?> GetByIdAsync(int id)
         {

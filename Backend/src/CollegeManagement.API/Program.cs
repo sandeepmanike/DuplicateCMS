@@ -23,10 +23,32 @@ using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
 
+using CollegeManagement.API.Tests;
+
 var builder = WebApplication.CreateBuilder(args);
+
+if (args.Contains("--test-staff-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new StaffModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--validate-staff-db"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var validator = new StaffDbValidator(connStr!);
+    await validator.ValidateAndSeedCleanDataAsync();
+    Environment.Exit(0);
+    return;
+}
+
 
 // Register QuestPDF Community License
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
 
 #region Controllers
 
@@ -125,11 +147,14 @@ builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
-// Faculty
+// Faculty & Staff
 builder.Services.AddScoped<IDesignationRepository, DesignationRepository>();
+builder.Services.AddScoped<IStaffRepository, StaffRepository>();
+builder.Services.AddScoped<IStaffSubjectAllocationRepository, StaffSubjectAllocationRepository>();
 builder.Services.AddScoped<IFacultyRepository, FacultyRepository>();
 builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAllocationRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+
 
 // Group, Section & Subject
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
@@ -179,8 +204,10 @@ builder.Services.AddScoped<ILookupCacheService, LookupCacheService>();
 builder.Services.AddScoped<IBoardExportService, BoardExportService>();
 
 builder.Services.AddScoped<IDesignationService, DesignationService>();
+builder.Services.AddScoped<IStaffService, StaffService>();
 builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
+
 
 builder.Services.AddScoped<IFeeRepository, FeeRepository>();
 builder.Services.AddScoped<IFeeService, FeeService>();
