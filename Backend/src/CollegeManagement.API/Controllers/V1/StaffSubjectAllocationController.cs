@@ -11,7 +11,6 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/staff")]
-    [Route("api/v{version:apiVersion}/faculty")]
     [Authorize]
     [Produces("application/json")]
     public class StaffSubjectAllocationController : ControllerBase
