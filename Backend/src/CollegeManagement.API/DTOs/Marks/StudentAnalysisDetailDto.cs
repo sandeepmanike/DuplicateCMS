@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace CollegeManagement.API.DTOs.Evaluations
@@ -7,14 +7,27 @@ namespace CollegeManagement.API.DTOs.Evaluations
     {
         public int StudentId { get; set; }
         public string RollNo { get; set; } = string.Empty;
+        public string RollNumber { get => RollNo; set => RollNo = value; }
         public string StudentName { get; set; } = string.Empty;
         public string GroupName { get; set; } = string.Empty;
+        public string Group { get => GroupName; set => GroupName = value; }
+        public string ProgramName { get; set; } = string.Empty;
+        public string Program { get => ProgramName; set => ProgramName = value; }
         public string SectionName { get; set; } = string.Empty;
+        public string Section { get => SectionName; set => SectionName = value; }
         public string ExamName { get; set; } = string.Empty;
+        public string Examination { get => ExamName; set => ExamName = value; }
+        public string ExamType { get; set; } = "Written";
+        public string ExamPattern { get; set; } = "Regular Academic Pattern";
         public decimal TotalMarks { get; set; }
+        public decimal OverallTotal { get => TotalMarks; set => TotalMarks = value; }
         public decimal MaxMarks { get; set; }
+        public decimal Maximum { get => MaxMarks; set => MaxMarks = value; }
         public decimal Percentage { get; set; }
+        public decimal PassPercentage { get; set; } = 35;
+        public int PassingScore { get; set; } = 210;
         public string Grade { get; set; } = "F";
+        public string Result { get; set; } = "PASS";
         public int? Rank { get; set; }
         public List<StudentSubjectAnalysisDetailItemDto> Subjects { get; set; } = new();
     }
@@ -28,6 +41,9 @@ namespace CollegeManagement.API.DTOs.Evaluations
         public decimal? Practical { get; set; }
         public decimal? Theory { get; set; }
         public decimal Total { get; set; }
+        public decimal? ObtainedMarks { get; set; }
+        public decimal? MaxMarks { get; set; }
+        public decimal? Percentage { get; set; }
         public int PassingMarks { get; set; } = 35;
         public bool IsAbsent { get; set; }
         public string? Remarks { get; set; }

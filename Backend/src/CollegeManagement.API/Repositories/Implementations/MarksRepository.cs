@@ -518,6 +518,9 @@ namespace CollegeManagement.API.Repositories.Implementations
             if (filter.AcademicYearId.HasValue && filter.AcademicYearId.Value > 0)
                 query = query.Where(m => m.AcademicYearId == filter.AcademicYearId.Value);
 
+            if (filter.AcademicLevelId.HasValue && filter.AcademicLevelId.Value > 0)
+                query = query.Where(m => m.AcademicLevelId == filter.AcademicLevelId.Value);
+
             if (filter.GroupId.HasValue && filter.GroupId.Value > 0)
                 query = query.Where(m => m.GroupId == filter.GroupId.Value);
 

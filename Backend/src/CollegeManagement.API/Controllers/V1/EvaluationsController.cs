@@ -85,11 +85,21 @@ namespace CollegeManagement.API.Controllers
         /// Verify evaluation status (Faculty Submitted -> Admin Verified).
         /// </summary>
         [HttpPatch("api/v1/evaluations/{evaluationId}/verify")]
-        public async Task<IActionResult> VerifyEvaluation([FromRoute] string evaluationId)
+        [HttpPost("api/v1/evaluations/{evaluationId}/verify")]
+        public async Task<IActionResult> VerifyEvaluation(
+            [FromRoute] string evaluationId,
+            [FromBody] VerifyEvaluationRequestDto? requestDto = null,
+            [FromQuery] string? message = null)
         {
+            var effectiveMessage = !string.IsNullOrWhiteSpace(requestDto?.Message)
+                ? requestDto.Message
+                : message;
+
             var userId = GetCurrentUserId();
-            var success = await _evaluationService.UpdateEvaluationStatusByCompositeIdAsync(evaluationId, EvaluationStatus.VERIFIED, userId);
-            if (success) return Ok(new { success = true, status = "VERIFIED", message = "Evaluation verified successfully." });
+            var success = await _evaluationService.UpdateEvaluationStatusByCompositeIdAsync(
+                evaluationId, EvaluationStatus.VERIFIED, userId, effectiveMessage);
+
+            if (success) return Ok(new { success = true, status = "VERIFIED", message = effectiveMessage ?? "Evaluation verified successfully." });
             return BadRequest(new { success = false, message = "Failed to verify evaluation." });
         }
 
@@ -97,6 +107,7 @@ namespace CollegeManagement.API.Controllers
         /// Approve evaluation status (Verified -> Admin Approved).
         /// </summary>
         [HttpPatch("api/v1/evaluations/{evaluationId}/approve")]
+        [HttpPost("api/v1/evaluations/{evaluationId}/approve")]
         public async Task<IActionResult> ApproveEvaluation([FromRoute] string evaluationId)
         {
             var userId = GetCurrentUserId();
@@ -109,14 +120,15 @@ namespace CollegeManagement.API.Controllers
         /// Reject evaluation status with remarks/reason and notify faculty.
         /// </summary>
         [HttpPost("api/v1/evaluations/{evaluationId}/reject")]
+        [HttpPatch("api/v1/evaluations/{evaluationId}/reject")]
         public async Task<IActionResult> RejectEvaluation(
             [FromRoute] string evaluationId,
             [FromQuery] string? remarks,
             [FromBody] RejectEvaluationRequestDto? requestDto = null)
         {
-            var effectiveRemarks = !string.IsNullOrWhiteSpace(requestDto?.Remarks)
-                ? requestDto.Remarks
-                : (!string.IsNullOrWhiteSpace(requestDto?.Reason) ? requestDto.Reason : remarks);
+            var effectiveRemarks = !string.IsNullOrWhiteSpace(requestDto?.Reason)
+                ? requestDto.Reason
+                : (!string.IsNullOrWhiteSpace(requestDto?.Remarks) ? requestDto.Remarks : remarks);
 
             var userId = GetCurrentUserId();
             var success = await _evaluationService.UpdateEvaluationStatusByCompositeIdAsync(
@@ -151,32 +163,33 @@ namespace CollegeManagement.API.Controllers
         /// Global bulk verify all submitted subjects in the selected context.
         /// </summary>
         [HttpPost("api/v1/evaluations/verify-all")]
-        public async Task<IActionResult> VerifyAllEvaluations([FromBody] EvaluationFilterDto filter)
+        public async Task<IActionResult> VerifyAllEvaluations([FromBody] EvaluationFilterDto? filter = null)
         {
             var userId = GetCurrentUserId();
             var (success, count) = await _evaluationService.VerifyAllEvaluationsAsync(filter ?? new EvaluationFilterDto(), userId);
-            if (success)
+            return Ok(new
             {
-                return Ok(new
-                {
-                    success = true,
-                    verifiedCount = count,
-                    message = $"{count} subject evaluation(s) in context verified successfully."
-                });
-            }
-            return BadRequest(new { success = false, message = "Failed to verify evaluations or no submitted subjects found." });
+                success = true,
+                verifiedCount = count,
+                message = count > 0
+                    ? $"{count} subject evaluation(s) in context verified successfully."
+                    : "No eligible submitted evaluations found in the selected context to verify."
+            });
         }
 
         /// <summary>
         /// Global bulk approve all verified subjects in the selected context.
         /// </summary>
         [HttpPost("api/v1/evaluations/approve-all")]
-        public async Task<IActionResult> ApproveAllEvaluations([FromBody] EvaluationFilterDto filter)
+        public async Task<IActionResult> ApproveAllEvaluations([FromBody] EvaluationFilterDto? filter = null)
         {
             var userId = GetCurrentUserId();
             var success = await _evaluationService.ApproveAllEvaluationsAsync(filter ?? new EvaluationFilterDto(), userId);
-            if (success) return Ok(new { success = true, message = "All evaluations in context approved successfully." });
-            return BadRequest(new { success = false, message = "Failed to approve evaluations or no subjects found." });
+            return Ok(new
+            {
+                success = true,
+                message = "All evaluations in context approved successfully."
+            });
         }
 
         // =========================================================================

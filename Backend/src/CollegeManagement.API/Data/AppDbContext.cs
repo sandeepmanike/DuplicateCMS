@@ -288,6 +288,48 @@ namespace CollegeManagement.API.Data
                 .WithMany()
                 .HasForeignKey(s => s.SectionId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Subject>()
+                .HasOne(s => s.AcademicLevelNavigation)
+                .WithMany()
+                .HasForeignKey(s => s.AcademicLevelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Subject>()
+                .HasOne(s => s.BoardNavigation)
+                .WithMany()
+                .HasForeignKey(s => s.BoardId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Subject>()
+                .HasOne(s => s.GroupNavigation)
+                .WithMany()
+                .HasForeignKey(s => s.GroupId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Examination>(entity =>
+            {
+                entity.HasKey(e => e.ExaminationId);
+                entity.HasOne(e => e.Board).WithMany().HasForeignKey(e => e.BoardId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.AcademicYear).WithMany().HasForeignKey(e => e.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.AcademicLevel).WithMany().HasForeignKey(e => e.AcademicLevelId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Group).WithMany().HasForeignKey(e => e.GroupId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.Program).WithMany().HasForeignKey(e => e.ProgramId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.AssessmentType).WithMany().HasForeignKey(e => e.AssessmentTypeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<ExamSchedule>(entity =>
+            {
+                entity.HasKey(es => es.ExamScheduleId);
+                entity.HasOne(es => es.Examination)
+                      .WithMany(e => e.ExamSchedules)
+                      .HasForeignKey(es => es.ExaminationId)
+                      .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(es => es.Subject)
+                      .WithMany()
+                      .HasForeignKey(es => es.SubjectId)
+                      .OnDelete(DeleteBehavior.Restrict);
+            });
             #endregion
 
 

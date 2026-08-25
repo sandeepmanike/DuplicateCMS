@@ -1,4 +1,4 @@
-﻿using CollegeManagement.API.Models.Enums;
+using CollegeManagement.API.Models.Enums;
 
 namespace CollegeManagement.API.DTOs.Evaluations
 {
@@ -6,10 +6,13 @@ namespace CollegeManagement.API.DTOs.Evaluations
     {
         public int? BoardId { get; set; }
         public int? AcademicYearId { get; set; }
+        public int? AcademicLevelId { get; set; }
+        public int? LevelId { get => AcademicLevelId; set => AcademicLevelId = value; }
         public int? ProgramId { get; set; }
         public int? GroupId { get; set; }
         public int? SectionId { get; set; }
         public int? ExaminationId { get; set; }
+        public int? ExamId { get => ExaminationId; set => ExaminationId = value; }
         public int? SubjectId { get; set; }
         public int? StudentId { get; set; }
         public int? FacultyId { get; set; }

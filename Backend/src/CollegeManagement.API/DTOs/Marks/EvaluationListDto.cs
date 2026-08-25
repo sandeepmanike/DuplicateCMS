@@ -24,13 +24,22 @@ namespace CollegeManagement.API.DTOs.Evaluations
         public decimal AverageMarks { get; set; }
         public decimal ObtainedMarks { get; set; }
         public decimal TotalMarks { get; set; } = 100;
+        public decimal SubjectMaxMarks { get; set; } = 100;
         public decimal HighestMarks { get; set; }
         public decimal LowestMarks { get; set; }
+        public string? ExamPattern { get; set; }
+        public string? ExamType { get; set; }
+        public int ExamTotalMarks { get; set; } = 600;
+        public decimal ExamPassPercentage { get; set; } = 35;
+        public bool IsPractical { get; set; }
+        public string? SubjectType { get; set; }
         public string Status { get; set; } = string.Empty;
         public EvaluationStatus StatusCode { get; set; }
         public bool IsLocked { get; set; }
         public string? RejectionReason { get; set; }
+        public string? AdminReviewMessage { get; set; }
         public string? Remarks { get; set; }
+        public int ResubmissionCount { get; set; }
         public DateTime LastSubmittedAt { get; set; }
     }
 }

@@ -19,6 +19,9 @@ namespace CollegeManagement.API.Models
             set => ExaminationId = value;
         }
 
+        [StringLength(50)]
+        public string? ExamCode { get; set; }
+
         [Required]
         [StringLength(150)]
         public string ExamName { get; set; } = string.Empty;
@@ -35,6 +38,8 @@ namespace CollegeManagement.API.Models
         [Required]
         public int GroupId { get; set; }
 
+        public int? ProgramId { get; set; }
+
         [Required]
         public int AssessmentTypeId { get; set; }
 
@@ -44,15 +49,31 @@ namespace CollegeManagement.API.Models
         [Required]
         public DateOnly EndDate { get; set; }
 
+        [StringLength(500)]
+        public string? Description { get; set; }
+
+        [StringLength(50)]
+        public string? ExamPattern { get; set; }
+
+        public int? TotalMarks { get; set; }
+
+        public decimal? PassPercentage { get; set; }
+
         public bool IsActive { get; set; } = true;
+
+        public string Status { get; set; } = "DRAFT";
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
 
         // Navigation Properties
         public Board? Board { get; set; }
         public AcademicYear? AcademicYear { get; set; }
         public AcademicLevel? AcademicLevel { get; set; }
         public Group? Group { get; set; }
+        public AcademicProgram? Program { get; set; }
         public AssessmentType? AssessmentType { get; set; }
 
-        public string Status { get; set; } = "ACTIVE";
+        public virtual ICollection<ExamSchedule> ExamSchedules { get; set; } = new List<ExamSchedule>();
     }
 }

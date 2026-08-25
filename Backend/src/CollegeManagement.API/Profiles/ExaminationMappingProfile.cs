@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using AutoMapper;
 using CollegeManagement.API.DTOs.Examination.Requests;
 using CollegeManagement.API.DTOs.Examination.Responses;
 using CollegeManagement.API.Models;
@@ -11,17 +11,18 @@ namespace CollegeManagement.API.Profiles
         {
             #region Request -> Model Mappings
 
-            CreateMap<CreateExaminationRequest, Examination>();
-            CreateMap<UpdateExaminationRequest, Examination>();
+            CreateMap<CreateExaminationRequest, Examination>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Status) ? src.Status.ToUpper() : "DRAFT"));
+
+            CreateMap<UpdateExaminationRequest, Examination>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             CreateMap<CreateExamScheduleRequest, ExamSchedule>()
-                .ForMember(dest => dest.ExamTime, opt => opt.MapFrom(src => src.StartTime))
-                .ForMember(dest => dest.Hall, opt => opt.MapFrom(src => src.RoomNumber))
-                .ForMember(dest => dest.Invigilator, opt => opt.MapFrom(src => src.InvigilatorName));
+                .ForMember(dest => dest.Hall, opt => opt.MapFrom(src => src.Hall ?? src.RoomNumber ?? string.Empty))
+                .ForMember(dest => dest.Invigilator, opt => opt.MapFrom(src => src.Invigilator ?? src.InvigilatorName ?? string.Empty));
 
             CreateMap<UpdateExamScheduleRequest, ExamSchedule>()
-                .ForMember(dest => dest.ExamTime, opt => opt.MapFrom(src => src.StartTime))
-                .ForMember(dest => dest.Hall, opt => opt.MapFrom(src => src.Venue));
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             #endregion
 
@@ -31,14 +32,14 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.BoardName, opt => opt.MapFrom(src => src.Board != null ? src.Board.BoardName : string.Empty))
                 .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Group != null ? src.Group.GroupName : string.Empty))
                 .ForMember(dest => dest.AcademicYear, opt => opt.MapFrom(src => src.AcademicYear != null ? src.AcademicYear.AcademicYearName : string.Empty))
-                .ForMember(dest => dest.AcademicLevel, opt => opt.MapFrom(src => src.AcademicLevel != null ? src.AcademicLevel.ToString() : string.Empty))
-                .ForMember(dest => dest.ExamType, opt => opt.MapFrom(src => src.AssessmentType != null ? src.AssessmentType.AssessmentTypeName : string.Empty));
+                .ForMember(dest => dest.AcademicLevel, opt => opt.MapFrom(src => src.AcademicLevel != null ? src.AcademicLevel.LevelName : string.Empty))
+                .ForMember(dest => dest.ProgramName, opt => opt.MapFrom(src => src.Program != null ? src.Program.ProgramName : "All Programs"))
+                .ForMember(dest => dest.ExamType, opt => opt.MapFrom(src => src.AssessmentType != null ? src.AssessmentType.AssessmentTypeName : string.Empty))
+                .ForMember(dest => dest.Schedules, opt => opt.MapFrom(src => src.ExamSchedules));
 
             CreateMap<ExamSchedule, ExamScheduleResponse>()
                 .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectName : string.Empty))
-                .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.ExamTime.ToString("HH:mm")))
-                .ForMember(dest => dest.RoomNumber, opt => opt.MapFrom(src => src.Hall))
-                .ForMember(dest => dest.InvigilatorName, opt => opt.MapFrom(src => src.Invigilator));
+                .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectCode : string.Empty));
 
             CreateMap<HallTicket, HallTicketResponse>()
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student != null ? src.Student.Email : string.Empty))

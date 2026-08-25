@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Examination.Requests;
@@ -11,7 +11,7 @@ namespace CollegeManagement.API.Services.Interfaces
         // Examination Methods
         Task<ExaminationResponse> CreateExaminationAsync(CreateExaminationRequest request);
         Task<ExaminationResponse?> GetExaminationByIdAsync(int examinationId);
-        Task<IEnumerable<ExaminationResponse>> GetExaminationsAsync(string? courseId);
+        Task<IEnumerable<ExaminationResponse>> GetExaminationsAsync(ExaminationSearchRequestDto filter);
         Task<ExaminationResponse?> UpdateExaminationAsync(int examinationId, UpdateExaminationRequest request);
         Task<bool> DeleteExaminationAsync(int examinationId);
         Task<ExaminationStatusResponse?> CancelExaminationAsync(int examinationId, CancelExaminationRequest request);
@@ -22,7 +22,15 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<ExamScheduleResponse?> GetExamScheduleByIdAsync(int examScheduleId);
         Task<IEnumerable<ExamScheduleResponse>> GetExamSchedulesAsync(int? examinationId);
         Task<ExamScheduleResponse?> UpdateExamScheduleAsync(int examScheduleId, UpdateExamScheduleRequest request);
+        Task<bool> DeleteExamScheduleAsync(int examScheduleId);
         Task<int> PublishExamSchedulesAsync(PublishExamScheduleRequest request);
+        Task<IEnumerable<EligibleSubjectResponse>> GetEligibleSubjectsAsync(int examinationId);
+        Task<FinalizeScheduleResponse> FinalizeScheduleAsync(int examinationId);
+
+        // Availability & Batch Schedule Methods
+        Task<IEnumerable<AvailableHallDto>> GetAvailableHallsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null);
+        Task<IEnumerable<AvailableInvigilatorDto>> GetAvailableInvigilatorsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null);
+        Task<IEnumerable<ExamScheduleResponse>> CreateBatchExamSchedulesAsync(CreateBatchExamScheduleRequest request);
 
         // Hall Ticket Methods
         Task<IEnumerable<HallTicketResponse>> GenerateHallTicketsAsync(GenerateHallTicketRequest request);

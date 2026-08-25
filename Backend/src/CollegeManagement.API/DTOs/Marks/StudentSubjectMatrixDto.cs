@@ -10,10 +10,13 @@ namespace CollegeManagement.API.DTOs.Evaluations
         public Dictionary<string, decimal> SubjectMarks { get; set; } = new();
         public List<StudentSubjectMarkItemDto> Subjects { get; set; } = new();
         public decimal TotalMarks { get; set; }
+        public decimal Total { get => TotalMarks; set => TotalMarks = value; }
         public decimal MaxTotal { get; set; }
+        public decimal Maximum { get => MaxTotal; set => MaxTotal = value; }
         public decimal Percentage { get; set; }
         public string Grade { get; set; } = "F";
         public string Result { get; set; } = "PASS";
+        public bool ReadyForResults { get; set; } = false;
     }
 
     public class StudentSubjectMarkItemDto

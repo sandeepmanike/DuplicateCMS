@@ -50,6 +50,9 @@ namespace CollegeManagement.API.Services.Implementations
 
                     var facName = first.Faculty != null ? $"{first.Faculty.FirstName} {first.Faculty.LastName}".Trim() : "Unassigned";
                     var facCode = first.Faculty != null ? (!string.IsNullOrWhiteSpace(first.Faculty.EmployeeId) ? first.Faculty.EmployeeId : $"FAC{first.Faculty.Id:0000}") : "FAC1001";
+                    var isPractical = first.Subject?.Practical == true || first.Subject?.SubjectType?.ToLower() == "practical";
+                    var isObjective = first.Examination?.ExamPattern?.Contains("OBJECTIVE") == true || first.Examination?.ExamPattern?.Contains("JEE") == true || first.Examination?.ExamPattern?.Contains("NEET") == true;
+                    var subjectMaxMarks = first.Subject?.TotalMarks > 0 ? (decimal)first.Subject.TotalMarks : (isObjective ? 75m : 100m);
 
                     return new EvaluationListDto
                     {
@@ -61,22 +64,30 @@ namespace CollegeManagement.API.Services.Implementations
                         FacultyId = first.FacultyId,
                         FacultyName = facName,
                         FacultyCode = facCode,
-                        BoardName = !string.IsNullOrWhiteSpace(first.Board) ? first.Board : "BIE Telangana",
-                        AcademicYear = first.AcademicYearId > 0 ? first.AcademicYearId.ToString() : "1",
+                        BoardName = !string.IsNullOrWhiteSpace(first.Board) ? first.Board : "AP State Board",
+                        AcademicYear = first.AcademicYearId > 0 ? first.AcademicYearId.ToString() : "2026-27",
                         GroupName = first.GroupNavigation?.GroupName ?? "MPC",
                         SectionName = first.SectionNavigation?.SectionName ?? "Section A",
-                        ExaminationName = first.Examination?.ExamName ?? "Semester I",
+                        ExaminationName = first.Examination?.ExamName ?? "Quarterly Examination",
+                        ExamPattern = first.Examination?.ExamPattern ?? (isObjective ? "JEE Main Pattern" : "Regular Academic Pattern"),
+                        ExamType = first.Examination?.AssessmentType?.AssessmentTypeName ?? (isObjective ? "Objective" : "Written"),
+                        ExamTotalMarks = first.Examination?.TotalMarks ?? (isObjective ? 300 : 600),
+                        ExamPassPercentage = first.Examination?.PassPercentage ?? (isObjective ? 40m : 35m),
+                        SubjectMaxMarks = subjectMaxMarks,
+                        IsPractical = isPractical,
+                        SubjectType = first.Subject?.SubjectType ?? (isPractical ? "Practical" : (isObjective ? "Objective" : "Theory")),
                         TotalStudents = total,
                         PresentStudents = present,
                         AbsentStudents = absent,
                         AverageMarks = Math.Round(avg, 2),
                         ObtainedMarks = Math.Round(avg, 0),
-                        TotalMarks = 100,
+                        TotalMarks = subjectMaxMarks,
                         HighestMarks = max,
                         LowestMarks = min,
                         Status = first.Status.ToString().ToUpperInvariant(),
                         StatusCode = first.Status,
                         IsLocked = first.IsLocked,
+                        AdminReviewMessage = first.Status == EvaluationStatus.VERIFIED ? first.Remarks : null,
                         RejectionReason = first.Status == EvaluationStatus.REJECTED ? first.Remarks : null,
                         Remarks = first.Remarks,
                         LastSubmittedAt = first.UpdatedAt ?? first.CreatedAt
@@ -101,6 +112,9 @@ namespace CollegeManagement.API.Services.Implementations
 
             var facName = first.Faculty != null ? $"{first.Faculty.FirstName} {first.Faculty.LastName}".Trim() : "Unassigned";
             var facCode = first.Faculty != null ? (!string.IsNullOrWhiteSpace(first.Faculty.EmployeeId) ? first.Faculty.EmployeeId : $"FAC{first.Faculty.Id:0000}") : "FAC1001";
+            var isPractical = first.Subject?.Practical == true || first.Subject?.SubjectType?.ToLower() == "practical";
+            var isObjective = first.Examination?.ExamPattern?.Contains("OBJECTIVE") == true || first.Examination?.ExamPattern?.Contains("JEE") == true || first.Examination?.ExamPattern?.Contains("NEET") == true;
+            var subjectMaxMarks = first.Subject?.TotalMarks > 0 ? (decimal)first.Subject.TotalMarks : (isObjective ? 75m : 100m);
 
             return new EvaluationDetailDto
             {
@@ -112,8 +126,16 @@ namespace CollegeManagement.API.Services.Implementations
                 FacultyName = facName,
                 FacultyCode = facCode,
                 GroupName = first.GroupNavigation?.GroupName ?? "MPC",
+                ProgramName = first.Examination?.Program?.ProgramName ?? "Regular Academic",
                 SectionName = first.SectionNavigation?.SectionName ?? "Section A",
-                ExaminationName = first.Examination?.ExamName ?? "Semester I",
+                ExaminationName = first.Examination?.ExamName ?? "Quarterly Examination",
+                ExamPattern = first.Examination?.ExamPattern ?? (isObjective ? "JEE Main Pattern" : "Regular Academic Pattern"),
+                ExamType = first.Examination?.AssessmentType?.AssessmentTypeName ?? (isObjective ? "Objective" : "Written"),
+                ExamTotalMarks = first.Examination?.TotalMarks ?? (isObjective ? 300 : 600),
+                ExamPassPercentage = first.Examination?.PassPercentage ?? (isObjective ? 40m : 35m),
+                SubjectMaxMarks = subjectMaxMarks,
+                IsPractical = isPractical,
+                SubjectType = first.Subject?.SubjectType ?? (isPractical ? "Practical" : (isObjective ? "Objective" : "Theory")),
                 TotalStudents = total,
                 AverageMarks = Math.Round(avg, 2),
                 HighestMarks = max,
@@ -121,19 +143,27 @@ namespace CollegeManagement.API.Services.Implementations
                 Status = first.Status.ToString().ToUpperInvariant(),
                 StatusCode = first.Status,
                 IsLocked = first.IsLocked,
-                Students = marks.Select(m => new StudentEvaluationMarkRecordDto
-                {
-                    MarkId = m.MarkId,
-                    StudentId = m.StudentId,
-                    AdmissionNo = m.Student?.AdmissionNo ?? (!string.IsNullOrEmpty(m.RollNo) ? m.RollNo : "N/A"),
-                    RollNo = !string.IsNullOrEmpty(m.RollNo) ? m.RollNo : (m.Student?.RollNo ?? $"ROLL{m.StudentId:000}"),
-                    StudentName = !string.IsNullOrEmpty(m.StudentName) ? m.StudentName : (m.Student?.StudentName ?? "Student"),
-                    Internal = m.InternalMarks,
-                    Practical = m.PracticalMarks,
-                    Theory = m.TheoryMarks,
-                    TotalMarks = m.TotalMarks,
-                    IsAbsent = m.IsAbsent,
-                    Remarks = m.Remarks
+                AdminReviewMessage = first.Status == EvaluationStatus.VERIFIED ? first.Remarks : null,
+                RejectionReason = first.Status == EvaluationStatus.REJECTED ? first.Remarks : null,
+                Students = marks.Select(m => {
+                    var percentage = subjectMaxMarks > 0 ? Math.Round(((decimal)m.TotalMarks / subjectMaxMarks) * 100m, 2) : 0m;
+                    return new StudentEvaluationMarkRecordDto
+                    {
+                        MarkId = m.MarkId,
+                        StudentId = m.StudentId,
+                        AdmissionNo = m.Student?.AdmissionNo ?? (!string.IsNullOrEmpty(m.RollNo) ? m.RollNo : "N/A"),
+                        RollNo = !string.IsNullOrEmpty(m.RollNo) ? m.RollNo : (m.Student?.RollNo ?? $"ROLL{m.StudentId:000}"),
+                        StudentName = !string.IsNullOrEmpty(m.StudentName) ? m.StudentName : (m.Student?.StudentName ?? "Student"),
+                        Internal = isObjective ? null : m.InternalMarks,
+                        Practical = isPractical ? (decimal?)m.PracticalMarks : null,
+                        Theory = isObjective ? null : m.TheoryMarks,
+                        TotalMarks = m.TotalMarks,
+                        ObtainedMarks = m.TotalMarks,
+                        MaxMarks = subjectMaxMarks,
+                        Percentage = percentage,
+                        IsAbsent = m.IsAbsent,
+                        Remarks = m.Remarks
+                    };
                 }).ToList()
             };
         }
@@ -178,7 +208,7 @@ namespace CollegeManagement.API.Services.Implementations
                 .Where(m => !m.IsLocked && m.Status == EvaluationStatus.SUBMITTED)
                 .ToList();
 
-            if (!rawMarks.Any()) return (false, 0);
+            if (!rawMarks.Any()) return (true, 0);
 
             var groups = rawMarks.GroupBy(m => new { m.SubjectId, m.SectionId, m.ExaminationId }).ToList();
             int verifiedCount = 0;
@@ -190,13 +220,13 @@ namespace CollegeManagement.API.Services.Implementations
                 if (success) verifiedCount++;
             }
 
-            return (verifiedCount > 0, verifiedCount);
+            return (true, verifiedCount);
         }
 
         public async Task<bool> ApproveAllEvaluationsAsync(EvaluationFilterDto filter, int userId)
         {
             var rawMarks = (await _marksRepository.GetFilteredEvaluationsAsync(filter)).ToList();
-            if (!rawMarks.Any()) return false;
+            if (!rawMarks.Any()) return true;
 
             var groups = rawMarks.GroupBy(m => new { m.SubjectId, m.SectionId, m.ExaminationId });
             foreach (var g in groups)
@@ -230,6 +260,8 @@ namespace CollegeManagement.API.Services.Implementations
 
             var rawMarks = (await _marksRepository.GetFilteredEvaluationsAsync(filter)).ToList();
 
+            var isAllApproved = rawMarks.Any() && rawMarks.All(m => m.Status == EvaluationStatus.APPROVED);
+
             var groupedByStudent = rawMarks
                 .GroupBy(m => m.StudentId)
                 .Select(g =>
@@ -259,10 +291,11 @@ namespace CollegeManagement.API.Services.Implementations
                     }
 
                     var count = g.Count();
-                    var maxPossible = count * 100;
+                    var maxPossible = first.Examination?.TotalMarks > 0 ? (decimal)first.Examination.TotalMarks : (count * 100);
+                    var passPct = first.Examination?.PassPercentage ?? 35m;
                     var percentage = maxPossible > 0 ? Math.Round((grandTotal / maxPossible) * 100, 2) : 0m;
                     string grade = CalculateGrade(percentage);
-                    string result = g.Any(m => m.IsAbsent || m.TotalMarks < m.PassingMarks) ? "FAIL" : "PASS";
+                    string result = percentage >= passPct ? "PASS" : "FAIL";
 
                     return new StudentSubjectMatrixDto
                     {
@@ -274,6 +307,7 @@ namespace CollegeManagement.API.Services.Implementations
                         Percentage = percentage,
                         Grade = grade,
                         Result = result,
+                        ReadyForResults = isAllApproved,
                         Subjects = subjectsList,
                         SubjectMarks = subjectDict
                     };
@@ -318,9 +352,13 @@ namespace CollegeManagement.API.Services.Implementations
             var first = studentMarks.First();
             var rollNo = !string.IsNullOrEmpty(first.RollNo) ? first.RollNo : (first.Student?.RollNo ?? $"ROLL{first.StudentId:000}");
             var studentName = !string.IsNullOrEmpty(first.StudentName) ? first.StudentName : (first.Student?.StudentName ?? "Student");
-            var groupName = first.GroupNavigation?.GroupName ?? "N/A";
-            var sectionName = first.SectionNavigation?.SectionName ?? "N/A";
-            var examName = first.Examination?.ExamName ?? "N/A";
+            var groupName = first.GroupNavigation?.GroupName ?? "MPC";
+            var programName = first.Examination?.Program?.ProgramName ?? "Regular Academic";
+            var sectionName = first.SectionNavigation?.SectionName ?? "Section A";
+            var examName = first.Examination?.ExamName ?? "Quarterly Examination";
+            var examPattern = first.Examination?.ExamPattern ?? "Regular Academic Pattern";
+            var examType = first.Examination?.AssessmentType?.AssessmentTypeName ?? (examPattern.Contains("OBJECTIVE") ? "Objective" : "Written");
+            var passPercentage = first.Examination?.PassPercentage ?? 35m;
 
             var subjectsList = new List<StudentSubjectAnalysisDetailItemDto>();
             decimal grandTotal = 0;
@@ -330,16 +368,21 @@ namespace CollegeManagement.API.Services.Implementations
                 var subjectName = mark.Subject?.SubjectName ?? $"Subject-{mark.SubjectId}";
                 var subjectCode = mark.Subject?.SubjectCode ?? $"SUB{mark.SubjectId:000}";
                 var total = mark.TotalMarks;
+                var subMax = mark.Subject?.TotalMarks > 0 ? (decimal)mark.Subject.TotalMarks : 100m;
+                var subPct = subMax > 0 ? Math.Round((total / subMax) * 100m, 2) : 0m;
 
                 subjectsList.Add(new StudentSubjectAnalysisDetailItemDto
                 {
                     SubjectId = mark.SubjectId,
                     SubjectName = subjectName,
                     SubjectCode = subjectCode,
-                    Internal = mark.InternalMarks,
+                    Internal = examType == "Objective" ? null : mark.InternalMarks,
                     Practical = mark.PracticalMarks > 0 ? mark.PracticalMarks : null,
-                    Theory = mark.TheoryMarks,
+                    Theory = examType == "Objective" ? null : mark.TheoryMarks,
                     Total = total,
+                    ObtainedMarks = total,
+                    MaxMarks = subMax,
+                    Percentage = subPct,
                     PassingMarks = mark.PassingMarks > 0 ? mark.PassingMarks : 35,
                     IsAbsent = mark.IsAbsent,
                     Remarks = mark.Remarks
@@ -349,9 +392,11 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             var count = studentMarks.Count;
-            var maxPossible = count * 100;
+            var maxPossible = first.Examination?.TotalMarks > 0 ? (decimal)first.Examination.TotalMarks : (count * 100);
             var percentage = maxPossible > 0 ? Math.Round((grandTotal / maxPossible) * 100, 2) : 0m;
             string grade = CalculateGrade(percentage);
+            string result = percentage >= passPercentage ? "PASS" : "FAIL";
+            int passingScore = (int)Math.Ceiling((maxPossible * passPercentage) / 100m);
 
             int? rank = null;
             var effectiveExamId = examinationId ?? first.ExaminationId;
@@ -396,12 +441,18 @@ namespace CollegeManagement.API.Services.Implementations
                 RollNo = rollNo,
                 StudentName = studentName,
                 GroupName = groupName,
+                ProgramName = programName,
                 SectionName = sectionName,
                 ExamName = examName,
+                ExamType = examType,
+                ExamPattern = examPattern,
                 TotalMarks = grandTotal,
                 MaxMarks = maxPossible,
                 Percentage = percentage,
+                PassPercentage = passPercentage,
+                PassingScore = passingScore,
                 Grade = grade,
+                Result = result,
                 Rank = rank,
                 Subjects = subjectsList
             };

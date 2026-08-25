@@ -113,13 +113,24 @@ public class OutstandingFeeReportDto
 public class ExaminationReportDto
 {
     public int ExaminationId { get; set; }
+    public string ExamCode { get; set; } = string.Empty;
     public string ExamName { get; set; } = string.Empty;
+    public string BoardName { get; set; } = string.Empty;
     public string AcademicYear { get; set; } = string.Empty;
+    public string AcademicLevel { get; set; } = string.Empty;
     public string GroupName { get; set; } = string.Empty;
+    public string ProgramName { get; set; } = string.Empty;
+    public string ExamType { get; set; } = string.Empty;
     public string StartDate { get; set; } = string.Empty;
     public string EndDate { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int TotalEligibleSubjects { get; set; }
+    public int ScheduledSubjectsCount { get; set; }
+    public int TotalEligibleStudents { get; set; }
+    public int HallTicketsGeneratedCount { get; set; }
     public int ResultCount { get; set; }
     public int PublishedCount { get; set; }
+    public decimal PassPercentage { get; set; }
 }
 
 public class ResultAnalysisReportDto
