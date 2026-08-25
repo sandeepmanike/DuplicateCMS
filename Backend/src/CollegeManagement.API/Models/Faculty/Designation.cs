@@ -24,8 +24,26 @@ namespace CollegeManagement.API.Models.Faculty
 
         public DateTime? UpdatedAt { get; set; }
 
+        [NotMapped]
+        public int DesignationId
+        {
+            get => Id;
+            set => Id = value;
+        }
+
+        [NotMapped]
+        public string DesignationName
+        {
+            get => Name;
+            set => Name = value;
+        }
+
+        [NotMapped]
+        public string DesignationCode => $"DES_{Name.ToUpper().Replace(" ", "_")}";
+
         // Navigation property for faculties/staffs assigned to this designation
         public ICollection<Faculty> Faculties { get; set; } = new List<Faculty>();
+        public ICollection<CollegeManagement.API.Models.Staff.Staff> Staffs { get; set; } = new List<CollegeManagement.API.Models.Staff.Staff>();
     }
 }
 

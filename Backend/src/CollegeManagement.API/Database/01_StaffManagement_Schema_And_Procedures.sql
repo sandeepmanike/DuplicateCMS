@@ -140,6 +140,9 @@ SELECT
     `IsDeleted`
 FROM `Staffs`;
 
+CREATE OR REPLACE VIEW `Staff` AS 
+SELECT * FROM `Staffs`;
+
 CREATE OR REPLACE VIEW `FacultySubjectAllocations` AS 
 SELECT 
     `Id`,
@@ -973,4 +976,81 @@ BEGIN
       AND (p_StaffType IS NULL OR p_StaffType = '' OR p_StaffType = 'All' OR StaffType = 'Both' OR StaffType = p_StaffType)
     ORDER BY Name ASC;
 END //
+
+DROP PROCEDURE IF EXISTS `sp_GetDesignationById` //
+CREATE PROCEDURE `sp_GetDesignationById`(IN p_Id INT)
+BEGIN
+    SELECT Id, Name, StaffType, IsActive, CreatedAt, UpdatedAt
+    FROM Designations
+    WHERE Id = p_Id;
+END //
+
+DROP PROCEDURE IF EXISTS `sp_GetDesignationByName` //
+CREATE PROCEDURE `sp_GetDesignationByName`(IN p_Name VARCHAR(100))
+BEGIN
+    SELECT Id, Name, StaffType, IsActive, CreatedAt, UpdatedAt
+    FROM Designations
+    WHERE LOWER(TRIM(Name)) = LOWER(TRIM(p_Name))
+    LIMIT 1;
+END //
+
+DROP PROCEDURE IF EXISTS `sp_CheckDesignationNameUnique` //
+CREATE PROCEDURE `sp_CheckDesignationNameUnique`(IN p_Name VARCHAR(100), IN p_ExcludeId INT)
+BEGIN
+    SELECT COUNT(*) 
+    FROM Designations 
+    WHERE LOWER(TRIM(Name)) = LOWER(TRIM(p_Name))
+      AND (p_ExcludeId IS NULL OR p_ExcludeId <= 0 OR Id != p_ExcludeId);
+END //
+
+DROP PROCEDURE IF EXISTS `sp_CheckDesignationAssignedToStaff` //
+DROP PROCEDURE IF EXISTS `sp_CheckDesignationAssignedToFaculty` //
+CREATE PROCEDURE `sp_CheckDesignationAssignedToStaff`(IN p_DesignationId INT)
+BEGIN
+    SELECT COUNT(*) 
+    FROM Staffs 
+    WHERE DesignationId = p_DesignationId 
+      AND (IsDeleted = 0 OR IsDeleted IS NULL);
+END //
+
+CREATE PROCEDURE `sp_CheckDesignationAssignedToFaculty`(IN p_DesignationId INT)
+BEGIN
+    CALL sp_CheckDesignationAssignedToStaff(p_DesignationId);
+END //
+
+DROP PROCEDURE IF EXISTS `sp_CreateDesignation` //
+CREATE PROCEDURE `sp_CreateDesignation`(
+    IN p_Name VARCHAR(100),
+    IN p_StaffType VARCHAR(20),
+    IN p_IsActive INT
+)
+BEGIN
+    INSERT INTO Designations (Name, StaffType, IsActive, CreatedAt)
+    VALUES (TRIM(p_Name), IFNULL(p_StaffType, 'Both'), IFNULL(p_IsActive, 1), UTC_TIMESTAMP());
+
+    SELECT LAST_INSERT_ID() AS Id;
+END //
+
+DROP PROCEDURE IF EXISTS `sp_UpdateDesignation` //
+CREATE PROCEDURE `sp_UpdateDesignation`(
+    IN p_Id INT,
+    IN p_Name VARCHAR(100),
+    IN p_StaffType VARCHAR(20),
+    IN p_IsActive INT
+)
+BEGIN
+    UPDATE Designations 
+    SET Name = TRIM(p_Name),
+        StaffType = IFNULL(p_StaffType, 'Both'),
+        IsActive = IFNULL(p_IsActive, 1),
+        UpdatedAt = UTC_TIMESTAMP()
+    WHERE Id = p_Id;
+END //
+
+DROP PROCEDURE IF EXISTS `sp_DeleteDesignation` //
+CREATE PROCEDURE `sp_DeleteDesignation`(IN p_Id INT)
+BEGIN
+    DELETE FROM Designations WHERE Id = p_Id;
+END //
 DELIMITER ;
+

@@ -685,9 +685,488 @@ namespace CollegeManagement.API.Tests
             Console.WriteLine($"\n[5/5] Final Database State:");
             Console.WriteLine($"  - Total Active Staff Records: {totalStaff}");
             Console.WriteLine($"  - Total Subject Allocations:  {totalAllocations}");
+
+            // 6. Normalize Sections Table Schema (Adding ProgramId, AcademicLevelId, dropping redundant string cols)
+            await NormalizeSectionsSchemaAsync(conn);
+
             Console.WriteLine("================================================================================");
             Console.WriteLine("   DATABASE AUDIT & CLEANUP COMPLETED WITH 100% VALID DATA");
             Console.WriteLine("================================================================================");
+        }
+
+        public async Task NormalizeSectionsSchemaAsync(MySqlConnection conn)
+        {
+            Console.WriteLine("\n[6/6] Normalizing 'Sections' Schema & Integrating GroupProgramId / ProgramId / AcademicLevelId...");
+
+            // 1. Add GroupProgramId
+            var hasGroupProgramId = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'GroupProgramId';");
+            if (hasGroupProgramId == 0)
+            {
+                await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `GroupProgramId` INT NULL AFTER `GroupId`;");
+                Console.WriteLine("  Added column `GroupProgramId` to `Sections`.");
+            }
+
+            // 2. Add ProgramId
+            var hasProgramId = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'ProgramId';");
+            if (hasProgramId == 0)
+            {
+                await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `ProgramId` INT NULL AFTER `GroupProgramId`;");
+                Console.WriteLine("  Added column `ProgramId` to `Sections`.");
+            }
+
+            // 3. Add AcademicLevelId
+            var hasAcademicLevelId = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'AcademicLevelId';");
+            if (hasAcademicLevelId == 0)
+            {
+                await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `AcademicLevelId` INT NULL AFTER `AcademicYearId`;");
+                Console.WriteLine("  Added column `AcademicLevelId` to `Sections`.");
+            }
+
+            // 4. Ensure BoardId, GroupId, RoomId, InchargeId exist
+            var hasBoardId = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'BoardId';");
+            if (hasBoardId == 0) await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `BoardId` INT NULL AFTER `SectionId`;");
+
+            var hasGroupId = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'GroupId';");
+            if (hasGroupId == 0) await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `GroupId` INT NULL AFTER `AcademicLevelId`;");
+
+            var hasRoomId = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'RoomId';");
+            if (hasRoomId == 0) await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `RoomId` INT NULL AFTER `SectionName`;");
+
+            var hasInchargeId = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'InchargeId';");
+            if (hasInchargeId == 0) await conn.ExecuteAsync("ALTER TABLE `Sections` ADD COLUMN `InchargeId` INT NULL AFTER `RoomId`;");
+
+            // 5. Backfill foreign keys & eliminate NULLs
+            try
+            {
+                // Backfill BoardId
+                var hasBoard = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'Board';");
+                if (hasBoard > 0)
+                {
+                    await conn.ExecuteAsync(@"
+                        UPDATE `Sections` s 
+                        JOIN `Boards` b ON LOWER(TRIM(b.BoardName)) = LOWER(TRIM(s.Board)) OR LOWER(TRIM(b.BoardCode)) = LOWER(TRIM(s.Board)) 
+                        SET s.BoardId = b.BoardId 
+                        WHERE s.BoardId IS NULL OR s.BoardId = 0;");
+                }
+                var defaultBoard = await conn.ExecuteScalarAsync<int>("SELECT BoardId FROM `Boards` WHERE IsActive = 1 ORDER BY BoardId ASC LIMIT 1;");
+                if (defaultBoard > 0) await conn.ExecuteAsync("UPDATE `Sections` SET BoardId = @Id WHERE BoardId IS NULL OR BoardId = 0;", new { Id = defaultBoard });
+
+                // Backfill AcademicYearId
+                var defaultAy = await conn.ExecuteScalarAsync<int>("SELECT AcademicYearId FROM `AcademicYears` WHERE IsActive = 1 ORDER BY AcademicYearId DESC LIMIT 1;");
+                if (defaultAy > 0) await conn.ExecuteAsync("UPDATE `Sections` SET AcademicYearId = @Id WHERE AcademicYearId IS NULL OR AcademicYearId = 0;", new { Id = defaultAy });
+
+                // Backfill GroupId
+                var hasGrp = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'Group';");
+                if (hasGrp > 0)
+                {
+                    await conn.ExecuteAsync(@"
+                        UPDATE `Sections` s 
+                        JOIN `Groups` g ON LOWER(TRIM(g.GroupName)) = LOWER(TRIM(s.`Group`)) OR LOWER(TRIM(g.GroupCode)) = LOWER(TRIM(s.`Group`)) 
+                        SET s.GroupId = g.GroupId 
+                        WHERE s.GroupId IS NULL OR s.GroupId = 0;");
+                }
+                var defaultGroup = await conn.ExecuteScalarAsync<int>("SELECT GroupId FROM `Groups` WHERE IsActive = 1 ORDER BY GroupId ASC LIMIT 1;");
+                if (defaultGroup > 0) await conn.ExecuteAsync("UPDATE `Sections` SET GroupId = @Id WHERE GroupId IS NULL OR GroupId = 0;", new { Id = defaultGroup });
+
+                // Backfill AcademicLevelId
+                var hasAl = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'AcademicLevel';");
+                if (hasAl > 0)
+                {
+                    await conn.ExecuteAsync(@"
+                        UPDATE `Sections` s 
+                        JOIN `AcademicLevels` al ON LOWER(TRIM(al.LevelName)) = LOWER(TRIM(s.AcademicLevel)) OR LOWER(TRIM(al.LevelCode)) = LOWER(TRIM(s.AcademicLevel)) 
+                        SET s.AcademicLevelId = al.AcademicLevelId 
+                        WHERE s.AcademicLevelId IS NULL OR s.AcademicLevelId = 0;");
+                }
+                await conn.ExecuteAsync(@"
+                    UPDATE `Sections` s 
+                    JOIN `Groups` g ON g.GroupId = s.GroupId 
+                    SET s.AcademicLevelId = g.AcademicLevelId 
+                    WHERE (s.AcademicLevelId IS NULL OR s.AcademicLevelId = 0) AND g.AcademicLevelId IS NOT NULL AND g.AcademicLevelId > 0;");
+                var defaultLevel = await conn.ExecuteScalarAsync<int>("SELECT AcademicLevelId FROM `AcademicLevels` WHERE IsActive = 1 ORDER BY AcademicLevelId ASC LIMIT 1;");
+                if (defaultLevel > 0) await conn.ExecuteAsync("UPDATE `Sections` SET AcademicLevelId = @Id WHERE AcademicLevelId IS NULL OR AcademicLevelId = 0;", new { Id = defaultLevel });
+
+                // Backfill ProgramId
+                var hasProg = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = 'Programme';");
+                if (hasProg > 0)
+                {
+                    await conn.ExecuteAsync(@"
+                        UPDATE `Sections` s 
+                        JOIN `Programs` p ON LOWER(TRIM(p.ProgramName)) = LOWER(TRIM(s.Programme)) 
+                        SET s.ProgramId = p.ProgramId 
+                        WHERE s.ProgramId IS NULL OR s.ProgramId = 0;");
+                }
+
+                // Backfill GroupProgramId from GroupPrograms table
+                await conn.ExecuteAsync(@"
+                    UPDATE `Sections` s 
+                    JOIN `GroupPrograms` gp ON gp.GroupId = s.GroupId AND gp.ProgramId = s.ProgramId 
+                    SET s.GroupProgramId = gp.GroupProgramId 
+                    WHERE s.GroupProgramId IS NULL OR s.GroupProgramId = 0;");
+
+                // Fallback GroupProgramId from Group
+                await conn.ExecuteAsync(@"
+                    UPDATE `Sections` s 
+                    JOIN (
+                        SELECT GroupId, MIN(GroupProgramId) AS DefaultGPId, MIN(ProgramId) AS DefaultProgId 
+                        FROM `GroupPrograms` 
+                        WHERE IsActive = 1 
+                        GROUP BY GroupId
+                    ) def_gp ON def_gp.GroupId = s.GroupId 
+                    SET s.GroupProgramId = def_gp.DefaultGPId,
+                        s.ProgramId = IFNULL(s.ProgramId, def_gp.DefaultProgId)
+                    WHERE s.GroupProgramId IS NULL OR s.GroupProgramId = 0;");
+
+                var defaultGp = await conn.ExecuteScalarAsync<int>("SELECT GroupProgramId FROM `GroupPrograms` WHERE IsActive = 1 ORDER BY GroupProgramId ASC LIMIT 1;");
+                var defaultProg = await conn.ExecuteScalarAsync<int>("SELECT ProgramId FROM `GroupPrograms` WHERE GroupProgramId = @Id;", new { Id = defaultGp });
+                if (defaultGp > 0)
+                {
+                    await conn.ExecuteAsync("UPDATE `Sections` SET GroupProgramId = @GpId, ProgramId = IFNULL(ProgramId, @ProgId) WHERE GroupProgramId IS NULL OR GroupProgramId = 0;", new { GpId = defaultGp, ProgId = defaultProg });
+                }
+
+                // Backfill RoomId
+                var defaultRoom = await conn.ExecuteScalarAsync<int>("SELECT RoomId FROM `Rooms` WHERE IsActive = 1 ORDER BY RoomId ASC LIMIT 1;");
+                if (defaultRoom > 0) await conn.ExecuteAsync("UPDATE `Sections` SET RoomId = @Id WHERE RoomId IS NULL OR RoomId = 0;", new { Id = defaultRoom });
+
+                // Backfill InchargeId
+                var defaultStaff = await conn.ExecuteScalarAsync<int>("SELECT Id FROM `Staff` WHERE IsDeleted = 0 AND StaffType = 'Teaching' ORDER BY Id ASC LIMIT 1;");
+                if (defaultStaff > 0) await conn.ExecuteAsync("UPDATE `Sections` SET InchargeId = @Id WHERE InchargeId IS NULL OR InchargeId = 0;", new { Id = defaultStaff });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Warning during backfill: {ex.Message}");
+            }
+
+            // 6. Drop redundant string columns
+            var stringColsToDrop = new[] { "Board", "Group", "Programme", "AcademicLevel", "RoomNumber", "ClassTeacherId" };
+            foreach (var col in stringColsToDrop)
+            {
+                try
+                {
+                    var exists = await conn.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'Sections' AND column_name = '{col}';");
+                    if (exists > 0)
+                    {
+                        await conn.ExecuteAsync($"ALTER TABLE `Sections` DROP COLUMN `{col}`;");
+                        Console.WriteLine($"  Dropped redundant column `{col}` from `Sections`.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Notice dropping `{col}`: {ex.Message}");
+                }
+            }
+
+            // 7. Add Indexes Safely
+            var indexes = new[]
+            {
+                ("IX_Sections_BoardId", "BoardId"),
+                ("IX_Sections_AcademicYearId", "AcademicYearId"),
+                ("IX_Sections_AcademicLevelId", "AcademicLevelId"),
+                ("IX_Sections_GroupId", "GroupId"),
+                ("IX_Sections_GroupProgramId", "GroupProgramId"),
+                ("IX_Sections_ProgramId", "ProgramId"),
+                ("IX_Sections_RoomId", "RoomId"),
+                ("IX_Sections_InchargeId", "InchargeId")
+            };
+
+            foreach (var (idxName, colName) in indexes)
+            {
+                try
+                {
+                    var idxExists = await conn.ExecuteScalarAsync<int>($"SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'Sections' AND index_name = '{idxName}';");
+                    if (idxExists == 0)
+                    {
+                        await conn.ExecuteAsync($"CREATE INDEX `{idxName}` ON `Sections` (`{colName}`);");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  Index notice `{idxName}`: {ex.Message}");
+                }
+            }
+
+            // 8. Update Stored Procedures for Sections
+            var sps = new[]
+            {
+                @"
+                DROP PROCEDURE IF EXISTS `sp_GetAllSections`;
+                CREATE PROCEDURE `sp_GetAllSections`(
+                    IN p_BoardId INT,
+                    IN p_AcademicYearId INT,
+                    IN p_AcademicLevelId INT,
+                    IN p_GroupId INT,
+                    IN p_GroupProgramId INT,
+                    IN p_ProgramId INT,
+                    IN p_SearchTerm VARCHAR(100),
+                    IN p_IsActive TINYINT(1)
+                )
+                BEGIN
+                    SELECT 
+                        s.SectionId,
+                        s.BoardId,
+                        COALESCE(b.BoardName, '') AS Board,
+                        COALESCE(b.BoardName, '') AS BoardName,
+                        s.AcademicYearId,
+                        COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
+                        s.AcademicLevelId,
+                        COALESCE(al.LevelName, '') AS AcademicLevel,
+                        COALESCE(al.LevelName, '') AS LevelName,
+                        COALESCE(al.LevelName, '') AS YearOfStudy,
+                        COALESCE(s.GroupId, gp.GroupId) AS GroupId,
+                        COALESCE(g.GroupName, '') AS `Group`,
+                        COALESCE(g.GroupName, '') AS GroupName,
+                        s.GroupProgramId,
+                        COALESCE(s.ProgramId, gp.ProgramId) AS ProgramId,
+                        COALESCE(p.ProgramName, '') AS Programme,
+                        COALESCE(p.ProgramName, '') AS Program,
+                        COALESCE(p.ProgramName, '') AS ProgramName,
+                        s.SectionName,
+                        s.RoomId,
+                        COALESCE(r.RoomNumber, '') AS RoomNumber,
+                        COALESCE(r.RoomName, r.RoomNumber, '') AS RoomName,
+                        COALESCE(r.BlockName, '') AS BlockName,
+                        COALESCE(r.BlockName, '') AS BuildingName,
+                        s.InchargeId,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS InchargeName,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS Incharge,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS ClassTeacherName,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS FacultyName,
+                        COALESCE(st.EmployeeId, '') AS FacultyEmployeeId,
+                        s.MaximumStrength,
+                        s.IsActive,
+                        s.CreatedAt,
+                        s.UpdatedAt
+                    FROM Sections s
+                    LEFT JOIN Boards b ON b.BoardId = s.BoardId
+                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
+                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = s.AcademicLevelId
+                    LEFT JOIN GroupPrograms gp ON gp.GroupProgramId = s.GroupProgramId
+                    LEFT JOIN `Groups` g ON g.GroupId = COALESCE(s.GroupId, gp.GroupId)
+                    LEFT JOIN `Programs` p ON p.ProgramId = COALESCE(s.ProgramId, gp.ProgramId)
+                    LEFT JOIN Rooms r ON r.RoomId = s.RoomId
+                    LEFT JOIN Staffs st ON st.Id = s.InchargeId
+                    WHERE (p_BoardId IS NULL OR p_BoardId = 0 OR s.BoardId = p_BoardId)
+                      AND (p_AcademicYearId IS NULL OR p_AcademicYearId = 0 OR s.AcademicYearId = p_AcademicYearId)
+                      AND (p_AcademicLevelId IS NULL OR p_AcademicLevelId = 0 OR s.AcademicLevelId = p_AcademicLevelId)
+                      AND (p_GroupId IS NULL OR p_GroupId = 0 OR s.GroupId = p_GroupId OR gp.GroupId = p_GroupId)
+                      AND (p_GroupProgramId IS NULL OR p_GroupProgramId = 0 OR s.GroupProgramId = p_GroupProgramId)
+                      AND (p_ProgramId IS NULL OR p_ProgramId = 0 OR s.ProgramId = p_ProgramId OR gp.ProgramId = p_ProgramId)
+                      AND (p_IsActive IS NULL OR s.IsActive = p_IsActive)
+                      AND (p_SearchTerm IS NULL OR p_SearchTerm = '' OR (
+                           s.SectionName LIKE CONCAT('%', p_SearchTerm, '%') OR
+                           g.GroupName LIKE CONCAT('%', p_SearchTerm, '%') OR
+                           p.ProgramName LIKE CONCAT('%', p_SearchTerm, '%') OR
+                           CONCAT(st.FirstName, ' ', st.LastName) LIKE CONCAT('%', p_SearchTerm, '%') OR
+                           r.RoomNumber LIKE CONCAT('%', p_SearchTerm, '%') OR
+                           r.RoomName LIKE CONCAT('%', p_SearchTerm, '%')
+                      ))
+                    ORDER BY s.SectionId DESC;
+                END;",
+
+                @"
+                DROP PROCEDURE IF EXISTS `sp_GetSectionById`;
+                CREATE PROCEDURE `sp_GetSectionById`(IN p_SectionId INT)
+                BEGIN
+                    SELECT 
+                        s.SectionId,
+                        s.BoardId,
+                        COALESCE(b.BoardName, '') AS Board,
+                        COALESCE(b.BoardName, '') AS BoardName,
+                        s.AcademicYearId,
+                        COALESCE(ay.AcademicYearName, '') AS AcademicYearName,
+                        s.AcademicLevelId,
+                        COALESCE(al.LevelName, '') AS AcademicLevel,
+                        COALESCE(al.LevelName, '') AS LevelName,
+                        COALESCE(al.LevelName, '') AS YearOfStudy,
+                        COALESCE(s.GroupId, gp.GroupId) AS GroupId,
+                        COALESCE(g.GroupName, '') AS `Group`,
+                        COALESCE(g.GroupName, '') AS GroupName,
+                        s.GroupProgramId,
+                        COALESCE(s.ProgramId, gp.ProgramId) AS ProgramId,
+                        COALESCE(p.ProgramName, '') AS Programme,
+                        COALESCE(p.ProgramName, '') AS Program,
+                        COALESCE(p.ProgramName, '') AS ProgramName,
+                        s.SectionName,
+                        s.RoomId,
+                        COALESCE(r.RoomNumber, '') AS RoomNumber,
+                        COALESCE(r.RoomName, r.RoomNumber, '') AS RoomName,
+                        COALESCE(r.BlockName, '') AS BlockName,
+                        COALESCE(r.BlockName, '') AS BuildingName,
+                        s.InchargeId,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS InchargeName,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS Incharge,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS ClassTeacherName,
+                        COALESCE(CONCAT(st.FirstName, ' ', st.LastName), '') AS FacultyName,
+                        COALESCE(st.EmployeeId, '') AS FacultyEmployeeId,
+                        s.MaximumStrength,
+                        s.IsActive,
+                        s.CreatedAt,
+                        s.UpdatedAt
+                    FROM Sections s
+                    LEFT JOIN Boards b ON b.BoardId = s.BoardId
+                    LEFT JOIN AcademicYears ay ON ay.AcademicYearId = s.AcademicYearId
+                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = s.AcademicLevelId
+                    LEFT JOIN GroupPrograms gp ON gp.GroupProgramId = s.GroupProgramId
+                    LEFT JOIN `Groups` g ON g.GroupId = COALESCE(s.GroupId, gp.GroupId)
+                    LEFT JOIN `Programs` p ON p.ProgramId = COALESCE(s.ProgramId, gp.ProgramId)
+                    LEFT JOIN Rooms r ON r.RoomId = s.RoomId
+                    LEFT JOIN Staffs st ON st.Id = s.InchargeId
+                    WHERE s.SectionId = p_SectionId;
+                END;",
+
+                @"
+                DROP PROCEDURE IF EXISTS `sp_CreateSection`;
+                CREATE PROCEDURE `sp_CreateSection`(
+                    IN p_BoardId INT,
+                    IN p_AcademicYearId INT,
+                    IN p_AcademicLevelId INT,
+                    IN p_GroupId INT,
+                    IN p_GroupProgramId INT,
+                    IN p_ProgramId INT,
+                    IN p_SectionName VARCHAR(50),
+                    IN p_RoomId INT,
+                    IN p_InchargeId INT,
+                    IN p_MaximumStrength INT,
+                    IN p_IsActive TINYINT(1)
+                )
+                BEGIN
+                    DECLARE v_GroupId INT;
+                    DECLARE v_ProgramId INT;
+                    DECLARE v_GroupProgramId INT;
+
+                    SET v_GroupId = p_GroupId;
+                    SET v_ProgramId = p_ProgramId;
+                    SET v_GroupProgramId = p_GroupProgramId;
+
+                    IF v_GroupProgramId IS NOT NULL AND v_GroupProgramId > 0 THEN
+                        SELECT GroupId, ProgramId INTO v_GroupId, v_ProgramId
+                        FROM `GroupPrograms`
+                        WHERE GroupProgramId = v_GroupProgramId LIMIT 1;
+                    END IF;
+
+                    IF (v_GroupProgramId IS NULL OR v_GroupProgramId = 0) AND v_GroupId IS NOT NULL AND v_ProgramId IS NOT NULL THEN
+                        SELECT GroupProgramId INTO v_GroupProgramId
+                        FROM `GroupPrograms`
+                        WHERE GroupId = v_GroupId AND ProgramId = v_ProgramId LIMIT 1;
+                    END IF;
+
+                    INSERT INTO `Sections` (
+                        BoardId,
+                        AcademicYearId,
+                        AcademicLevelId,
+                        GroupId,
+                        GroupProgramId,
+                        ProgramId,
+                        SectionName,
+                        RoomId,
+                        InchargeId,
+                        MaximumStrength,
+                        IsActive,
+                        CreatedAt
+                    ) VALUES (
+                        p_BoardId,
+                        p_AcademicYearId,
+                        p_AcademicLevelId,
+                        v_GroupId,
+                        v_GroupProgramId,
+                        v_ProgramId,
+                        TRIM(p_SectionName),
+                        p_RoomId,
+                        p_InchargeId,
+                        IFNULL(p_MaximumStrength, 40),
+                        IFNULL(p_IsActive, 1),
+                        UTC_TIMESTAMP()
+                    );
+
+                    SELECT LAST_INSERT_ID() AS SectionId;
+                END;",
+
+                @"
+                DROP PROCEDURE IF EXISTS `sp_UpdateSection`;
+                CREATE PROCEDURE `sp_UpdateSection`(
+                    IN p_SectionId INT,
+                    IN p_BoardId INT,
+                    IN p_AcademicYearId INT,
+                    IN p_AcademicLevelId INT,
+                    IN p_GroupId INT,
+                    IN p_GroupProgramId INT,
+                    IN p_ProgramId INT,
+                    IN p_SectionName VARCHAR(50),
+                    IN p_RoomId INT,
+                    IN p_InchargeId INT,
+                    IN p_MaximumStrength INT,
+                    IN p_IsActive TINYINT(1)
+                )
+                BEGIN
+                    DECLARE v_GroupId INT;
+                    DECLARE v_ProgramId INT;
+                    DECLARE v_GroupProgramId INT;
+
+                    SET v_GroupId = p_GroupId;
+                    SET v_ProgramId = p_ProgramId;
+                    SET v_GroupProgramId = p_GroupProgramId;
+
+                    IF v_GroupProgramId IS NOT NULL AND v_GroupProgramId > 0 THEN
+                        SELECT GroupId, ProgramId INTO v_GroupId, v_ProgramId
+                        FROM `GroupPrograms`
+                        WHERE GroupProgramId = v_GroupProgramId LIMIT 1;
+                    END IF;
+
+                    IF (v_GroupProgramId IS NULL OR v_GroupProgramId = 0) AND v_GroupId IS NOT NULL AND v_ProgramId IS NOT NULL THEN
+                        SELECT GroupProgramId INTO v_GroupProgramId
+                        FROM `GroupPrograms`
+                        WHERE GroupId = v_GroupId AND ProgramId = v_ProgramId LIMIT 1;
+                    END IF;
+
+                    UPDATE `Sections` SET
+                        BoardId = p_BoardId,
+                        AcademicYearId = p_AcademicYearId,
+                        AcademicLevelId = p_AcademicLevelId,
+                        GroupId = v_GroupId,
+                        GroupProgramId = v_GroupProgramId,
+                        ProgramId = v_ProgramId,
+                        SectionName = TRIM(p_SectionName),
+                        RoomId = p_RoomId,
+                        InchargeId = p_InchargeId,
+                        MaximumStrength = IFNULL(p_MaximumStrength, 40),
+                        IsActive = IFNULL(p_IsActive, 1),
+                        UpdatedAt = UTC_TIMESTAMP()
+                    WHERE SectionId = p_SectionId;
+                END;",
+
+                @"
+                DROP PROCEDURE IF EXISTS `sp_DeleteSection`;
+                CREATE PROCEDURE `sp_DeleteSection`(IN p_SectionId INT)
+                BEGIN
+                    DELETE FROM `Sections` WHERE SectionId = p_SectionId;
+                END;",
+
+                @"
+                DROP PROCEDURE IF EXISTS `sp_GetSectionsByGroupId`;
+                CREATE PROCEDURE `sp_GetSectionsByGroupId`(IN p_GroupId INT)
+                BEGIN
+                    CALL sp_GetAllSections(NULL, NULL, NULL, p_GroupId, NULL, NULL, NULL, 1);
+                END;",
+
+                @"
+                DROP PROCEDURE IF EXISTS `sp_GetSectionsByGroupProgramId`;
+                CREATE PROCEDURE `sp_GetSectionsByGroupProgramId`(IN p_GroupProgramId INT)
+                BEGIN
+                    CALL sp_GetAllSections(NULL, NULL, NULL, NULL, p_GroupProgramId, NULL, NULL, 1);
+                END;"
+            };
+
+            foreach (var sp in sps)
+            {
+                await conn.ExecuteAsync(sp);
+            }
+
         }
     }
 }

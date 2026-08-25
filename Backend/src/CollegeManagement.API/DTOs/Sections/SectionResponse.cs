@@ -9,18 +9,27 @@ namespace CollegeManagement.API.DTOs.Sections
 
         public int? BoardId { get; set; }
         public string Board { get; set; } = string.Empty;
+        public string BoardName { get; set; } = string.Empty;
 
         public int AcademicYearId { get; set; }
         public string AcademicYearName { get; set; } = string.Empty;
 
+        public int? AcademicLevelId { get; set; }
+        public string AcademicLevel { get; set; } = string.Empty;
+        public string AcademicLevelName { get; set; } = string.Empty;
+        public string LevelName { get; set; } = string.Empty;
+        public string YearOfStudy => AcademicLevel;
+
         public int? GroupId { get; set; }
         public string Group { get; set; } = string.Empty;
+        public string GroupName { get; set; } = string.Empty;
 
+        public int? GroupProgramId { get; set; }
+
+        public int? ProgramId { get; set; }
         public string Programme { get; set; } = string.Empty;
         public string Program => Programme;
-
-        public string AcademicLevel { get; set; } = string.Empty;
-        public string YearOfStudy => AcademicLevel;
+        public string ProgramName { get; set; } = string.Empty;
 
         public string SectionName { get; set; } = string.Empty;
         public string Name => SectionName;
@@ -57,6 +66,7 @@ namespace CollegeManagement.API.DTOs.Sections
         }
         public string Teacher => InchargeName;
         public string FacultyName => InchargeName;
+        public string FacultyEmployeeId { get; set; } = string.Empty;
 
         public int MaximumStrength { get; set; }
         public int Capacity => MaximumStrength;

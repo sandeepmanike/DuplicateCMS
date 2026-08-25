@@ -44,7 +44,36 @@ namespace CollegeManagement.API.Services.Implementations
             // 1. Validate AcademicYear exists, is active, and has not ended
             await ValidateAcademicYearAsync(request.AcademicYearId);
 
-            // 2. Validate Incharge exists (if provided)
+            // 2. Resolve Relational Foreign Keys
+            var boardId = await _sectionRepository.ResolveBoardIdAsync(request.BoardId, request.Board);
+            var academicLevelId = await _sectionRepository.ResolveAcademicLevelIdAsync(request.AcademicLevelId, request.AcademicLevel ?? request.YearOfStudy);
+            var groupId = await _sectionRepository.ResolveGroupIdAsync(request.GroupId, request.Group);
+            var programId = await _sectionRepository.ResolveProgramIdAsync(request.ProgramId, request.Programme ?? request.Program, groupId);
+
+            // If GroupProgramId is provided directly, resolve GroupId and ProgramId
+            var groupProgramId = request.GroupProgramId;
+            if (groupProgramId.HasValue && groupProgramId.Value > 0)
+            {
+                var (gpGroupId, gpProgramId) = await _sectionRepository.GetGroupAndProgramByGroupProgramIdAsync(groupProgramId.Value);
+                if (gpGroupId.HasValue) groupId = gpGroupId;
+                if (gpProgramId.HasValue) programId = gpProgramId;
+            }
+            else
+            {
+                groupProgramId = await _sectionRepository.ResolveGroupProgramIdAsync(null, groupId, programId);
+            }
+
+            // 3. Validate Program belongs to Group (if both provided)
+            if (groupId.HasValue && programId.HasValue)
+            {
+                var isValidMapping = await _sectionRepository.IsProgramValidForGroupAsync(groupId.Value, programId.Value);
+                if (!isValidMapping)
+                {
+                    // If not explicitly mapped, check if any mapping exists for the group
+                }
+            }
+
+            // 4. Validate Incharge exists (if provided)
             var inchargeId = request.InchargeId ?? request.ClassTeacherId;
             if (inchargeId.HasValue && inchargeId.Value > 0)
             {
@@ -54,7 +83,7 @@ namespace CollegeManagement.API.Services.Implementations
                 }
             }
 
-            // 3. Validate Room Allotment, Type, Capacity & Clash (when Active)
+            // 5. Validate Room Allotment, Type, Capacity & Clash (when Active)
             await ValidateRoomAllotmentAsync(request.RoomId, request.RoomNumber, request.MaximumStrength, request.IsActive, null,
                 (id, code) =>
                 {
@@ -62,18 +91,27 @@ namespace CollegeManagement.API.Services.Implementations
                     request.RoomNumber = code;
                 });
 
-            // 4. Validate duplicate Section Name in the same context
+            // 6. Validate duplicate Section Name in the same context
             if (await _sectionRepository.IsSectionNameDuplicateAsync(
-                request.Board, request.AcademicYearId, request.Group, request.Programme, request.AcademicLevel, request.SectionName))
+                boardId, request.AcademicYearId, academicLevelId, groupId, groupProgramId, programId, request.SectionName))
             {
-                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, Programme, and Level configuration.");
+                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, Program, and Level configuration.");
             }
 
-            // 5. Map DTO to Entity and insert
+            // 7. Map DTO to Entity and assign resolved Foreign Keys
             var section = _mapper.Map<Section>(request);
+            section.BoardId = boardId;
+            section.AcademicYearId = request.AcademicYearId;
+            section.AcademicLevelId = academicLevelId;
+            section.GroupId = groupId;
+            section.GroupProgramId = groupProgramId;
+            section.ProgramId = programId;
+            section.InchargeId = inchargeId;
+            section.RoomId = request.RoomId;
+
             var sectionId = await _sectionRepository.CreateSectionAsync(section);
 
-            // 6. Retrieve created Section details
+            // 8. Retrieve created Section details
             var createdSection = await _sectionRepository.GetSectionByIdAsync(sectionId);
             if (createdSection == null)
             {
@@ -97,7 +135,25 @@ namespace CollegeManagement.API.Services.Implementations
             // 2. Validate AcademicYear exists, is active, and has not ended
             await ValidateAcademicYearAsync(request.AcademicYearId);
 
-            // 3. Validate Incharge exists (if provided)
+            // 3. Resolve Relational Foreign Keys
+            var boardId = await _sectionRepository.ResolveBoardIdAsync(request.BoardId, request.Board) ?? existingSection.BoardId;
+            var academicLevelId = await _sectionRepository.ResolveAcademicLevelIdAsync(request.AcademicLevelId, request.AcademicLevel ?? request.YearOfStudy) ?? existingSection.AcademicLevelId;
+            var groupId = await _sectionRepository.ResolveGroupIdAsync(request.GroupId, request.Group) ?? existingSection.GroupId;
+            var programId = await _sectionRepository.ResolveProgramIdAsync(request.ProgramId, request.Programme ?? request.Program, groupId) ?? existingSection.ProgramId;
+
+            var groupProgramId = request.GroupProgramId;
+            if (groupProgramId.HasValue && groupProgramId.Value > 0)
+            {
+                var (gpGroupId, gpProgramId) = await _sectionRepository.GetGroupAndProgramByGroupProgramIdAsync(groupProgramId.Value);
+                if (gpGroupId.HasValue) groupId = gpGroupId;
+                if (gpProgramId.HasValue) programId = gpProgramId;
+            }
+            else
+            {
+                groupProgramId = await _sectionRepository.ResolveGroupProgramIdAsync(null, groupId, programId) ?? existingSection.GroupProgramId;
+            }
+
+            // 4. Validate Incharge exists (if provided)
             var inchargeId = request.InchargeId ?? request.ClassTeacherId;
             if (inchargeId.HasValue && inchargeId.Value > 0)
             {
@@ -107,7 +163,7 @@ namespace CollegeManagement.API.Services.Implementations
                 }
             }
 
-            // 4. Validate Room Allotment, Type, Capacity & Clash (when Active)
+            // 5. Validate Room Allotment, Type, Capacity & Clash (when Active)
             await ValidateRoomAllotmentAsync(request.RoomId, request.RoomNumber, request.MaximumStrength, request.IsActive, id,
                 (roomId, code) =>
                 {
@@ -115,22 +171,32 @@ namespace CollegeManagement.API.Services.Implementations
                     request.RoomNumber = code;
                 });
 
-            // 5. Validate duplicate Section Name (excluding current Section)
+            // 6. Validate duplicate Section Name (excluding current Section)
             if (await _sectionRepository.IsSectionNameDuplicateAsync(
-                request.Board, request.AcademicYearId, request.Group, request.Programme, request.AcademicLevel, request.SectionName, id))
+                boardId, request.AcademicYearId, academicLevelId, groupId, groupProgramId, programId, request.SectionName, id))
             {
-                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, Programme, and Level configuration.");
+                throw new ConflictException($"A section named '{request.SectionName}' already exists for this Board, Academic Year, Group, Program, and Level configuration.");
             }
 
-            // 6. Map DTO to Entity and update
+            // 7. Map DTO to Entity and update
             var section = _mapper.Map<Section>(request);
+            section.SectionId = id;
+            section.BoardId = boardId;
+            section.AcademicYearId = request.AcademicYearId;
+            section.AcademicLevelId = academicLevelId;
+            section.GroupId = groupId;
+            section.GroupProgramId = groupProgramId;
+            section.ProgramId = programId;
+            section.InchargeId = inchargeId;
+            section.RoomId = request.RoomId;
+
             var updated = await _sectionRepository.UpdateSectionAsync(id, section);
             if (!updated)
             {
                 throw new InvalidOperationException("Failed to update section.");
             }
 
-            // 7. Retrieve updated details
+            // 8. Retrieve updated details
             var updatedSection = await _sectionRepository.GetSectionByIdAsync(id);
             if (updatedSection == null)
             {

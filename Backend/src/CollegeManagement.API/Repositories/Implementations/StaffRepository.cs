@@ -53,7 +53,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE f.Id = @id AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
@@ -106,7 +106,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE f.EmployeeId = @employeeId AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
@@ -135,7 +135,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE f.Email = @email AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
@@ -164,7 +164,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE f.Mobile = @mobile AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
@@ -193,7 +193,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE f.Aadhaar = @aadhaar AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
@@ -211,7 +211,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "SELECT PhotoPath FROM Staff WHERE Id = @id;";
+                var sql = "SELECT PhotoPath FROM Staffs WHERE Id = @id;";
                 return await Connection.QueryFirstOrDefaultAsync<string>(sql, new { id });
             }
         }
@@ -229,7 +229,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "SELECT COUNT(*) FROM Staff WHERE EmployeeId = @employeeId AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
+                var sql = "SELECT COUNT(*) FROM Staffs WHERE EmployeeId = @employeeId AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
                 var count = await Connection.ExecuteScalarAsync<int>(sql, new { employeeId, excludeId });
                 return count == 0;
             }
@@ -248,7 +248,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "SELECT COUNT(*) FROM Staff WHERE Email = @email AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
+                var sql = "SELECT COUNT(*) FROM Staffs WHERE Email = @email AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
                 var count = await Connection.ExecuteScalarAsync<int>(sql, new { email, excludeId });
                 return count == 0;
             }
@@ -267,7 +267,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "SELECT COUNT(*) FROM Staff WHERE Mobile = @mobile AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
+                var sql = "SELECT COUNT(*) FROM Staffs WHERE Mobile = @mobile AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
                 var count = await Connection.ExecuteScalarAsync<int>(sql, new { mobile, excludeId });
                 return count == 0;
             }
@@ -287,7 +287,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "SELECT COUNT(*) FROM Staff WHERE Aadhaar = @aadhaar AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
+                var sql = "SELECT COUNT(*) FROM Staffs WHERE Aadhaar = @aadhaar AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
                 var count = await Connection.ExecuteScalarAsync<int>(sql, new { aadhaar, excludeId });
                 return count == 0;
             }
@@ -367,7 +367,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             var countSql = $@"
                 SELECT COUNT(*) 
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE {whereSql};";
 
@@ -387,7 +387,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staff f
+                FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
                 WHERE {whereSql}
                 ORDER BY f.Id DESC
@@ -416,7 +416,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         Designation,
                         DesignationId,
                         IFNULL(StaffType, 'Teaching') AS StaffType
-                    FROM Staff
+                    FROM Staffs
                     WHERE (IsDeleted = 0 OR IsDeleted IS NULL) AND Status = 'Active'
                       AND (@staffType IS NULL OR @staffType = '' OR @staffType = 'All' OR StaffType = @staffType OR FacultyType = @staffType)
                     ORDER BY FirstName ASC;";
@@ -444,7 +444,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             {
             }
 
-            var sql = "SELECT EmployeeId FROM Staff WHERE EmployeeId LIKE @pattern;";
+            var sql = "SELECT EmployeeId FROM Staffs WHERE EmployeeId LIKE @pattern;";
             var existingIds = (await Connection.QueryAsync<string>(sql, new { pattern = $"{prefix}%" })).ToList();
 
             int maxSeq = 0;
@@ -503,7 +503,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
 
             var sql = @"
-                INSERT INTO Staff (
+                INSERT INTO Staffs (
                     EmployeeId, FirstName, LastName, Gender, DateOfBirth,
                     Aadhaar, Mobile, Email, BloodGroup, Qualification,
                     Designation, DesignationId, StaffType, FacultyType,
@@ -557,7 +557,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
 
             var sql = @"
-                UPDATE Staff SET
+                UPDATE Staffs SET
                     FirstName = @FirstName,
                     LastName = @LastName,
                     Gender = @Gender,
@@ -597,7 +597,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "UPDATE Staff SET PhotoPath = @photoPath, UpdatedAt = UTC_TIMESTAMP() WHERE Id = @id;";
+                var sql = "UPDATE Staffs SET PhotoPath = @photoPath, UpdatedAt = UTC_TIMESTAMP() WHERE Id = @id;";
                 await Connection.ExecuteAsync(sql, new { id, photoPath });
             }
         }
@@ -613,7 +613,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                var sql = "UPDATE Staff SET IsDeleted = 1, UpdatedAt = UTC_TIMESTAMP() WHERE Id = @Id;";
+                var sql = "UPDATE Staffs SET IsDeleted = 1, UpdatedAt = UTC_TIMESTAMP() WHERE Id = @Id;";
                 await Connection.ExecuteAsync(sql, new { staff.Id });
             }
         }

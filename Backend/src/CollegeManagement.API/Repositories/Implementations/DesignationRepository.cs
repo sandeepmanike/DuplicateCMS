@@ -118,23 +118,39 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<bool> IsAssignedToFacultyAsync(int designationId)
         {
+            return await IsAssignedToStaffAsync(designationId);
+        }
+
+        public async Task<bool> IsAssignedToStaffAsync(int designationId)
+        {
             if (IsRelational)
             {
                 try
                 {
                     int count = await Connection.ExecuteScalarAsync<int>(
-                        "sp_CheckDesignationAssignedToFaculty",
+                        "sp_CheckDesignationAssignedToStaff",
                         new { p_DesignationId = designationId },
                         commandType: CommandType.StoredProcedure);
                     return count > 0;
                 }
                 catch
                 {
-                    // Fallback to EF Core
+                    try
+                    {
+                        int count = await Connection.ExecuteScalarAsync<int>(
+                            "sp_CheckDesignationAssignedToFaculty",
+                            new { p_DesignationId = designationId },
+                            commandType: CommandType.StoredProcedure);
+                        return count > 0;
+                    }
+                    catch
+                    {
+                        // Fallback to EF Core
+                    }
                 }
             }
 
-            return await _context.Faculties.AnyAsync(f => f.DesignationId == designationId && !f.IsDeleted);
+            return await _context.Staffs.AnyAsync(s => s.DesignationId == designationId && !s.IsDeleted);
         }
 
         public async Task<Designation> AddAsync(Designation designation)

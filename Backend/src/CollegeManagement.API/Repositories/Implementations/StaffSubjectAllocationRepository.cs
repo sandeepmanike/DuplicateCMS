@@ -49,7 +49,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType
                     FROM StaffSubjectAllocations a
-                    INNER JOIN Staff s ON s.Id = COALESCE(a.StaffId, a.FacultyId)
+                    INNER JOIN Staffs s ON s.Id = COALESCE(a.StaffId, a.FacultyId)
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
                     WHERE a.Id = @id;";
 
@@ -94,7 +94,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType
                     FROM StaffSubjectAllocations a
-                    INNER JOIN Staff s ON s.Id = COALESCE(a.StaffId, a.FacultyId)
+                    INNER JOIN Staffs s ON s.Id = COALESCE(a.StaffId, a.FacultyId)
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
                     WHERE (a.StaffId = @staffId OR a.FacultyId = @staffId);";
 
@@ -139,7 +139,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType
                     FROM StaffSubjectAllocations a
-                    INNER JOIN Staff s ON s.Id = COALESCE(a.StaffId, a.FacultyId)
+                    INNER JOIN Staffs s ON s.Id = COALESCE(a.StaffId, a.FacultyId)
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
                     WHERE a.SubjectId = @subjectId;";
 

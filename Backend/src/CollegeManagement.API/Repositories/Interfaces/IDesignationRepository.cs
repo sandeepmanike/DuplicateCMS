@@ -11,6 +11,7 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<Designation?> GetByNameAsync(string name);
         Task<bool> IsNameUniqueAsync(string name, int? excludeId = null);
         Task<bool> IsAssignedToFacultyAsync(int designationId);
+        Task<bool> IsAssignedToStaffAsync(int designationId);
         Task<Designation> AddAsync(Designation designation);
         Task UpdateAsync(Designation designation);
         Task DeleteAsync(int id);

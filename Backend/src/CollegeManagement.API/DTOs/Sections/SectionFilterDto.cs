@@ -2,15 +2,16 @@ namespace CollegeManagement.API.DTOs.Sections
 {
     public class SectionFilterDto
     {
+        public int? BoardId { get; set; }
         public string? Board { get; set; }
+
         public int? AcademicYearId { get; set; }
-        public string? Group { get; set; }
-        public int? GroupId { get; set; }
-        public string? Programme { get; set; }
-        public string? Program
+
+        public int? AcademicLevelId { get; set; }
+        public int? YearOfStudyId
         {
-            get => Programme;
-            set => Programme = value;
+            get => AcademicLevelId;
+            set => AcademicLevelId = value;
         }
         public string? AcademicLevel { get; set; }
         public string? YearOfStudy
@@ -18,6 +19,25 @@ namespace CollegeManagement.API.DTOs.Sections
             get => AcademicLevel;
             set => AcademicLevel = value;
         }
+
+        public int? GroupId { get; set; }
+        public string? Group { get; set; }
+
+        public int? GroupProgramId { get; set; }
+
+        public int? ProgramId { get; set; }
+        public int? ProgrammeId
+        {
+            get => ProgramId;
+            set => ProgramId = value;
+        }
+        public string? Programme { get; set; }
+        public string? Program
+        {
+            get => Programme;
+            set => Programme = value;
+        }
+
         public string? SearchTerm { get; set; }
         public string? Search
         {

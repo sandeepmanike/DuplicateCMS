@@ -126,6 +126,7 @@ namespace CollegeManagement.API.Tests
                 cfg.AddProfile<StaffMappingProfile>();
                 cfg.AddProfile<FacultyMappingProfile>();
                 cfg.AddProfile<TimetableMappingProfile>();
+                cfg.AddProfile<SectionMappingProfile>();
             });
             var mapper = config.CreateMapper();
             services.AddSingleton(mapper);
@@ -143,6 +144,8 @@ namespace CollegeManagement.API.Tests
             services.AddScoped<IDesignationService, DesignationService>();
             services.AddScoped<ITimetableRepository, TimetableRepository>();
             services.AddScoped<IStaffService, StaffService>();
+            services.AddScoped<ISectionRepository, SectionRepository>();
+            services.AddScoped<ISectionService, SectionService>();
 
             var serviceProvider = services.BuildServiceProvider();
 
@@ -459,6 +462,83 @@ namespace CollegeManagement.API.Tests
             catch (Exception ex)
             {
                 Console.WriteLine($"  [FAIL] Soft Delete Error: {ex.Message}");
+                failed++;
+            }
+
+            // 11. Test Normalized Sections Module (Foreign Key Integrity, ProgramId & AcademicLevelId)
+            Console.WriteLine("\n[11/11] Testing Normalized Sections Module & ProgramId Integration...");
+            try
+            {
+                using var scope = serviceProvider.CreateScope();
+                var sectionService = scope.ServiceProvider.GetRequiredService<ISectionService>();
+
+                // Fetch existing sections
+                var allSections = (await sectionService.GetAllSectionsAsync()).ToList();
+                Console.WriteLine($"  Found {allSections.Count} sections in database.");
+
+                // Verify ProgramId, AcademicLevelId, GroupId in existing sections
+                // Verify GroupProgramId, ProgramId, AcademicLevelId, GroupId in existing sections
+                if (allSections.Any())
+                {
+                    var firstSec = allSections.First();
+                    Console.WriteLine($"  Sample Section: ID={firstSec.SectionId}, Name='{firstSec.SectionName}', Group='{firstSec.Group}' (GroupId={firstSec.GroupId}), GroupProgramId={firstSec.GroupProgramId}, Program='{firstSec.Programme}' (ProgramId={firstSec.ProgramId}), Level='{firstSec.AcademicLevel}' (AcademicLevelId={firstSec.AcademicLevelId})");
+                }
+
+                // Query active master references
+                using var conn = new MySqlConnection(_connectionString);
+                await conn.OpenAsync();
+                var activeAyId = await conn.ExecuteScalarAsync<int>("SELECT AcademicYearId FROM AcademicYears WHERE IsActive = 1 ORDER BY AcademicYearId DESC LIMIT 1;");
+                if (activeAyId <= 0) activeAyId = await conn.ExecuteScalarAsync<int>("SELECT AcademicYearId FROM AcademicYears LIMIT 1;");
+
+                var sampleBoardId = await conn.ExecuteScalarAsync<int>("SELECT BoardId FROM Boards WHERE IsActive = 1 LIMIT 1;");
+                var sampleGroupId = await conn.ExecuteScalarAsync<int>("SELECT GroupId FROM `Groups` WHERE IsActive = 1 LIMIT 1;");
+                var sampleLevelId = await conn.ExecuteScalarAsync<int>("SELECT AcademicLevelId FROM AcademicLevels WHERE IsActive = 1 LIMIT 1;");
+                var sampleGpId = await conn.ExecuteScalarAsync<int>("SELECT GroupProgramId FROM `GroupPrograms` WHERE IsActive = 1 LIMIT 1;");
+                var sampleProgramId = await conn.ExecuteScalarAsync<int>("SELECT ProgramId FROM `GroupPrograms` WHERE GroupProgramId = @Id;", new { Id = sampleGpId });
+
+                // Create a test section with GroupProgramId, ProgramId & AcademicLevelId
+                var testSectionReq = new CollegeManagement.API.DTOs.Sections.CreateSectionRequest
+                {
+                    BoardId = sampleBoardId > 0 ? sampleBoardId : 1,
+                    AcademicYearId = activeAyId > 0 ? activeAyId : 1,
+                    AcademicLevelId = sampleLevelId > 0 ? sampleLevelId : 1,
+                    GroupId = sampleGroupId > 0 ? sampleGroupId : 1,
+                    GroupProgramId = sampleGpId > 0 ? sampleGpId : 1,
+                    ProgramId = sampleProgramId > 0 ? sampleProgramId : 1,
+                    SectionName = $"TEST_SEC_{Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper()}",
+                    MaximumStrength = 45,
+                    IsActive = true
+                };
+
+                var createdSection = await sectionService.CreateSectionAsync(testSectionReq);
+                Console.WriteLine($"  [PASS] Created Section with ID={createdSection.SectionId}, Name='{createdSection.SectionName}', GroupProgramId={createdSection.GroupProgramId}, ProgramId={createdSection.ProgramId}, LevelId={createdSection.AcademicLevelId}");
+
+                // Filter by GroupProgramId
+                var filtered = (await sectionService.GetAllSectionsAsync(new CollegeManagement.API.DTOs.Sections.SectionFilterDto
+                {
+                    GroupProgramId = createdSection.GroupProgramId,
+                    GroupId = createdSection.GroupId
+                })).ToList();
+
+                if (filtered.Any(s => s.SectionId == createdSection.SectionId))
+                {
+                    Console.WriteLine($"  [PASS] Section filter by GroupProgramId={createdSection.GroupProgramId} and GroupId={createdSection.GroupId} succeeded.");
+                    passed++;
+                }
+                else
+                {
+                    Console.WriteLine("  [FAIL] Created section not found in filtered list.");
+                    failed++;
+                }
+
+                // Delete test section
+                await sectionService.DeleteSectionAsync(createdSection.SectionId);
+                Console.WriteLine($"  [PASS] Successfully cleaned up test section ID={createdSection.SectionId}.");
+                passed++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  [FAIL] Sections Module Test Error: {ex.Message}");
                 failed++;
             }
 
