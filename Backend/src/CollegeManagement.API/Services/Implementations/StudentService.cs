@@ -1,7 +1,9 @@
-﻿using CollegeManagement.API.DTOs.Students;
+using CollegeManagement.API.DTOs.Students;
+using CollegeManagement.API.Exceptions;
 using CollegeManagement.API.Repositories;
+using CollegeManagement.API.Services;
 
-namespace CollegeManagement.API.Services
+namespace CollegeManagement.API.Services.Implementations
 {
     public class StudentService : IStudentService
     {
@@ -12,247 +14,133 @@ namespace CollegeManagement.API.Services
             _repository = repository;
         }
 
-
-        // =========================================================
-        // GET ALL STUDENTS
-        // =========================================================
-
         public async Task<List<StudentListItemDto>> GetAllAsync()
         {
             return await _repository.GetAllAsync();
         }
 
-
-        // =========================================================
-        // GET STUDENT BY ID
-        // =========================================================
-
-        public async Task<StudentResponse?> GetByIdAsync(
-            int studentId)
+        public async Task<StudentResponse?> GetByIdAsync(int studentId)
         {
             return await _repository.GetByIdAsync(studentId);
         }
 
-
-        // =========================================================
-        // UPDATE STUDENT
-        // =========================================================
-
-        public async Task<StudentResponse?> UpdateAsync(
-            int studentId,
-            UpdateStudentRequest request)
+        public async Task<StudentResponse?> UpdateAsync(int studentId, UpdateStudentRequest request)
         {
-            return await _repository.UpdateAsync(
-                studentId,
-                request);
+            if (!string.IsNullOrWhiteSpace(request.Email) && await _repository.EmailExistsAsync(request.Email, studentId))
+            {
+                throw new ConflictException("A student with this email address already exists.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.MobileNumber) && await _repository.MobileExistsAsync(request.MobileNumber, studentId))
+            {
+                throw new ConflictException("A student with this mobile number already exists.");
+            }
+
+            return await _repository.UpdateAsync(studentId, request);
         }
 
-
-        // =========================================================
-        // DELETE STUDENT
-        // =========================================================
-
-        public async Task<bool> DeleteAsync(
-            int studentId)
+        public async Task<bool> DeleteAsync(int studentId)
         {
             return await _repository.DeleteAsync(studentId);
         }
 
-
-        // =========================================================
-        // GET STUDENT PROFILE
-        // =========================================================
-
-        public async Task<StudentProfileDto?> GetProfileAsync(
-            int studentId)
+        public async Task<StudentProfileDto?> GetProfileAsync(int studentId)
         {
             return await _repository.GetProfileAsync(studentId);
         }
 
-
-        // =========================================================
-        // UPDATE STUDENT PROFILE
-        // =========================================================
-
-        public async Task<StudentProfileDto?> UpdateProfileAsync(
-            int studentId,
-            UpdateStudentProfileRequest request)
+        public async Task<StudentProfileDto?> UpdateProfileAsync(int studentId, UpdateStudentProfileRequest request)
         {
-            return await _repository.UpdateProfileAsync(
-                studentId,
-                request);
+            if (!string.IsNullOrWhiteSpace(request.Email) && await _repository.EmailExistsAsync(request.Email, studentId))
+            {
+                throw new ConflictException("A student with this email address already exists.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.MobileNumber) && await _repository.MobileExistsAsync(request.MobileNumber, studentId))
+            {
+                throw new ConflictException("A student with this mobile number already exists.");
+            }
+
+            return await _repository.UpdateProfileAsync(studentId, request);
         }
 
-
-        // =========================================================
-        // CHANGE STUDENT SECTION
-        // =========================================================
-
-        public async Task<bool> ChangeSectionAsync(
-            int studentId,
-            ChangeSectionRequest request)
+        public async Task<bool> ChangeSectionAsync(int studentId, ChangeSectionRequest request)
         {
-            return await _repository.ChangeSectionAsync(
-                studentId,
-                request);
+            return await _repository.ChangeSectionAsync(studentId, request);
         }
 
-
-        // =========================================================
-        // CHANGE STUDENT GROUP
-        // =========================================================
-
-        public async Task<bool> ChangeGroupAsync(
-            int studentId,
-            ChangeGroupRequest request)
+        public async Task<bool> ChangeGroupAsync(int studentId, ChangeGroupRequest request)
         {
-            return await _repository.ChangeGroupAsync(
-                studentId,
-                request);
+            return await _repository.ChangeGroupAsync(studentId, request);
         }
 
-
-        // =========================================================
-        // TRANSFER STUDENT
-        // =========================================================
-
-        public async Task<bool> TransferAsync(
-            int studentId,
-            TransferStudentRequest request)
+        public async Task<bool> TransferAsync(int studentId, TransferStudentRequest request)
         {
-            return await _repository.TransferAsync(
-                studentId,
-                request);
+            return await _repository.TransferAsync(studentId, request);
         }
 
-
-        // =========================================================
-        // SUSPEND STUDENT
-        // =========================================================
-
-        public async Task<bool> SuspendAsync(
-            int studentId,
-            SuspendStudentRequest request)
+        public async Task<bool> SuspendAsync(int studentId, SuspendStudentRequest request)
         {
-            return await _repository.SuspendAsync(
-                studentId,
-                request);
+            return await _repository.SuspendAsync(studentId, request);
         }
 
-
-        // =========================================================
-        // ACTIVATE STUDENT
-        // =========================================================
-
-        public async Task<bool> ActivateAsync(
-            int studentId)
+        public async Task<bool> ActivateAsync(int studentId)
         {
             return await _repository.ActivateAsync(studentId);
         }
 
-
-        // =========================================================
-        // RESET PASSWORD
-        // =========================================================
-
-        public async Task<bool> ResetPasswordAsync(
-            int studentId)
+        public async Task<bool> ResetPasswordAsync(int studentId)
         {
-            return await _repository.ResetPasswordAsync(
-                studentId);
+            return await _repository.ResetPasswordAsync(studentId);
         }
 
-
-        // =========================================================
-        // STUDENT DASHBOARD
-        // =========================================================
-
-        public async Task<StudentDashboardDto?> GetDashboardAsync(
-            int studentId)
+        public async Task<StudentDashboardDto?> GetDashboardAsync(int studentId)
         {
-            return await _repository.GetDashboardAsync(
-                studentId);
+            return await _repository.GetDashboardAsync(studentId);
         }
-
-
-        // =========================================================
-        // SEARCH STUDENTS
-        // =========================================================
 
         public async Task<List<StudentListItemDto>> SearchAsync(
             string? search,
+            int? boardId,
+            int? academicYearId,
+            int? academicLevelId,
             int? groupId,
             int? sectionId,
-            int? academicYearId,
             bool? isActive)
         {
             return await _repository.SearchAsync(
                 search,
+                boardId,
+                academicYearId,
+                academicLevelId,
                 groupId,
                 sectionId,
-                academicYearId,
                 isActive);
         }
 
-
-        // =========================================================
-        // GET STUDENTS BY GROUP
-        // =========================================================
-
-        public async Task<List<StudentListItemDto>> GetByGroupAsync(
-            int groupId)
+        public async Task<List<StudentListItemDto>> GetByGroupAsync(int groupId)
         {
             return await _repository.GetByGroupAsync(groupId);
         }
 
-
-        // =========================================================
-        // GET STUDENTS BY SECTION
-        // =========================================================
-
-        public async Task<List<StudentListItemDto>> GetBySectionAsync(
-            int sectionId)
+        public async Task<List<StudentListItemDto>> GetBySectionAsync(int sectionId)
         {
-            return await _repository.GetBySectionAsync(
-                sectionId);
+            return await _repository.GetBySectionAsync(sectionId);
         }
-
-
-        // =========================================================
-        // GET ACTIVE STUDENTS
-        // =========================================================
 
         public async Task<List<StudentListItemDto>> GetActiveAsync()
         {
             return await _repository.GetActiveAsync();
         }
 
-
-        // =========================================================
-        // CHECK EMAIL
-        // =========================================================
-
-        public async Task<bool> EmailExistsAsync(
-            string email,
-            int? excludeStudentId = null)
+        public async Task<bool> EmailExistsAsync(string email, int? excludeStudentId = null)
         {
-            return await _repository.EmailExistsAsync(
-                email,
-                excludeStudentId);
+            return await _repository.EmailExistsAsync(email, excludeStudentId);
         }
 
-
-        // =========================================================
-        // CHECK MOBILE
-        // =========================================================
-
-        public async Task<bool> MobileExistsAsync(
-            string mobile,
-            int? excludeStudentId = null)
+        public async Task<bool> MobileExistsAsync(string mobile, int? excludeStudentId = null)
         {
-            return await _repository.MobileExistsAsync(
-                mobile,
-                excludeStudentId);
+            return await _repository.MobileExistsAsync(mobile, excludeStudentId);
         }
     }
 }
