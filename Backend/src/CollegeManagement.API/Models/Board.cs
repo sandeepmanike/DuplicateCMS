@@ -26,6 +26,12 @@ namespace CollegeManagement.API.Models
         public string BoardCode { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets the board type (e.g., State Board, Central Board).
+        /// </summary>
+        [MaxLength(50)]
+        public string BoardType { get; set; } = "State Board";
+
+        /// <summary>
         /// Gets or sets the board name.
         /// </summary>
         [Required]

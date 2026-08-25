@@ -14,9 +14,9 @@ import DashboardLayout from "../Dashboard/DashboardLayout";
 import SubjectList from "../Dashboard/Subject Management/SubjectList";
 import AddSubject from "../Dashboard/Subject Management/AddSubject";
 
-// Faculty Management
-import FacultyList from "../Dashboard/Faculty Management/FacultyList";
-import FacultySubjectAllocation from "../Dashboard/Faculty Management/FacultySubjectAllocation";
+// Staff Management
+import StaffList from "../Dashboard/Staff Management/StaffList";
+import StaffSubjectAllocation from "../Dashboard/Staff Management/StaffSubjectAllocation";
 
 function AppRoutes() {
   return (
@@ -33,21 +33,24 @@ function AppRoutes() {
       {/* Dashboard Layout */}
       <Route path="/dashboard" element={<DashboardLayout />}>
 
-  <Route index element={<SubjectList />} />
+        <Route index element={<SubjectList />} />
 
-  <Route path="subjects" element={<SubjectList />} />
-  <Route path="subjects/add" element={<AddSubject />} />
+        <Route path="subjects" element={<SubjectList />} />
+        <Route path="subjects/add" element={<AddSubject />} />
 
-  <Route path="faculty" element={<FacultyList />} />
-  <Route
-    path="faculty/subject-allocation"
-    element={<FacultySubjectAllocation />}
-  />
+        {/* Staff Management Routes */}
+        <Route path="staff" element={<StaffList />} />
+        <Route path="staff/subject-allocation" element={<StaffSubjectAllocation />} />
 
-</Route>
+        {/* Backward compatibility aliases */}
+        <Route path="faculty" element={<StaffList />} />
+        <Route path="faculty/subject-allocation" element={<StaffSubjectAllocation />} />
+
+      </Route>
 
     </Routes>
   );
 }
+
 
 export default AppRoutes;

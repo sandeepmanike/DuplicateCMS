@@ -71,7 +71,26 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.State != null ? src.State.StateName : string.Empty))
                 .ForMember(dest => dest.AcademicPatternName, opt => opt.MapFrom(src => src.AcademicPattern != null ? src.AcademicPattern.PatternName : string.Empty))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsActive))
-                .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt));
+                .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt))
+                .ForMember(dest => dest.AcademicLevelIds, opt => opt.MapFrom(src => src.BoardAcademicLevels != null 
+                    ? src.BoardAcademicLevels.Select(x => x.AcademicLevelId).ToList() 
+                    : new List<int>()))
+                .ForMember(dest => dest.AcademicLevelNames, opt => opt.MapFrom(src => src.BoardAcademicLevels != null 
+                    ? src.BoardAcademicLevels
+                        .Select(x => x.AcademicLevel != null ? x.AcademicLevel.LevelName : string.Empty)
+                        .ToList() 
+                    : new List<string>()))
+                .ForMember(dest => dest.AcademicLevels, opt => opt.MapFrom(src => src.BoardAcademicLevels != null 
+                    ? src.BoardAcademicLevels
+                        .Select(x => x.AcademicLevel != null ? x.AcademicLevel.LevelName : string.Empty)
+                        .ToList() 
+                    : new List<string>()))
+                .ForMember(dest => dest.AcademicLevelsText, opt => opt.MapFrom(src => src.BoardAcademicLevels != null 
+                    ? string.Join(", ", src.BoardAcademicLevels.Where(x => x.AcademicLevel != null).Select(x => x.AcademicLevel.LevelName)) 
+                    : string.Empty))
+                .ForMember(dest => dest.AcademicLevel, opt => opt.MapFrom(src => src.BoardAcademicLevels != null 
+                    ? string.Join(", ", src.BoardAcademicLevels.Where(x => x.AcademicLevel != null).Select(x => x.AcademicLevel.LevelName)) 
+                    : string.Empty));
 
             #endregion
 

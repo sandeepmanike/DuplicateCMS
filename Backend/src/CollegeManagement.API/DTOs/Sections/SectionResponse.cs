@@ -30,6 +30,15 @@ namespace CollegeManagement.API.DTOs.Sections
         public int? RoomId { get; set; }
         public string? RoomName { get; set; }
 
+        public string? BlockName { get; set; }
+        public string? BuildingName
+        {
+            get => BlockName;
+            set => BlockName = value;
+        }
+        public string? Building => BlockName;
+        public string? Block => BlockName;
+
         public int? InchargeId { get; set; }
         public int? ClassTeacherId
         {
@@ -37,6 +46,7 @@ namespace CollegeManagement.API.DTOs.Sections
             set => InchargeId = value;
         }
         public int? TeacherId => InchargeId;
+        public int? FacultyId => InchargeId;
 
         public string InchargeName { get; set; } = string.Empty;
         public string Incharge => InchargeName;
@@ -46,6 +56,7 @@ namespace CollegeManagement.API.DTOs.Sections
             set => InchargeName = value;
         }
         public string Teacher => InchargeName;
+        public string FacultyName => InchargeName;
 
         public int MaximumStrength { get; set; }
         public int Capacity => MaximumStrength;

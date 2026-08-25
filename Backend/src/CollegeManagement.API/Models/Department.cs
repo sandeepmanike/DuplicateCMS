@@ -18,6 +18,12 @@ namespace CollegeManagement.API.Models
         [MaxLength(20)]
         public string DepartmentCode { get; set; } = string.Empty;
 
+        [MaxLength(20)]
+        public string StaffType { get; set; } = "Both";
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
         public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -25,3 +31,4 @@ namespace CollegeManagement.API.Models
         public DateTime? UpdatedAt { get; set; }
     }
 }
+

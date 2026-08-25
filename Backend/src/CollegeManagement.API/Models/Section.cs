@@ -52,7 +52,17 @@ namespace CollegeManagement.API.Models
             set => InchargeId = value;
         }
 
+        [NotMapped]
+        public int? FacultyId
+        {
+            get => InchargeId;
+            set => InchargeId = value;
+        }
+
         public int MaximumStrength { get; set; }
+
+        [ForeignKey("InchargeId")]
+        public CollegeManagement.API.Models.Faculty.Faculty? InchargeNavigation { get; set; }
 
         [ForeignKey("BoardId")]
         public Board? BoardNavigation { get; set; }

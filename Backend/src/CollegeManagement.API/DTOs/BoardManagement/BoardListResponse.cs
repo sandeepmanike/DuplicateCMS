@@ -10,6 +10,8 @@ namespace CollegeManagement.API.DTOs.Board.Responses
 
         public string BoardCode { get; set; } = string.Empty;
 
+        public string BoardType { get; set; } = string.Empty;
+
         public int CountryId { get; set; }
 
         public string CountryName { get; set; } = string.Empty;
@@ -19,6 +21,16 @@ namespace CollegeManagement.API.DTOs.Board.Responses
         public string? StateName { get; set; }
 
         public string AcademicPatternName { get; set; } = string.Empty;
+
+        public List<int> AcademicLevelIds { get; set; } = [];
+
+        public List<string> AcademicLevelNames { get; set; } = [];
+
+        public List<string> AcademicLevels { get; set; } = [];
+
+        public string AcademicLevelsText { get; set; } = string.Empty;
+
+        public string AcademicLevel { get; set; } = string.Empty;
 
         public bool Status { get; set; }
 

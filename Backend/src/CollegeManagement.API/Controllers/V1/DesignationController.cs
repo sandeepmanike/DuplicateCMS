@@ -25,15 +25,16 @@ namespace CollegeManagement.API.Controllers.V1
 
         /// <summary>
         /// 1. GET /api/v1/designations
-        /// Get list of designations (defaults to active only).
+        /// Get list of designations (defaults to active only, optional staffType).
         /// </summary>
         [HttpGet]
         [ProducesResponseType(typeof(IEnumerable<DesignationResponseDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false)
+        public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false, [FromQuery] string? staffType = null)
         {
-            var result = await _designationService.GetAllAsync(includeInactive);
+            var result = await _designationService.GetAllAsync(includeInactive, staffType);
             return Ok(result);
         }
+
 
         /// <summary>
         /// 2. GET /api/v1/designations/{id}

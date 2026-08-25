@@ -1,5 +1,6 @@
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
+using CollegeManagement.API.Models.Staff;
 using CollegeManagement.API.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using CollegeManagement.API.Models.Fee;
@@ -42,10 +43,13 @@ namespace CollegeManagement.API.Data
         public DbSet<Student> Students { get; set; }
         public DbSet<StudentAdmission> StudentAdmissions { get; set; }
         public DbSet<Designation> Designations { get; set; }
+        public DbSet<Staff> Staffs { get; set; }
+        public DbSet<StaffSubjectAllocation> StaffSubjectAllocations { get; set; }
         public DbSet<Faculty> Faculties { get; set; }
         public DbSet<FacultySubjectAllocation> FacultySubjectAllocations { get; set; }
         public DbSet<Assignment> Assignments { get; set; }
         public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
+
         public DbSet<Examination> Examinations { get; set; }
         public DbSet<ExamSchedule> ExamSchedules { get; set; }
         public DbSet<HallTicket> HallTickets { get; set; }
@@ -943,12 +947,25 @@ namespace CollegeManagement.API.Data
             });
             #endregion
 
-            #region Designation & Faculty
+            #region Designation & Faculty / Staff
             modelBuilder.Entity<Designation>(entity =>
             {
                 entity.HasKey(x => x.Id);
                 entity.Property(x => x.Name).IsRequired().HasMaxLength(100);
                 entity.HasIndex(x => x.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<Staff>(entity =>
+            {
+                entity.HasOne(s => s.DesignationRef)
+                    .WithMany()
+                    .HasForeignKey(s => s.DesignationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(s => s.StaffSubjectAllocations)
+                    .WithOne(ssa => ssa.Staff)
+                    .HasForeignKey(ssa => ssa.StaffId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Faculty>(entity =>
@@ -961,4 +978,4 @@ namespace CollegeManagement.API.Data
             #endregion
         }
     }
-}
+}
