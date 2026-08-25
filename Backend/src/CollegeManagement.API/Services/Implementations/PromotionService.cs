@@ -12,10 +12,13 @@ namespace CollegeManagement.API.Services.Implementations
 
         public Task<IEnumerable<EligibleStudentDto>> GetEligibleStudentsAsync(PromotionEligibilityQuery query)
         {
-            ValidateConfiguration(query.AcademicYearId, query.AcademicLevel, query.GroupId, query.TargetAcademicYearId, query.TargetAcademicLevel, query.TargetGroupId);
+            if (query.AcademicYearId.HasValue && query.TargetAcademicYearId.HasValue && query.AcademicYearId.Value == query.TargetAcademicYearId.Value)
+                throw new ValidationException("Source and target academic year cannot be the same.");
+
             if (!string.IsNullOrWhiteSpace(query.EligibilityStatus) &&
                 !new[] { "Eligible", "Not Eligible" }.Contains(query.EligibilityStatus, StringComparer.OrdinalIgnoreCase))
                 throw new ValidationException("EligibilityStatus must be Eligible or Not Eligible.");
+
             return _repository.GetEligibleStudentsAsync(query);
         }
 

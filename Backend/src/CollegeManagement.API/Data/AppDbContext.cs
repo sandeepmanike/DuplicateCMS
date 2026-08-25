@@ -1,5 +1,6 @@
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
+using CollegeManagement.API.Models.Staff;
 using CollegeManagement.API.Data.Configurations;
 using Microsoft.EntityFrameworkCore;
 using CollegeManagement.API.Models.Fee;
@@ -31,6 +32,8 @@ namespace CollegeManagement.API.Data
         // Attendance
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<AttendanceSession> AttendanceSessions { get; set; }
+        public DbSet<StaffAttendanceSession> StaffAttendanceSessions { get; set; }
+        public DbSet<StaffAttendance> StaffAttendances { get; set; }
         public DbSet<GradingSystem> GradingSystems { get; set; }
         public DbSet<AssessmentType> AssessmentTypes { get; set; }
         public DbSet<Board> Boards { get; set; }
@@ -42,10 +45,13 @@ namespace CollegeManagement.API.Data
         public DbSet<Student> Students { get; set; }
         public DbSet<StudentAdmission> StudentAdmissions { get; set; }
         public DbSet<Designation> Designations { get; set; }
+        public DbSet<Staff> Staffs { get; set; }
+        public DbSet<StaffSubjectAllocation> StaffSubjectAllocations { get; set; }
         public DbSet<Faculty> Faculties { get; set; }
         public DbSet<FacultySubjectAllocation> FacultySubjectAllocations { get; set; }
         public DbSet<Assignment> Assignments { get; set; }
         public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
+
         public DbSet<Examination> Examinations { get; set; }
         public DbSet<ExamSchedule> ExamSchedules { get; set; }
         public DbSet<HallTicket> HallTickets { get; set; }
@@ -477,29 +483,73 @@ namespace CollegeManagement.API.Data
             });
 
             #region Section relational keys
-            modelBuilder.Entity<Section>()
-                .HasIndex(s => s.BoardId);
+            modelBuilder.Entity<Section>(entity =>
+            {
+                entity.ToTable("Sections");
+                entity.HasKey(s => s.SectionId);
 
-            modelBuilder.Entity<Section>()
-                .HasIndex(s => s.GroupId);
+                entity.HasIndex(s => s.BoardId);
+                entity.HasIndex(s => s.AcademicYearId);
+                entity.HasIndex(s => s.AcademicLevelId);
+                entity.HasIndex(s => s.GroupId);
+                entity.HasIndex(s => s.GroupProgramId);
+                entity.HasIndex(s => s.ProgramId);
+                entity.HasIndex(s => s.RoomId);
+                entity.HasIndex(s => s.InchargeId);
 
-            modelBuilder.Entity<Section>()
-                .HasOne(s => s.BoardNavigation)
-                .WithMany()
-                .HasForeignKey(s => s.BoardId)
-                .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(s => s.BoardNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.BoardId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Section>()
-                .HasOne(s => s.AcademicYear)
-                .WithMany()
-                .HasForeignKey(s => s.AcademicYearId)
-                .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(s => s.AcademicYear)
+                    .WithMany()
+                    .HasForeignKey(s => s.AcademicYearId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Section>()
-                .HasOne(s => s.GroupNavigation)
-                .WithMany()
-                .HasForeignKey(s => s.GroupId)
-                .OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(s => s.AcademicLevelNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.AcademicLevelId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.GroupNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.GroupId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.GroupProgramNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.GroupProgramId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.ProgramNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.ProgramId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(s => s.RoomNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.RoomId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(s => s.InchargeNavigation)
+                    .WithMany()
+                    .HasForeignKey(s => s.InchargeId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.Ignore(s => s.Board);
+                entity.Ignore(s => s.Group);
+                entity.Ignore(s => s.Programme);
+                entity.Ignore(s => s.Program);
+                entity.Ignore(s => s.AcademicLevel);
+                entity.Ignore(s => s.YearOfStudy);
+                entity.Ignore(s => s.RoomNumber);
+                entity.Ignore(s => s.ClassTeacherId);
+                entity.Ignore(s => s.FacultyId);
+                entity.Ignore(s => s.TeacherId);
+                entity.Ignore(s => s.Capacity);
+                entity.Ignore(s => s.Strength);
+            });
             #endregion
 
             #region Country
@@ -985,12 +1035,25 @@ namespace CollegeManagement.API.Data
             });
             #endregion
 
-            #region Designation & Faculty
+            #region Designation & Faculty / Staff
             modelBuilder.Entity<Designation>(entity =>
             {
                 entity.HasKey(x => x.Id);
                 entity.Property(x => x.Name).IsRequired().HasMaxLength(100);
                 entity.HasIndex(x => x.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<Staff>(entity =>
+            {
+                entity.HasOne(s => s.DesignationRef)
+                    .WithMany()
+                    .HasForeignKey(s => s.DesignationId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(s => s.StaffSubjectAllocations)
+                    .WithOne(ssa => ssa.Staff)
+                    .HasForeignKey(ssa => ssa.StaffId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<Faculty>(entity =>

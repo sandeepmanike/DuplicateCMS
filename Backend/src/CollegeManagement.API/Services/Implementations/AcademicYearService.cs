@@ -63,15 +63,6 @@ namespace CollegeManagement.API.Services.Implementations
         {
             ValidateDates(dto.StartDate, dto.EndDate, dto.AdmissionStartDate, dto.AdmissionEndDate);
 
-            if (dto.IsActive)
-            {
-                var activeYears = (await _repository.GetAllAsync()).Where(y => y.IsActive).ToList();
-                if (activeYears.Count >= 2)
-                {
-                    throw new ArgumentException("A maximum of 2 Academic Years can be active concurrently in an Intermediate College (e.g., 1st Year batch & 2nd Year batch). Please deactivate an existing academic year first.");
-                }
-            }
-
             var academicYear = new AcademicYear
             {
                 AcademicYearName = dto.AcademicYearName.Trim(),
@@ -97,15 +88,6 @@ namespace CollegeManagement.API.Services.Implementations
             if (academicYear == null)
             {
                 return null;
-            }
-
-            if (dto.IsActive && !academicYear.IsActive)
-            {
-                var otherActiveYears = (await _repository.GetAllAsync()).Where(y => y.IsActive && y.AcademicYearId != id).ToList();
-                if (otherActiveYears.Count >= 2)
-                {
-                    throw new ArgumentException("A maximum of 2 Academic Years can be active concurrently in an Intermediate College. Please deactivate an existing academic year first.");
-                }
             }
 
             academicYear.AcademicYearName = dto.AcademicYearName.Trim();
@@ -145,12 +127,6 @@ namespace CollegeManagement.API.Services.Implementations
             if (academicYear.IsActive)
             {
                 return true;
-            }
-
-            var otherActiveYears = (await _repository.GetAllAsync()).Where(y => y.IsActive && y.AcademicYearId != id).ToList();
-            if (otherActiveYears.Count >= 2)
-            {
-                throw new ArgumentException("A maximum of 2 Academic Years can be active concurrently in an Intermediate College (e.g., 1st Year batch & 2nd Year batch). Please deactivate an existing active year before activating another.");
             }
 
             academicYear.IsActive = true;

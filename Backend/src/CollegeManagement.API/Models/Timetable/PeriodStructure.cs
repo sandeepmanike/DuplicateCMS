@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -33,6 +33,7 @@ namespace CollegeManagement.API.Models.Timetable
         // Navigation
         public virtual ICollection<PeriodStructureItem> Items { get; set; } = new List<PeriodStructureItem>();
         public virtual ICollection<PeriodStructureAssignment> Assignments { get; set; } = new List<PeriodStructureAssignment>();
+        [NotMapped]
         public virtual ICollection<Period> Periods { get; set; } = new List<Period>();
     }
 }

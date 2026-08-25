@@ -14,8 +14,9 @@ using CollegeManagement.API.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using CollegeManagement.API.Models.Reports;
-using System.Transactions;
-using System.Data;
+using System.IO;
+using System.Text;
+using MiniExcelLibs;
 
 namespace CollegeManagement.API.Services.Implementations
 {
@@ -738,7 +739,7 @@ namespace CollegeManagement.API.Services.Implementations
                     if (attendanceLookup.TryGetValue(item.AttendanceId, out var att))
                     {
                         item.IsActive = att.IsActive;
-                        if (sessionStates.TryGetValue(att.AttendanceSessionId, out var ses))
+                        if (att.AttendanceSessionId.HasValue && sessionStates.TryGetValue(att.AttendanceSessionId.Value, out var ses))
                         {
                             item.IsLocked = ses.IsLocked;
                         }
@@ -882,6 +883,91 @@ namespace CollegeManagement.API.Services.Implementations
             await _context.SaveChangesAsync();
 
             return session;
+        }
+
+        public async Task<AcademicContextResponse?> GetAcademicContextAsync(int groupId, int sectionId)
+        {
+            return await _repository.GetAcademicContextAsync(groupId, sectionId);
+        }
+
+        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int periodId)
+        {
+            return await _repository.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId);
+        }
+
+        public async Task<StudentMonthlyReportResponse> GetStudentMonthlyReportGridAsync(StudentMonthlyReportRequest request)
+        {
+            return await _repository.GetStudentMonthlyReportGridAsync(request);
+        }
+
+        public async Task<byte[]> ExportStudentMonthlyReportToCsvAsync(StudentMonthlyReportRequest request)
+        {
+            var report = await _repository.GetStudentMonthlyReportGridAsync(request);
+            var sb = new StringBuilder();
+
+            // Header line
+            var headers = new List<string> { "Roll Number", "Student Name" };
+            foreach (var h in report.DayHeaders)
+            {
+                headers.Add($"{h.DayNumber} ({h.DayName})");
+            }
+            headers.AddRange(new[] { "Present", "Absent", "Late", "Leave", "Percentage" });
+            sb.AppendLine(string.Join(",", headers.Select(h => $"\"{h}\"")));
+
+            // Rows
+            foreach (var row in report.StudentRows)
+            {
+                var line = new List<string>
+                {
+                    $"\"{row.RollNumber}\"",
+                    $"\"{row.StudentName}\""
+                };
+                foreach (var st in row.DailyStatus)
+                {
+                    line.Add($"\"{st}\"");
+                }
+                line.Add($"\"{row.PresentCount}\"");
+                line.Add($"\"{row.AbsentCount}\"");
+                line.Add($"\"{row.LateCount}\"");
+                line.Add($"\"{row.LeaveCount}\"");
+                line.Add($"\"{row.Percentage}%\".");
+                sb.AppendLine(string.Join(",", line));
+            }
+
+            return Encoding.UTF8.GetBytes(sb.ToString());
+        }
+
+        public async Task<byte[]> ExportStudentMonthlyReportToExcelAsync(StudentMonthlyReportRequest request)
+        {
+            var report = await _repository.GetStudentMonthlyReportGridAsync(request);
+            var dataList = new List<Dictionary<string, object>>();
+
+            foreach (var r in report.StudentRows)
+            {
+                var dict = new Dictionary<string, object>
+                {
+                    { "Roll Number", r.RollNumber },
+                    { "Student Name", r.StudentName }
+                };
+
+                for (int i = 0; i < report.DayHeaders.Count; i++)
+                {
+                    var dh = report.DayHeaders[i];
+                    dict[$"Day {dh.DayNumber} ({dh.DayName})"] = r.DailyStatus.Count > i ? r.DailyStatus[i] : "-";
+                }
+
+                dict["Present"] = r.PresentCount;
+                dict["Absent"] = r.AbsentCount;
+                dict["Late"] = r.LateCount;
+                dict["Leave"] = r.LeaveCount;
+                dict["Percentage"] = $"{r.Percentage}%";
+
+                dataList.Add(dict);
+            }
+
+            using var ms = new MemoryStream();
+            await ms.SaveAsAsync(dataList, sheetName: "Student Monthly Report");
+            return ms.ToArray();
         }
 
         #endregion

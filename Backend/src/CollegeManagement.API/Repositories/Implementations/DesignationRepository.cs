@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -23,156 +24,218 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         private IDbConnection Connection => _context.Database.GetDbConnection();
 
-        public async Task<IEnumerable<Designation>> GetAllAsync(bool includeInactive = false)
+        public async Task<IEnumerable<Designation>> GetAllAsync(bool includeInactive = false, string? staffType = null)
         {
             if (IsRelational)
             {
-                return await Connection.QueryAsync<Designation>(
-                    "sp_GetDesignations",
-                    new { p_IncludeInactive = includeInactive ? 1 : 0 },
-                    commandType: CommandType.StoredProcedure);
+                try
+                {
+                    return await Connection.QueryAsync<Designation>(
+                        "sp_GetDesignations",
+                        new
+                        {
+                            p_IncludeInactive = includeInactive ? 1 : 0,
+                            p_StaffType = staffType
+                        },
+                        commandType: CommandType.StoredProcedure);
+                }
+                catch
+                {
+                    // Fallback to EF Core
+                }
             }
-            else
+
+            var query = _context.Designations.Where(d => includeInactive || d.IsActive);
+            if (!string.IsNullOrWhiteSpace(staffType) && !string.Equals(staffType, "All", StringComparison.OrdinalIgnoreCase))
             {
-                return await _context.Designations
-                    .Where(d => includeInactive || d.IsActive)
-                    .OrderBy(d => d.Name)
-                    .ToListAsync();
+                query = query.Where(d => d.StaffType == "Both" || d.StaffType == staffType.Trim());
             }
+            return await query.OrderBy(d => d.Name).ToListAsync();
         }
 
         public async Task<Designation?> GetByIdAsync(int id)
         {
             if (IsRelational)
             {
-                return await Connection.QueryFirstOrDefaultAsync<Designation>(
-                    "sp_GetDesignationById",
-                    new { p_Id = id },
-                    commandType: CommandType.StoredProcedure);
+                try
+                {
+                    return await Connection.QueryFirstOrDefaultAsync<Designation>(
+                        "sp_GetDesignationById",
+                        new { p_Id = id },
+                        commandType: CommandType.StoredProcedure);
+                }
+                catch
+                {
+                    // Fallback to EF Core
+                }
             }
-            else
-            {
-                return await _context.Designations.FirstOrDefaultAsync(d => d.Id == id);
-            }
+
+            return await _context.Designations.FirstOrDefaultAsync(d => d.Id == id);
         }
 
         public async Task<Designation?> GetByNameAsync(string name)
         {
             if (IsRelational)
             {
-                return await Connection.QueryFirstOrDefaultAsync<Designation>(
-                    "sp_GetDesignationByName",
-                    new { p_Name = name.Trim() },
-                    commandType: CommandType.StoredProcedure);
+                try
+                {
+                    return await Connection.QueryFirstOrDefaultAsync<Designation>(
+                        "sp_GetDesignationByName",
+                        new { p_Name = name.Trim() },
+                        commandType: CommandType.StoredProcedure);
+                }
+                catch
+                {
+                    // Fallback to EF Core
+                }
             }
-            else
-            {
-                var trimmed = name.Trim().ToLower();
-                return await _context.Designations.FirstOrDefaultAsync(d => d.Name.ToLower() == trimmed);
-            }
+
+            var trimmed = name.Trim().ToLower();
+            return await _context.Designations.FirstOrDefaultAsync(d => d.Name.ToLower() == trimmed);
         }
 
         public async Task<bool> IsNameUniqueAsync(string name, int? excludeId = null)
         {
             if (IsRelational)
             {
-                int count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckDesignationNameUnique",
-                    new { p_Name = name.Trim(), p_ExcludeId = excludeId },
-                    commandType: CommandType.StoredProcedure);
-                return count == 0;
+                try
+                {
+                    int count = await Connection.ExecuteScalarAsync<int>(
+                        "sp_CheckDesignationNameUnique",
+                        new { p_Name = name.Trim(), p_ExcludeId = excludeId },
+                        commandType: CommandType.StoredProcedure);
+                    return count == 0;
+                }
+                catch
+                {
+                    // Fallback to EF Core
+                }
             }
-            else
-            {
-                var trimmed = name.Trim().ToLower();
-                return !await _context.Designations.AnyAsync(d => d.Name.ToLower() == trimmed && (excludeId == null || d.Id != excludeId));
-            }
+
+            var trimmed = name.Trim().ToLower();
+            return !await _context.Designations.AnyAsync(d => d.Name.ToLower() == trimmed && (excludeId == null || d.Id != excludeId));
         }
 
         public async Task<bool> IsAssignedToFacultyAsync(int designationId)
         {
+            return await IsAssignedToStaffAsync(designationId);
+        }
+
+        public async Task<bool> IsAssignedToStaffAsync(int designationId)
+        {
             if (IsRelational)
             {
-                int count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckDesignationAssignedToFaculty",
-                    new { p_DesignationId = designationId },
-                    commandType: CommandType.StoredProcedure);
-                return count > 0;
+                try
+                {
+                    int count = await Connection.ExecuteScalarAsync<int>(
+                        "sp_CheckDesignationAssignedToStaff",
+                        new { p_DesignationId = designationId },
+                        commandType: CommandType.StoredProcedure);
+                    return count > 0;
+                }
+                catch
+                {
+                    try
+                    {
+                        int count = await Connection.ExecuteScalarAsync<int>(
+                            "sp_CheckDesignationAssignedToFaculty",
+                            new { p_DesignationId = designationId },
+                            commandType: CommandType.StoredProcedure);
+                        return count > 0;
+                    }
+                    catch
+                    {
+                        // Fallback to EF Core
+                    }
+                }
             }
-            else
-            {
-                return await _context.Faculties.AnyAsync(f => f.DesignationId == designationId && !f.IsDeleted);
-            }
+
+            return await _context.Staffs.AnyAsync(s => s.DesignationId == designationId && !s.IsDeleted);
         }
 
         public async Task<Designation> AddAsync(Designation designation)
         {
             if (IsRelational)
             {
-                int id = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CreateDesignation",
-                    new
-                    {
-                        p_Name = designation.Name.Trim(),
-                        p_IsActive = designation.IsActive ? 1 : 0
-                    },
-                    commandType: CommandType.StoredProcedure);
+                try
+                {
+                    int id = await Connection.ExecuteScalarAsync<int>(
+                        "sp_CreateDesignation",
+                        new
+                        {
+                            p_Name = designation.Name.Trim(),
+                            p_StaffType = designation.StaffType ?? "Both",
+                            p_IsActive = designation.IsActive ? 1 : 0
+                        },
+                        commandType: CommandType.StoredProcedure);
 
-                designation.Id = id;
-                return designation;
+                    designation.Id = id;
+                    return designation;
+                }
+                catch
+                {
+                    // Fallback to EF Core
+                }
             }
-            else
-            {
-                await _context.Designations.AddAsync(designation);
-                await _context.SaveChangesAsync();
-                return designation;
-            }
+
+            _context.Designations.Add(designation);
+            await _context.SaveChangesAsync();
+            return designation;
         }
 
         public async Task UpdateAsync(Designation designation)
         {
             if (IsRelational)
             {
-                await Connection.ExecuteAsync(
-                    "sp_UpdateDesignation",
-                    new
-                    {
-                        p_Id = designation.Id,
-                        p_Name = designation.Name.Trim(),
-                        p_IsActive = designation.IsActive ? 1 : 0
-                    },
-                    commandType: CommandType.StoredProcedure);
-            }
-            else
-            {
-                var existing = await _context.Designations.FirstOrDefaultAsync(d => d.Id == designation.Id);
-                if (existing != null)
+                try
                 {
-                    existing.Name = designation.Name.Trim();
-                    existing.IsActive = designation.IsActive;
-                    existing.UpdatedAt = System.DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
+                    await Connection.ExecuteAsync(
+                        "sp_UpdateDesignation",
+                        new
+                        {
+                            p_Id = designation.Id,
+                            p_Name = designation.Name.Trim(),
+                            p_StaffType = designation.StaffType ?? "Both",
+                            p_IsActive = designation.IsActive ? 1 : 0
+                        },
+                        commandType: CommandType.StoredProcedure);
+
+                    return;
+                }
+                catch
+                {
+                    // Fallback to EF Core
                 }
             }
+
+            _context.Designations.Update(designation);
+            await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
             if (IsRelational)
             {
-                await Connection.ExecuteAsync(
-                    "sp_DeleteDesignation",
-                    new { p_Id = id },
-                    commandType: CommandType.StoredProcedure);
-            }
-            else
-            {
-                var existing = await _context.Designations.FirstOrDefaultAsync(d => d.Id == id);
-                if (existing != null)
+                try
                 {
-                    _context.Designations.Remove(existing);
-                    await _context.SaveChangesAsync();
+                    await Connection.ExecuteAsync(
+                        "sp_DeleteDesignation",
+                        new { p_Id = id },
+                        commandType: CommandType.StoredProcedure);
+
+                    return;
                 }
+                catch
+                {
+                    // Fallback to EF Core
+                }
+            }
+
+            var entity = await _context.Designations.FindAsync(id);
+            if (entity != null)
+            {
+                _context.Designations.Remove(entity);
+                await _context.SaveChangesAsync();
             }
         }
     }

@@ -314,6 +314,8 @@ namespace CollegeManagement.API.DTOs.Promotion
 
         public string StudentCode { get; set; } = string.Empty;
 
+        public string AdmissionNo { get; set; } = string.Empty;
+
         public string StudentName { get; set; } = string.Empty;
 
         public string? SourceAcademicYear { get; set; }
@@ -488,11 +490,19 @@ namespace CollegeManagement.API.DTOs.Promotion
 
     public class PromotionReportDetailDto
     {
+        public int PromotionId { get; set; }
+
         public int StudentId { get; set; }
+
+        public string AdmissionNo { get; set; } = string.Empty;
 
         public string StudentName { get; set; } = string.Empty;
 
+        public string? SourceAcademicYear { get; set; }
+
         public string SourceLevel { get; set; } = string.Empty;
+
+        public string? TargetAcademicYear { get; set; }
 
         public string TargetLevel { get; set; } = string.Empty;
 

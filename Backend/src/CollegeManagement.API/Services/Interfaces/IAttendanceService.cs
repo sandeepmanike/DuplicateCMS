@@ -125,5 +125,30 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <param name="userName">The username of the caller.</param>
         /// <returns>True if the record was successfully soft deleted.</returns>
         Task<bool> DeleteAttendanceAsync(int attendanceId, bool isAdmin, string userName);
+
+        /// <summary>
+        /// Retrieves Board and Academic Year metadata for the specified Group and Section.
+        /// </summary>
+        Task<AcademicContextResponse?> GetAcademicContextAsync(int groupId, int sectionId);
+
+        /// <summary>
+        /// Auto-derives assigned Subject & Faculty for specified Date, Group, Section, and Period from Timetable.
+        /// </summary>
+        Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(System.DateTime date, int groupId, int sectionId, int periodId);
+
+        /// <summary>
+        /// Generates the Student Monthly Calendar Matrix Grid Report.
+        /// </summary>
+        Task<StudentMonthlyReportResponse> GetStudentMonthlyReportGridAsync(StudentMonthlyReportRequest request);
+
+        /// <summary>
+        /// Exports the Student Monthly Calendar Grid Report to CSV format.
+        /// </summary>
+        Task<byte[]> ExportStudentMonthlyReportToCsvAsync(StudentMonthlyReportRequest request);
+
+        /// <summary>
+        /// Exports the Student Monthly Calendar Grid Report to Excel format.
+        /// </summary>
+        Task<byte[]> ExportStudentMonthlyReportToExcelAsync(StudentMonthlyReportRequest request);
     }
 }

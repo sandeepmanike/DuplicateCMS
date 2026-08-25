@@ -330,6 +330,15 @@ namespace CollegeManagement.API.Controllers.V1
         /// <response code="401">Unauthorized access.</response>
         /// <response code="404">Attendance record not found.</response>
         /// <response code="500">Internal server error.</response>
+        /// <summary>
+        /// Soft deletes an existing attendance record.
+        /// </summary>
+        /// <param name="attendanceId">The attendance identifier.</param>
+        /// <returns>A success indicator.</returns>
+        /// <response code="200">Attendance record deleted successfully.</response>
+        /// <response code="401">Unauthorized access.</response>
+        /// <response code="404">Attendance record not found.</response>
+        /// <response code="500">Internal server error.</response>
         [HttpDelete("{attendanceId}")]
         [ProducesResponseType(typeof(bool), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -341,6 +350,68 @@ namespace CollegeManagement.API.Controllers.V1
             var userName = GetCurrentUserName();
             var result = await _attendanceService.DeleteAttendanceAsync(attendanceId, isAdmin, userName);
             return Ok(new { success = result, message = "Attendance record soft deleted successfully." });
+        }
+
+        /// <summary>
+        /// Retrieves Board and Academic Year metadata for the Academic Context info modal.
+        /// </summary>
+        [HttpGet("academic-context")]
+        public async Task<IActionResult> GetAcademicContext([FromQuery] int groupId, [FromQuery] int sectionId)
+        {
+            var result = await _attendanceService.GetAcademicContextAsync(groupId, sectionId);
+            if (result == null)
+            {
+                return NotFound(new { Status = false, Message = "Academic context not found for specified Group and Section." });
+            }
+            return Ok(new { Status = true, Message = "Academic context retrieved successfully.", Data = result });
+        }
+
+        /// <summary>
+        /// Auto-derives assigned Subject & Faculty for specified Date, Group, Section, and Period.
+        /// </summary>
+        [HttpGet("faculty-subject")]
+        public async Task<IActionResult> GetFacultySubjectAllocation(
+            [FromQuery] DateTime date,
+            [FromQuery] int groupId,
+            [FromQuery] int sectionId,
+            [FromQuery] int periodId)
+        {
+            var result = await _attendanceService.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId);
+            if (result == null)
+            {
+                return NotFound(new { Status = false, Message = "No faculty or subject allocation found for the specified period." });
+            }
+            return Ok(new { Status = true, Message = "Faculty and subject derived successfully.", Data = result });
+        }
+
+        /// <summary>
+        /// Generates Student Monthly Calendar Matrix Grid Report (Rows: Students, Columns: Dates 1-31).
+        /// </summary>
+        [HttpPost("student-monthly-report")]
+        public async Task<IActionResult> GetStudentMonthlyReportGrid([FromBody] StudentMonthlyReportRequest request)
+        {
+            var result = await _attendanceService.GetStudentMonthlyReportGridAsync(request);
+            return Ok(new { Status = true, Message = "Student monthly report grid generated successfully.", Data = result });
+        }
+
+        /// <summary>
+        /// Exports Student Monthly Calendar Matrix Report to CSV format.
+        /// </summary>
+        [HttpGet("student-monthly-report/export/csv")]
+        public async Task<IActionResult> ExportStudentMonthlyCsv([FromQuery] StudentMonthlyReportRequest request)
+        {
+            var bytes = await _attendanceService.ExportStudentMonthlyReportToCsvAsync(request);
+            return File(bytes, "text/csv", $"StudentMonthlyReport_{request.Year}_{request.Month:D2}.csv");
+        }
+
+        /// <summary>
+        /// Exports Student Monthly Calendar Matrix Report to Excel format.
+        /// </summary>
+        [HttpGet("student-monthly-report/export/excel")]
+        public async Task<IActionResult> ExportStudentMonthlyExcel([FromQuery] StudentMonthlyReportRequest request)
+        {
+            var bytes = await _attendanceService.ExportStudentMonthlyReportToExcelAsync(request);
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"StudentMonthlyReport_{request.Year}_{request.Month:D2}.xlsx");
         }
 
         private bool IsCurrentUserAdmin()

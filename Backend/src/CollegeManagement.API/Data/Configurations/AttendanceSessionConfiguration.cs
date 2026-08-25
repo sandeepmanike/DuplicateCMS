@@ -20,7 +20,7 @@ namespace CollegeManagement.API.Data.Configurations
             #region Table & Keys
 
             // Table name
-            builder.ToTable("attendance_sessions");
+            builder.ToTable("AttendanceSessions");
 
             // Primary Key
             builder.HasKey(s => s.AttendanceSessionId);

@@ -4,39 +4,23 @@ namespace CollegeManagement.API.DTOs.Sections
 {
     public class UpdateSectionRequest
     {
-        [Required(ErrorMessage = "Board is required.")]
-        [MaxLength(100, ErrorMessage = "Board name cannot exceed 100 characters.")]
-        public string Board { get; set; } = string.Empty;
-
         public int? BoardId { get; set; }
+
+        public string? Board { get; set; }
 
         [Required(ErrorMessage = "Academic Year ID is required.")]
         [Range(1, int.MaxValue, ErrorMessage = "Valid Academic Year ID is required.")]
         public int AcademicYearId { get; set; }
 
-        [Required(ErrorMessage = "Group is required.")]
-        [MaxLength(100, ErrorMessage = "Group name cannot exceed 100 characters.")]
-        public string Group { get; set; } = string.Empty;
+        public int? AcademicLevelId { get; set; }
 
-        public int? GroupId { get; set; }
-
-        [MaxLength(100, ErrorMessage = "Programme cannot exceed 100 characters.")]
-        public string Programme { get; set; } = string.Empty;
-
-        public string? Program
+        public int? YearOfStudyId
         {
-            get => Programme;
-            set
-            {
-                if (!string.IsNullOrWhiteSpace(value))
-                {
-                    Programme = value;
-                }
-            }
+            get => AcademicLevelId;
+            set => AcademicLevelId = value;
         }
 
-        [MaxLength(50, ErrorMessage = "Academic Level cannot exceed 50 characters.")]
-        public string AcademicLevel { get; set; } = string.Empty;
+        public string? AcademicLevel { get; set; }
 
         public string? YearOfStudy
         {
@@ -46,6 +30,34 @@ namespace CollegeManagement.API.DTOs.Sections
                 if (!string.IsNullOrWhiteSpace(value))
                 {
                     AcademicLevel = value;
+                }
+            }
+        }
+
+        public int? GroupId { get; set; }
+
+        public string? Group { get; set; }
+
+        public int? GroupProgramId { get; set; }
+
+        public int? ProgramId { get; set; }
+
+        public int? ProgrammeId
+        {
+            get => ProgramId;
+            set => ProgramId = value;
+        }
+
+        public string? Programme { get; set; }
+
+        public string? Program
+        {
+            get => Programme;
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    Programme = value;
                 }
             }
         }
@@ -66,6 +78,8 @@ namespace CollegeManagement.API.DTOs.Sections
             }
         }
 
+        public int? RoomId { get; set; }
+
         [MaxLength(50, ErrorMessage = "Room Number cannot exceed 50 characters.")]
         public string? RoomNumber { get; set; }
 
@@ -74,8 +88,6 @@ namespace CollegeManagement.API.DTOs.Sections
             get => RoomNumber;
             set => RoomNumber = value;
         }
-
-        public int? RoomId { get; set; }
 
         [Range(1, int.MaxValue, ErrorMessage = "Valid Incharge ID is required.")]
         public int? InchargeId { get; set; }

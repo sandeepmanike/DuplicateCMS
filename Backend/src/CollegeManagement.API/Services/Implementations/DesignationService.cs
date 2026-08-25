@@ -22,11 +22,12 @@ namespace CollegeManagement.API.Services.Implementations
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<DesignationResponseDto>> GetAllAsync(bool includeInactive = false)
+        public async Task<IEnumerable<DesignationResponseDto>> GetAllAsync(bool includeInactive = false, string? staffType = null)
         {
-            var entities = await _designationRepository.GetAllAsync(includeInactive);
+            var entities = await _designationRepository.GetAllAsync(includeInactive, staffType);
             return _mapper.Map<IEnumerable<DesignationResponseDto>>(entities);
         }
+
 
         public async Task<DesignationResponseDto?> GetByIdAsync(int id)
         {
@@ -47,6 +48,7 @@ namespace CollegeManagement.API.Services.Implementations
 
             var entity = _mapper.Map<Designation>(dto);
             entity.Name = trimmedName;
+            entity.StaffType = !string.IsNullOrWhiteSpace(dto.StaffType) ? dto.StaffType.Trim() : "Both";
             entity.CreatedAt = DateTime.UtcNow;
 
             var created = await _designationRepository.AddAsync(entity);
@@ -67,6 +69,10 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ConflictException($"Designation with name '{trimmedName}' already exists.");
 
             existing.Name = trimmedName;
+            if (!string.IsNullOrWhiteSpace(dto.StaffType))
+            {
+                existing.StaffType = dto.StaffType.Trim();
+            }
             existing.IsActive = dto.IsActive;
             existing.UpdatedAt = DateTime.UtcNow;
 
@@ -79,9 +85,9 @@ namespace CollegeManagement.API.Services.Implementations
             var existing = await _designationRepository.GetByIdAsync(id);
             if (existing == null) return false;
 
-            if (await _designationRepository.IsAssignedToFacultyAsync(id))
+            if (await _designationRepository.IsAssignedToStaffAsync(id))
             {
-                throw new InvalidOperationException($"Cannot delete designation '{existing.Name}' because it is assigned to one or more faculty members. Deactivate it instead.");
+                throw new InvalidOperationException($"Cannot delete designation '{existing.Name}' because it is assigned to one or more staff members. Deactivate it instead.");
             }
 
             await _designationRepository.DeleteAsync(id);

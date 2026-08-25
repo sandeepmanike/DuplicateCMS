@@ -98,5 +98,20 @@ namespace CollegeManagement.API.Repositories.Interfaces
         /// <param name="request">The search and filter parameters.</param>
         /// <returns>A collection of student attendance DTOs.</returns>
         Task<IEnumerable<StudentAttendanceResponse>> GetStudentsForAttendanceAsync(AttendanceSearchRequest request);
+
+        /// <summary>
+        /// Retrieves Board and Academic Year metadata for the specified Group and Section.
+        /// </summary>
+        Task<AcademicContextResponse?> GetAcademicContextAsync(int groupId, int sectionId);
+
+        /// <summary>
+        /// Auto-derives assigned Subject & Faculty for specified Date, Group, Section, and Period from Timetable.
+        /// </summary>
+        Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int periodId);
+
+        /// <summary>
+        /// Generates the Student Monthly Calendar Matrix Grid Report.
+        /// </summary>
+        Task<StudentMonthlyReportResponse> GetStudentMonthlyReportGridAsync(StudentMonthlyReportRequest request);
     }
 }
