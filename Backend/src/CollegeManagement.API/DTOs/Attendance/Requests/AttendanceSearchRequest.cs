@@ -11,39 +11,49 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         #region Academic Filters
 
         /// <summary>
+        /// Gets or sets the optional date string (e.g. "25-08-2026" or "2026-08-25").
+        /// </summary>
+        public string? Date { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional attendance date string.
+        /// </summary>
+        public string? AttendanceDate { get; set; }
+
+        /// <summary>
         /// Gets or sets the board identifier.
         /// </summary>
-        public int BoardId { get; set; }
+        public int? BoardId { get; set; }
 
         /// <summary>
         /// Gets or sets the academic year identifier.
         /// </summary>
-        public int AcademicYearId { get; set; }
+        public int? AcademicYearId { get; set; }
 
         /// <summary>
         /// Gets or sets the academic level identifier.
         /// </summary>
-        public int AcademicLevelId { get; set; }
+        public int? AcademicLevelId { get; set; }
 
         /// <summary>
         /// Gets or sets the group identifier.
         /// </summary>
-        public int GroupId { get; set; }
+        public int? GroupId { get; set; }
 
         /// <summary>
         /// Gets or sets the section identifier.
         /// </summary>
-        public int SectionId { get; set; }
+        public int? SectionId { get; set; }
 
         /// <summary>
         /// Gets or sets the subject identifier.
         /// </summary>
-        public int SubjectId { get; set; }
+        public int? SubjectId { get; set; }
 
         /// <summary>
         /// Gets or sets the faculty identifier.
         /// </summary>
-        public int FacultyId { get; set; }
+        public int? FacultyId { get; set; }
 
         /// <summary>
         /// Gets or sets the optional period identifier.

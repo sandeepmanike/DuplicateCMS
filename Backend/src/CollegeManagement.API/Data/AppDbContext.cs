@@ -32,6 +32,8 @@ namespace CollegeManagement.API.Data
         // Attendance
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<AttendanceSession> AttendanceSessions { get; set; }
+        public DbSet<StaffAttendanceSession> StaffAttendanceSessions { get; set; }
+        public DbSet<StaffAttendance> StaffAttendances { get; set; }
         public DbSet<GradingSystem> GradingSystems { get; set; }
         public DbSet<AssessmentType> AssessmentTypes { get; set; }
         public DbSet<Board> Boards { get; set; }
@@ -1022,4 +1024,4 @@ namespace CollegeManagement.API.Data
             #endregion
         }
     }
-}
+}

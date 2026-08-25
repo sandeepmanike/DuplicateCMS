@@ -20,7 +20,7 @@ namespace CollegeManagement.API.Data.Configurations
             #region Table & Keys
 
             // Table name
-            builder.ToTable("attendances");
+            builder.ToTable("Attendances");
 
             // Primary Key
             builder.HasKey(a => a.AttendanceId);
@@ -29,8 +29,8 @@ namespace CollegeManagement.API.Data.Configurations
 
             #region Properties
 
-            builder.Property(a => a.AttendanceSessionId)
-                .IsRequired();
+            builder.Ignore(a => a.AttendanceSessionId);
+            builder.Ignore(a => a.AttendanceSession);
 
             builder.Property(a => a.StudentId)
                 .IsRequired();
@@ -58,11 +58,6 @@ namespace CollegeManagement.API.Data.Configurations
 
             #region Indexes
 
-            // Unique Index
-            builder.HasIndex(a => new { a.StudentId, a.AttendanceSessionId })
-                .IsUnique()
-                .HasDatabaseName("UX_Attendances_Student_Session");
-
             // Query Indexes
             builder.HasIndex(a => a.StudentId).HasDatabaseName("IX_Attendances_StudentId");
 
@@ -74,11 +69,6 @@ namespace CollegeManagement.API.Data.Configurations
                 .WithMany()
                 .HasForeignKey(a => a.StudentId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            builder.HasOne(a => a.AttendanceSession)
-                .WithMany()
-                .HasForeignKey(a => a.AttendanceSessionId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             #endregion
         }

@@ -504,40 +504,25 @@ VALUES
                     await Connection.ExecuteAsync(
                         @"
 UPDATE Students
-
 SET
     AcademicYearId = @AcademicYearId,
-    BoardId = @BoardId,
+    BoardId = COALESCE(@BoardId, BoardId),
     AcademicLevel = @AcademicLevel,
     GroupId = @GroupId,
     Section = @Section,
-    Medium = @Medium,
+    Medium = COALESCE(@Medium, Medium),
     UpdatedAt = UTC_TIMESTAMP()
-
 WHERE StudentId = @StudentId;
 ",
                         new
                         {
-                            AcademicYearId =
-                                request.TargetAcademicYearId,
-
-                            BoardId =
-                                request.TargetBoardId,
-
-                            AcademicLevel =
-                                request.TargetAcademicLevel,
-
-                            GroupId =
-                                request.TargetGroupId,
-
-                            Section =
-                                request.TargetSection,
-
-                            Medium =
-                                request.TargetMedium,
-
-                            StudentId =
-                                studentId
+                            AcademicYearId = request.TargetAcademicYearId,
+                            BoardId = request.TargetBoardId,
+                            AcademicLevel = request.TargetAcademicLevel,
+                            GroupId = request.TargetGroupId,
+                            Section = request.TargetSection,
+                            Medium = request.TargetMedium,
+                            StudentId = studentId
                         },
                         transaction);
                 }
@@ -591,7 +576,7 @@ SELECT
         NULLIF(s.RollNo, ''),
         CAST(s.StudentId AS CHAR)
     ) AS StudentCode,
-
+    COALESCE(s.AdmissionNo, '') AS AdmissionNo,
     s.StudentName,
 
     fay.AcademicYearName AS SourceAcademicYear,
@@ -945,27 +930,21 @@ AND IsActive = 1;
                 return null;
             }
 
-            var preview =
-                await PreviewAsync(
-                    new PromotionPreviewRequest
-                    {
-                        SourceAcademicYearId =
-                            (int)student.AcademicYearId,
+                    int sourceYearId = student.AcademicYearId != null ? Convert.ToInt32(student.AcademicYearId) : 1;
+                    int sourceGroupId = student.GroupId != null ? Convert.ToInt32(student.GroupId) : 1;
+                    string sourceLevel = student.AcademicLevel != null ? Convert.ToString(student.AcademicLevel) : "Junior Inter";
+                    string sourceSection = student.Section != null ? Convert.ToString(student.Section) : "A";
 
-                        SourceBoardId =
-                            (int?)student.BoardId,
-
-                        SourceAcademicLevel =
-                            (string)student.AcademicLevel,
-
-                        SourceGroupId =
-                            (int)student.GroupId,
-
-                        SourceSection =
-                            (string)student.Section,
-
-                        SourceMedium =
-                            (string?)student.Medium,
+                    var preview =
+                        await PreviewAsync(
+                            new PromotionPreviewRequest
+                            {
+                                SourceAcademicYearId = sourceYearId,
+                                SourceBoardId = student.BoardId != null ? Convert.ToInt32(student.BoardId) : (int?)null,
+                                SourceAcademicLevel = sourceLevel,
+                                SourceGroupId = sourceGroupId,
+                                SourceSection = sourceSection,
+                                SourceMedium = student.Medium != null ? Convert.ToString(student.Medium) : (string?)null,
 
                         TargetAcademicYearId =
                             request.TargetAcademicYearId,
@@ -994,8 +973,8 @@ AND IsActive = 1;
 
             if (preview.EligibleCount == 0)
             {
-                throw new InvalidOperationException(
-                    preview.Students.First().EligibilityReason);
+                var reason = preview.Students.FirstOrDefault()?.EligibilityReason ?? "Student is not eligible for promotion.";
+                throw new CollegeManagement.API.Exceptions.ValidationException(reason);
             }
 
             await PromoteStudentsAsync(
@@ -1007,23 +986,12 @@ AND IsActive = 1;
                             studentId
                         },
 
-                    SourceAcademicYearId =
-                        (int)student.AcademicYearId,
-
-                    SourceBoardId =
-                        (int?)student.BoardId,
-
-                    SourceAcademicLevel =
-                        (string)student.AcademicLevel,
-
-                    SourceGroupId =
-                        (int)student.GroupId,
-
-                    SourceSection =
-                        (string)student.Section,
-
-                    SourceMedium =
-                        (string?)student.Medium,
+                    SourceAcademicYearId = sourceYearId,
+                    SourceBoardId = student.BoardId != null ? Convert.ToInt32(student.BoardId) : (int?)null,
+                    SourceAcademicLevel = sourceLevel,
+                    SourceGroupId = sourceGroupId,
+                    SourceSection = sourceSection,
+                    SourceMedium = student.Medium != null ? Convert.ToString(student.Medium) : (string?)null,
 
                     TargetAcademicYearId =
                         request.TargetAcademicYearId,
@@ -1264,41 +1232,34 @@ AND IsActive = 1;
 
             const string sql = @"
 SELECT
-
+    ph.Id AS PromotionId,
     ph.StudentId,
-
+    COALESCE(s.AdmissionNo, '') AS AdmissionNo,
     s.StudentName,
-
+    fay.AcademicYearName AS SourceAcademicYear,
     ph.FromAcademicLevel AS SourceLevel,
-
+    tay.AcademicYearName AS TargetAcademicYear,
     ph.ToAcademicLevel AS TargetLevel,
-
     fg.GroupName AS SourceGroup,
-
     tg.GroupName AS TargetGroup,
-
     ph.FromSection AS SourceSection,
-
     ph.ToSection AS TargetSection,
-
     CASE
         WHEN ph.IsRolledBack = 1
             THEN 'Not Eligible'
         ELSE 'Eligible'
     END AS EligibilityStatus,
-
     ph.Status AS PromotionStatus,
-
     ph.PromotionDate
-
 FROM PromotionHistories ph
-
 INNER JOIN Students s
     ON s.StudentId = ph.StudentId
-
+LEFT JOIN AcademicYears fay
+    ON fay.AcademicYearId = ph.FromAcademicYearId
+LEFT JOIN AcademicYears tay
+    ON tay.AcademicYearId = ph.ToAcademicYearId
 LEFT JOIN `Groups` fg
     ON fg.GroupId = ph.FromGroupId
-
 LEFT JOIN `Groups` tg
     ON tg.GroupId = ph.ToGroupId
 

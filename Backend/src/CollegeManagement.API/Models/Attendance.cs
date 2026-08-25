@@ -8,7 +8,7 @@ namespace CollegeManagement.API.Models
     /// <summary>
     /// Represents an Attendance detail record in the College Management System.
     /// </summary>
-    [Table("attendances")]
+    [Table("Attendances")]
     public class Attendance
     {
         /// <summary>
@@ -18,17 +18,30 @@ namespace CollegeManagement.API.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int AttendanceId { get; set; }
 
-        /// <summary>
-        /// Gets or sets the associated attendance session identifier.
-        /// </summary>
-        [Required]
-        public int AttendanceSessionId { get; set; }
+        [NotMapped]
+        public int? AttendanceSessionId { get; set; }
 
         /// <summary>
         /// Gets or sets the student identifier.
         /// </summary>
         [Required]
         public int StudentId { get; set; }
+
+        public int? SubjectId { get; set; }
+
+        public int? GroupId { get; set; }
+
+        public int? SectionId { get; set; }
+
+        public int? AcademicYearId { get; set; }
+
+        public int? AcademicLevelId { get; set; }
+
+        public int? BoardId { get; set; }
+
+        public int? FacultyId { get; set; }
+
+        public DateTime AttendanceDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>
         /// Gets or sets the status of the attendance (1 = Present, 2 = Absent, 3 = Late, 4 = Leave).
@@ -65,11 +78,8 @@ namespace CollegeManagement.API.Models
         [ForeignKey(nameof(StudentId))]
         public virtual Student Student { get; set; } = null!;
 
-        /// <summary>
-        /// Gets or sets the associated attendance session.
-        /// </summary>
-        [ForeignKey(nameof(AttendanceSessionId))]
-        public virtual AttendanceSession AttendanceSession { get; set; } = null!;
+        [NotMapped]
+        public virtual AttendanceSession? AttendanceSession { get; set; }
 
         #endregion
     }

@@ -7,7 +7,7 @@ namespace CollegeManagement.API.Models
     /// <summary>
     /// Represents an Attendance Session record in the College Management System.
     /// </summary>
-    [Table("attendance_sessions")]
+    [Table("AttendanceSessions")]
     public class AttendanceSession
     {
         /// <summary>

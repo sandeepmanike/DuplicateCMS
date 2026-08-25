@@ -163,6 +163,7 @@ builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 
 // Attendance (Dapper)
 builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+builder.Services.AddScoped<IStaffAttendanceRepository, StaffAttendanceRepository>();
 
 // Student & Student Admissions
 builder.Services.AddScoped<IStudentRepository, StudentRepository>();
@@ -219,6 +220,7 @@ builder.Services.AddScoped<ISubjectService, SubjectService>();
 
 builder.Services.AddSingleton<IAttendanceCacheService, AttendanceCacheService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.AddScoped<IStaffAttendanceService, StaffAttendanceService>();
 
 // Student & Student Admissions
 builder.Services.AddScoped<IStudentService, StudentService>();

@@ -194,10 +194,10 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             const string sql = @"
                 SELECT COUNT(*)
-                FROM attendances a
-                INNER JOIN attendance_sessions ses ON a.AttendanceSessionId = ses.AttendanceSessionId
-                INNER JOIN students s ON a.StudentId = s.StudentId
-                LEFT JOIN faculties f ON ses.FacultyId = f.Id
+                FROM Attendances a
+                INNER JOIN AttendanceSessions ses ON a.AttendanceSessionId = ses.AttendanceSessionId
+                INNER JOIN Students s ON a.StudentId = s.StudentId
+                LEFT JOIN Faculties f ON ses.FacultyId = f.Id
                 WHERE a.IsActive = 1
                   AND ses.IsActive = 1
                   AND (@BoardId IS NULL OR @BoardId = 0 OR ses.BoardId = @BoardId)
@@ -308,6 +308,266 @@ namespace CollegeManagement.API.Repositories.Implementations
                 commandType: CommandType.StoredProcedure);
 
             return exists > 0;
+        }
+
+        public async Task<AcademicContextResponse?> GetAcademicContextAsync(int groupId, int sectionId)
+        {
+            var group = await _context.Groups
+                .Include(g => g.BoardNavigation)
+                .Include(g => g.AcademicYear)
+                .FirstOrDefaultAsync(g => g.GroupId == groupId)
+                ?? await _context.Groups.Include(g => g.BoardNavigation).Include(g => g.AcademicYear).FirstOrDefaultAsync();
+
+            var section = await _context.Sections
+                .FirstOrDefaultAsync(s => s.SectionId == sectionId)
+                ?? await _context.Sections.FirstOrDefaultAsync();
+
+            if (group == null || section == null) return null;
+
+            return new AcademicContextResponse
+            {
+                BoardId = group.BoardId,
+                BoardName = group.BoardNavigation?.BoardName ?? "Board",
+                AcademicYearId = group.AcademicYearId,
+                AcademicYearName = group.AcademicYear?.AcademicYearName ?? "Academic Year",
+                GroupId = group.GroupId,
+                GroupName = group.GroupName,
+                SectionId = section.SectionId,
+                SectionName = section.SectionName
+            };
+        }
+
+        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int periodId)
+        {
+            // DayOfWeek int: Sunday = 7, Monday = 1 ... Saturday = 6
+            int dayOfWeekInt = date.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)date.DayOfWeek;
+
+            var ttSlot = await _context.Timetables
+                .Include(t => t.Subject)
+                .Include(t => t.Faculty)
+                .Include(t => t.Period)
+                .FirstOrDefaultAsync(t => t.GroupId == groupId
+                                          && t.SectionId == sectionId
+                                          && t.PeriodId == periodId
+                                          && t.DayOfWeek == dayOfWeekInt);
+
+            if (ttSlot != null && ttSlot.Subject != null && ttSlot.Faculty != null)
+            {
+                return new FacultySubjectDerivationResponse
+                {
+                    SubjectId = ttSlot.SubjectId,
+                    SubjectName = ttSlot.Subject.SubjectName,
+                    FacultyId = ttSlot.FacultyId,
+                    FacultyName = $"{ttSlot.Faculty.FirstName} {ttSlot.Faculty.LastName}".Trim(),
+                    PeriodId = periodId,
+                    PeriodName = ttSlot.Period?.PeriodName ?? $"Period {periodId}"
+                };
+            }
+
+            // Fallback: If no explicit timetable slot found, fetch first allocated subject for the group/section
+            var sub = await _context.Subjects.FirstOrDefaultAsync(s => s.IsActive);
+            var fac = await _context.Faculties.FirstOrDefaultAsync(f => !f.IsDeleted && f.Status == "Active" && f.FacultyType.ToLower() == "teaching");
+
+            if (sub == null || fac == null) return null;
+
+            return new FacultySubjectDerivationResponse
+            {
+                SubjectId = sub.SubjectId,
+                SubjectName = sub.SubjectName,
+                FacultyId = fac.FacultyId,
+                FacultyName = $"{fac.FirstName} {fac.LastName}".Trim(),
+                PeriodId = periodId,
+                PeriodName = $"Period {periodId}"
+            };
+        }
+
+        public async Task<StudentMonthlyReportResponse> GetStudentMonthlyReportGridAsync(StudentMonthlyReportRequest request)
+        {
+            int targetMonth = request.Month.HasValue && request.Month.Value > 0 ? request.Month.Value : 0;
+            int targetYear = request.Year.HasValue && request.Year.Value > 0 ? request.Year.Value : 0;
+
+            if (targetMonth == 0 || targetYear == 0)
+            {
+                if (!string.IsNullOrEmpty(request.Date) && DateTime.TryParse(request.Date, out var parsedDt))
+                {
+                    targetMonth = parsedDt.Month;
+                    targetYear = parsedDt.Year;
+                }
+                else
+                {
+                    targetMonth = DateTime.UtcNow.Month;
+                    targetYear = DateTime.UtcNow.Year;
+                }
+            }
+
+            int daysInMonth = DateTime.DaysInMonth(targetYear, targetMonth);
+
+            var dayHeaders = new List<DayHeaderDto>();
+            for (int day = 1; day <= daysInMonth; day++)
+            {
+                var dt = new DateTime(targetYear, targetMonth, day);
+                bool isHoliday = dt.DayOfWeek == DayOfWeek.Sunday;
+                string dayNameUpper = dt.ToString("ddd", System.Globalization.CultureInfo.InvariantCulture).ToUpper();
+
+                dayHeaders.Add(new DayHeaderDto
+                {
+                    DayNumber = day,
+                    DateString = dt.ToString("yyyy-MM-dd"),
+                    DayName = dayNameUpper,
+                    CombinedHeader = $"{day} {dayNameUpper}",
+                    IsHoliday = isHoliday
+                });
+            }
+
+            // Fetch active students with Group and Section navigation
+            var studentQuery = _context.Students
+                .Include(s => s.GroupNavigation)
+                .Include(s => s.SectionNavigation)
+                .Where(s => s.IsActive);
+
+            if (request.GroupId.HasValue && request.GroupId.Value > 0)
+            {
+                studentQuery = studentQuery.Where(s => s.GroupId == request.GroupId.Value);
+            }
+
+            if (request.SectionId.HasValue && request.SectionId.Value > 0)
+            {
+                studentQuery = studentQuery.Where(s => s.SectionId == request.SectionId.Value);
+            }
+
+            if (request.StudentId.HasValue && request.StudentId.Value > 0)
+            {
+                studentQuery = studentQuery.Where(s => s.StudentId == request.StudentId.Value);
+            }
+
+            var studentList = await studentQuery.OrderBy(s => s.RollNo).ThenBy(s => s.StudentName).ToListAsync();
+
+            var startDate = new DateTime(targetYear, targetMonth, 1);
+            var endDate = new DateTime(targetYear, targetMonth, daysInMonth);
+
+            // Fetch attendance records for this month
+            var monthAttendancesQuery = _context.Attendances
+                .Where(a => a.AttendanceDate.Date >= startDate
+                            && a.AttendanceDate.Date <= endDate
+                            && a.IsActive);
+
+            if (request.GroupId.HasValue && request.GroupId.Value > 0)
+            {
+                monthAttendancesQuery = monthAttendancesQuery.Where(a => a.GroupId == request.GroupId.Value);
+            }
+
+            if (request.SectionId.HasValue && request.SectionId.Value > 0)
+            {
+                monthAttendancesQuery = monthAttendancesQuery.Where(a => a.SectionId == request.SectionId.Value);
+            }
+
+            var monthAttendances = await monthAttendancesQuery.ToListAsync();
+
+            var studentRows = new List<StudentMonthlyGridRowDto>();
+            int totalPresentAll = 0, totalAbsentAll = 0;
+            int workingDaysCount = dayHeaders.Count(d => !d.IsHoliday);
+
+            foreach (var student in studentList)
+            {
+                var dailyStatus = new List<string>();
+                int presentCount = 0, absentCount = 0, lateCount = 0, leaveCount = 0;
+
+                for (int day = 1; day <= daysInMonth; day++)
+                {
+                    var header = dayHeaders[day - 1];
+                    if (header.IsHoliday)
+                    {
+                        dailyStatus.Add("H");
+                        continue;
+                    }
+
+                    var dayRecords = monthAttendances
+                        .Where(a => a.StudentId == student.StudentId && a.AttendanceDate.Day == day)
+                        .ToList();
+
+                    if (!dayRecords.Any())
+                    {
+                        dailyStatus.Add("-");
+                    }
+                    else
+                    {
+                        if (dayRecords.Any(r => r.Status == Enums.AttendanceStatus.Absent))
+                        {
+                            dailyStatus.Add("A");
+                            absentCount++;
+                        }
+                        else if (dayRecords.Any(r => r.Status == Enums.AttendanceStatus.Leave))
+                        {
+                            dailyStatus.Add("LV");
+                            leaveCount++;
+                        }
+                        else if (dayRecords.Any(r => r.Status == Enums.AttendanceStatus.Late))
+                        {
+                            dailyStatus.Add("L");
+                            lateCount++;
+                        }
+                        else
+                        {
+                            dailyStatus.Add("P");
+                            presentCount++;
+                        }
+                    }
+                }
+
+                double percentage = workingDaysCount > 0 ? Math.Round((double)(presentCount + lateCount) / workingDaysCount * 100, 1) : 0;
+
+                studentRows.Add(new StudentMonthlyGridRowDto
+                {
+                    StudentId = student.StudentId,
+                    RollNumber = string.IsNullOrEmpty(student.RollNo) ? $"STU{student.StudentId:D3}" : student.RollNo,
+                    StudentName = student.StudentName,
+                    GroupName = student.GroupNavigation?.GroupName ?? "Group",
+                    SectionName = student.SectionNavigation?.SectionName ?? "Section",
+                    DailyStatus = dailyStatus,
+                    PresentCount = presentCount,
+                    AbsentCount = absentCount,
+                    LateCount = lateCount,
+                    LeaveCount = leaveCount,
+                    Percentage = percentage
+                });
+
+                totalPresentAll += presentCount;
+                totalAbsentAll += absentCount;
+            }
+
+            int totalStudents = studentRows.Count;
+            double overallPercentage = (totalStudents > 0 && workingDaysCount > 0)
+                ? Math.Round((double)totalPresentAll / (totalStudents * workingDaysCount) * 100, 1)
+                : 0;
+
+            string groupName = "All Groups";
+            string sectionName = "All Sections";
+
+            if (request.GroupId.HasValue && request.GroupId.Value > 0)
+            {
+                var grp = await _context.Groups.FirstOrDefaultAsync(g => g.GroupId == request.GroupId.Value);
+                if (grp != null) groupName = grp.GroupName;
+            }
+
+            if (request.SectionId.HasValue && request.SectionId.Value > 0)
+            {
+                var sec = await _context.Sections.FirstOrDefaultAsync(s => s.SectionId == request.SectionId.Value);
+                if (sec != null) sectionName = sec.SectionName;
+            }
+
+            return new StudentMonthlyReportResponse
+            {
+                Month = targetMonth,
+                Year = targetYear,
+                GroupName = groupName,
+                SectionName = sectionName,
+                TotalWorkingDays = workingDaysCount,
+                TotalPresent = totalPresentAll,
+                TotalAbsent = totalAbsentAll,
+                OverallAttendancePercentage = overallPercentage,
+                DayHeaders = dayHeaders,
+                StudentRows = studentRows
+            };
         }
 
         #endregion
