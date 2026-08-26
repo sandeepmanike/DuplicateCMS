@@ -81,6 +81,11 @@ namespace CollegeManagement.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            #region Attendance
+            modelBuilder.Entity<Attendance>().ToTable("Attendances");
+            modelBuilder.Entity<AttendanceSession>().ToTable("AttendanceSessions");
+            #endregion
+
             #region User
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.Email)
@@ -110,7 +115,8 @@ namespace CollegeManagement.API.Data
            
 
             modelBuilder.Entity<Subject>()
-                .Ignore(s => s.AcademicLevelId);
+                .Ignore(s => s.AcademicLevelId)
+                .Ignore(s => s.AcademicLevelNavigation);
 
             modelBuilder.Entity<Subject>()
                 .HasIndex(s => s.GroupId);
@@ -985,6 +991,7 @@ namespace CollegeManagement.API.Data
             {
                 entity.HasKey(x => x.Id);
                 entity.Property(x => x.Name).IsRequired().HasMaxLength(100);
+                entity.Ignore(x => x.Periods);
             });
 
             modelBuilder.Entity<PeriodStructureItem>(entity =>
@@ -1028,10 +1035,8 @@ namespace CollegeManagement.API.Data
             modelBuilder.Entity<Period>(entity =>
             {
                 entity.HasKey(x => x.PeriodId);
-                entity.HasOne(x => x.PeriodStructure)
-                    .WithMany(s => s.Periods)
-                    .HasForeignKey(x => x.PeriodStructureId)
-                    .OnDelete(DeleteBehavior.Cascade);
+                entity.Ignore(x => x.PeriodStructureId);
+                entity.Ignore(x => x.PeriodStructure);
             });
             #endregion
 
