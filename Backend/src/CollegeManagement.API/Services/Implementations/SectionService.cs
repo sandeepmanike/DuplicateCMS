@@ -49,6 +49,7 @@ namespace CollegeManagement.API.Services.Implementations
             var academicLevelId = await _sectionRepository.ResolveAcademicLevelIdAsync(request.AcademicLevelId, request.AcademicLevel ?? request.YearOfStudy);
             var groupId = await _sectionRepository.ResolveGroupIdAsync(request.GroupId, request.Group);
             var programId = await _sectionRepository.ResolveProgramIdAsync(request.ProgramId, request.Programme ?? request.Program, groupId);
+            if (!programId.HasValue || programId.Value <= 0) programId = 1;
 
             // If GroupProgramId is provided directly, resolve GroupId and ProgramId
             var groupProgramId = request.GroupProgramId;
@@ -140,6 +141,7 @@ namespace CollegeManagement.API.Services.Implementations
             var academicLevelId = await _sectionRepository.ResolveAcademicLevelIdAsync(request.AcademicLevelId, request.AcademicLevel ?? request.YearOfStudy) ?? existingSection.AcademicLevelId;
             var groupId = await _sectionRepository.ResolveGroupIdAsync(request.GroupId, request.Group) ?? existingSection.GroupId;
             var programId = await _sectionRepository.ResolveProgramIdAsync(request.ProgramId, request.Programme ?? request.Program, groupId) ?? existingSection.ProgramId;
+            if (!programId.HasValue || programId.Value <= 0) programId = 1;
 
             var groupProgramId = request.GroupProgramId;
             if (groupProgramId.HasValue && groupProgramId.Value > 0)

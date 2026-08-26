@@ -17,7 +17,6 @@ namespace CollegeManagement.API.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/certificates")]
-[Route("api/certificates")]
 [Authorize]
 [Produces("application/json")]
 public class CertificatesController : ControllerBase

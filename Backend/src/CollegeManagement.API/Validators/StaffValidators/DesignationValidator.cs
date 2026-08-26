@@ -1,11 +1,11 @@
-using CollegeManagement.API.DTOs.Faculty;
+using CollegeManagement.API.DTOs.Staff;
 using FluentValidation;
 
-namespace CollegeManagement.API.Validators.FacultyModuleValidators
+namespace CollegeManagement.API.Validators.StaffValidators
 {
-    public class CreateDesignationDtoValidator : AbstractValidator<CreateDesignationDto>
+    public class CreateDesignationValidator : AbstractValidator<CreateDesignationDto>
     {
-        public CreateDesignationDtoValidator()
+        public CreateDesignationValidator()
         {
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("Designation name is required.")
@@ -13,9 +13,9 @@ namespace CollegeManagement.API.Validators.FacultyModuleValidators
         }
     }
 
-    public class UpdateDesignationDtoValidator : AbstractValidator<UpdateDesignationDto>
+    public class UpdateDesignationValidator : AbstractValidator<UpdateDesignationDto>
     {
-        public UpdateDesignationDtoValidator()
+        public UpdateDesignationValidator()
         {
             RuleFor(x => x.Name)
                 .NotEmpty().WithMessage("Designation name is required.")

@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace CollegeManagement.API.DTOs.Faculty
+namespace CollegeManagement.API.DTOs.Staff
 {
     public class DesignationResponseDto
     {

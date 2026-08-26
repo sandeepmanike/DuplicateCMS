@@ -50,6 +50,14 @@ function DashboardLayout() {
             Certificate Management
           </NavLink>
 
+          <div className="sidebar-title">
+            Reports &amp; Analytics
+          </div>
+
+          <NavLink to="/dashboard/reports">
+            Reports &amp; Analytics
+          </NavLink>
+
         </nav>
       </aside>
 

@@ -13,7 +13,7 @@ using CollegeManagement.API.Services;
 using CollegeManagement.API.Services.Implementations;
 using CollegeManagement.API.Services.Interfaces;
 using CollegeManagement.API.Services.Location;
-using CollegeManagement.API.Validators.FacultyModuleValidators;
+using CollegeManagement.API.Validators.StaffValidators;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -58,6 +58,24 @@ if (args.Contains("--test-certificates-module"))
 {
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
     var tester = new CertificateModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--test-reports-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new ReportModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--test-sections-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new SectionModuleBackendTester(connStr!);
     var success = await tester.RunAllTestsAsync();
     Environment.Exit(success ? 0 : 1);
     return;
@@ -159,13 +177,13 @@ builder.Services.AddMemoryCache();
 #region AutoMapper & FluentValidation
 
 builder.Services.AddAutoMapper(
-    typeof(FacultyMappingProfile),
+    typeof(StaffMappingProfile),
     typeof(MarksMappingProfile),
     typeof(AttendanceProfile),
     typeof(CollegeManagement.API.Profiles.TimetableMappingProfile),
     typeof(SectionMappingProfile));
 
-builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateStaffDtoValidator>();
 
 #endregion
 
@@ -183,12 +201,10 @@ builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
-// Faculty & Staff
+// Staff, Designations & Departments
 builder.Services.AddScoped<IDesignationRepository, DesignationRepository>();
 builder.Services.AddScoped<IStaffRepository, StaffRepository>();
 builder.Services.AddScoped<IStaffSubjectAllocationRepository, StaffSubjectAllocationRepository>();
-builder.Services.AddScoped<IFacultyRepository, FacultyRepository>();
-builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAllocationRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
 
@@ -242,7 +258,6 @@ builder.Services.AddScoped<IBoardExportService, BoardExportService>();
 
 builder.Services.AddScoped<IDesignationService, DesignationService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
-builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
 
@@ -390,6 +405,8 @@ builder.Services.AddSwaggerGen(c =>
     {
         c.IncludeXmlComments(xmlPath);
     }
+
+    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
 
     c.AddSecurityDefinition("Bearer",
         new OpenApiSecurityScheme

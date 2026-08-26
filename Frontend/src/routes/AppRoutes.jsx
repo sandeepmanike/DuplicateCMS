@@ -21,6 +21,9 @@ import StaffSubjectAllocation from "../Dashboard/Staff Management/StaffSubjectAl
 // Certificate Management
 import CertificateManagement from "../Dashboard/Certificate Management/CertificateManagement";
 
+// Reports & Analytics
+import Reports from "../Dashboard/Reports/Reports";
+
 function AppRoutes() {
   return (
     <Routes>
@@ -48,6 +51,10 @@ function AppRoutes() {
         {/* Certificate Management Routes */}
         <Route path="certificates" element={<CertificateManagement />} />
         <Route path="certificate" element={<CertificateManagement />} />
+
+        {/* Reports & Analytics Routes */}
+        <Route path="reports" element={<Reports />} />
+        <Route path="reports-and-analytics" element={<Reports />} />
 
         {/* Backward compatibility aliases */}
         <Route path="faculty" element={<StaffList />} />
