@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Certificate;
 
 namespace CollegeManagement.API.Services.Interfaces;
@@ -5,12 +8,23 @@ namespace CollegeManagement.API.Services.Interfaces;
 public interface ICertificateService
 {
     Task<IReadOnlyList<CertificateResponseDto>> GetAllAsync(
-        string? search,
-        string? status,
+        string? search = null,
+        string? status = null,
+        string? certificateType = null,
         CancellationToken ct = default);
 
     Task<CertificateResponseDto?> GetByIdAsync(
         int id,
+        CancellationToken ct = default);
+
+    Task<CertificateWorkflowStatsDto> GetWorkflowStatsAsync(
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<StudentCertificateDropdownDto>> GetStudentsDropdownAsync(
+        CancellationToken ct = default);
+
+    Task<CertificateResponseDto?> GenerateAsync(
+        GenerateCertificateRequestDto request,
         CancellationToken ct = default);
 
     Task<CertificateResponseDto?> GenerateAsync(
@@ -42,6 +56,14 @@ public interface ICertificateService
         int id,
         string status,
         string? issuedBy = null,
+        CancellationToken ct = default);
+
+    Task<int> BulkApproveAsync(
+        string approvedBy,
+        CancellationToken ct = default);
+
+    Task<int> BulkIssueAsync(
+        string issuedBy,
         CancellationToken ct = default);
 
     Task<bool> CancelAsync(

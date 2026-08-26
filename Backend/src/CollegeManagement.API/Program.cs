@@ -45,6 +45,42 @@ if (args.Contains("--validate-staff-db"))
     return;
 }
 
+if (args.Contains("--inspect-certificates-db"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var inspector = new CertificateDbInspector(connStr!);
+    await inspector.InspectAsync();
+    Environment.Exit(0);
+    return;
+}
+
+if (args.Contains("--test-certificates-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new CertificateModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--validate-certificates-sql"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var validator = new CertificateSqlValidator(connStr!);
+    await validator.ValidateAndExecuteScriptAsync();
+    Environment.Exit(0);
+    return;
+}
+
+if (args.Contains("--inspect-certificate-deps"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var inspector = new CertificateDependencyInspector(connStr!);
+    await inspector.RunInspectionAsync();
+    Environment.Exit(0);
+    return;
+}
+
 
 // Register QuestPDF Community License
 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
