@@ -60,11 +60,13 @@ namespace CollegeManagement.API.Models
 
         public string Board { get; set; } = string.Empty;
 
+        public string Group { get; set; } = string.Empty;
+
         [NotMapped]
         public string BoardName => BoardNavigation?.BoardName ?? Board ?? string.Empty;
 
         [NotMapped]
-        public string GroupName => GroupNavigation?.GroupName ?? string.Empty;
+        public string GroupName => GroupNavigation?.GroupName ?? (!string.IsNullOrWhiteSpace(Group) ? Group : string.Empty);
 
         [NotMapped]
         public string AcademicLevelName => AcademicLevelNavigation?.LevelName ?? AcademicLevel ?? string.Empty;

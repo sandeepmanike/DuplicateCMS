@@ -12,6 +12,7 @@ namespace CollegeManagement.API.Models.Staff
         [Column("Id")]
         public int Id { get; set; }
 
+        [Required]
         [Column("StaffId")]
         public int StaffId { get; set; }
 

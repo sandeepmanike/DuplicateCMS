@@ -8,6 +8,7 @@ using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Exceptions;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Staff;
+using CollegeManagement.API.Repositories;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Hosting;
@@ -18,6 +19,7 @@ namespace CollegeManagement.API.Services.Implementations
     {
         private readonly IStaffRepository _staffRepository;
         private readonly IStaffSubjectAllocationRepository _allocationRepository;
+        private readonly ISubjectRepository _subjectRepository;
         private readonly IDepartmentRepository _departmentRepository;
         private readonly ITimetableRepository _timetableRepository;
         private readonly IDesignationRepository _designationRepository;
@@ -31,6 +33,7 @@ namespace CollegeManagement.API.Services.Implementations
         public StaffService(
             IStaffRepository staffRepository,
             IStaffSubjectAllocationRepository allocationRepository,
+            ISubjectRepository subjectRepository,
             IDepartmentRepository departmentRepository,
             ITimetableRepository timetableRepository,
             IDesignationRepository designationRepository,
@@ -39,6 +42,7 @@ namespace CollegeManagement.API.Services.Implementations
         {
             _staffRepository = staffRepository;
             _allocationRepository = allocationRepository;
+            _subjectRepository = subjectRepository;
             _departmentRepository = departmentRepository;
             _timetableRepository = timetableRepository;
             _designationRepository = designationRepository;
@@ -400,6 +404,12 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<StaffSubjectAllocationResponseDto> AssignSubjectAsync(AssignStaffSubjectDto dto)
         {
+            if (dto.StaffId <= 0)
+                throw new ValidationException("Valid Staff ID is required.");
+
+            if (dto.SubjectId <= 0)
+                throw new ValidationException("Valid Subject ID is required.");
+
             var staff = await _staffRepository.GetByIdAsync(dto.StaffId);
             if (staff == null)
                 throw new NotFoundException($"Staff record with ID {dto.StaffId} not found.");
@@ -410,33 +420,44 @@ namespace CollegeManagement.API.Services.Implementations
             if (string.Equals(staff.StaffType, "Non-Teaching", StringComparison.OrdinalIgnoreCase))
                 throw new ValidationException("Non-Teaching staff cannot be assigned subject allocations.");
 
-            var targetSubjectName = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (!string.IsNullOrWhiteSpace(dto.SubjectName) ? dto.SubjectName : dto.SubjectCode);
-            var resolvedSubjectId = await _allocationRepository.ResolveSubjectIdAsync(
-                dto.SubjectId, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, targetSubjectName ?? string.Empty);
+            var subject = await _subjectRepository.GetByIdAsync(dto.SubjectId);
+            if (subject == null)
+                throw new NotFoundException($"Subject with ID {dto.SubjectId} not found in Subjects module.");
 
-            if (!resolvedSubjectId.HasValue || resolvedSubjectId.Value <= 0)
-                throw new ValidationException("Please provide a valid Subject ID or Subject Name.");
-
-            int finalSubjectId = resolvedSubjectId.Value;
-
-            if (await _allocationRepository.ExistsAllocationAsync(dto.StaffId, finalSubjectId))
-                throw new ConflictException($"Subject ID {finalSubjectId} is already allocated to Staff ID {dto.StaffId}.");
+            if (await _allocationRepository.ExistsAllocationAsync(dto.StaffId, dto.SubjectId))
+                throw new ConflictException($"Subject '{subject.SubjectName}' (Code: {subject.SubjectCode}) is already allocated to Staff ID {dto.StaffId}.");
 
             var allocation = new StaffSubjectAllocation
             {
                 StaffId = dto.StaffId,
-                SubjectId = finalSubjectId
+                SubjectId = dto.SubjectId,
+                CreatedAt = DateTime.UtcNow
             };
 
             var createdAllocation = await _allocationRepository.AddAsync(allocation);
             var fullAllocation = await _allocationRepository.GetByIdAsync(createdAllocation.Id) ?? createdAllocation;
             var resultDto = _mapper.Map<StaffSubjectAllocationResponseDto>(fullAllocation);
             resultDto.StaffName = $"{staff.FirstName} {staff.LastName}".Trim();
+            resultDto.FacultyName = resultDto.StaffName;
+            if (string.IsNullOrWhiteSpace(resultDto.SubjectName))
+                resultDto.SubjectName = subject.SubjectName;
+            if (string.IsNullOrWhiteSpace(resultDto.SubjectCode))
+                resultDto.SubjectCode = subject.SubjectCode;
+            if (string.IsNullOrWhiteSpace(resultDto.BoardName))
+                resultDto.BoardName = subject.BoardName;
+            if (string.IsNullOrWhiteSpace(resultDto.GroupName))
+                resultDto.GroupName = subject.GroupName;
+            if (string.IsNullOrWhiteSpace(resultDto.AcademicLevelName))
+                resultDto.AcademicLevelName = subject.AcademicLevelName;
+
             return resultDto;
         }
 
         public async Task<StaffSubjectAllocationResponseDto> UpdateSubjectAllocationAsync(int id, UpdateStaffSubjectAllocationDto dto)
         {
+            if (dto.SubjectId <= 0)
+                throw new ValidationException("Valid Subject ID is required.");
+
             var existingAllocation = await _allocationRepository.GetByIdAsync(id);
             if (existingAllocation == null)
                 throw new NotFoundException($"Subject Allocation record with ID {id} not found.");
@@ -451,24 +472,37 @@ namespace CollegeManagement.API.Services.Implementations
                     throw new ValidationException("Non-Teaching staff cannot be assigned subject allocations.");
             }
 
-            var targetSubjectName = !string.IsNullOrWhiteSpace(dto.Subject) ? dto.Subject : (!string.IsNullOrWhiteSpace(dto.SubjectName) ? dto.SubjectName : dto.SubjectCode);
-            var resolvedSubjectId = await _allocationRepository.ResolveSubjectIdAsync(
-                dto.SubjectId, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty, targetSubjectName ?? string.Empty);
+            var subject = await _subjectRepository.GetByIdAsync(dto.SubjectId);
+            if (subject == null)
+                throw new NotFoundException($"Subject with ID {dto.SubjectId} not found in Subjects module.");
 
-            if (!resolvedSubjectId.HasValue || resolvedSubjectId.Value <= 0)
-                throw new ValidationException("Please provide a valid Subject ID or Subject Name.");
+            if (await _allocationRepository.ExistsAllocationAsync(existingAllocation.StaffId, dto.SubjectId, id))
+                throw new ConflictException($"Subject '{subject.SubjectName}' (Code: {subject.SubjectCode}) is already allocated to Staff ID {existingAllocation.StaffId}.");
 
-            int finalSubjectId = resolvedSubjectId.Value;
-
-            if (await _allocationRepository.ExistsAllocationAsync(existingAllocation.StaffId, finalSubjectId, id))
-                throw new ConflictException($"Subject ID {finalSubjectId} is already allocated to Staff ID {existingAllocation.StaffId}.");
-
-            existingAllocation.SubjectId = finalSubjectId;
+            existingAllocation.SubjectId = dto.SubjectId;
+            existingAllocation.UpdatedAt = DateTime.UtcNow;
 
             await _allocationRepository.UpdateAsync(existingAllocation);
 
-            var updatedAllocation = await _allocationRepository.GetByIdAsync(id);
-            return _mapper.Map<StaffSubjectAllocationResponseDto>(updatedAllocation);
+            var updatedAllocation = await _allocationRepository.GetByIdAsync(id) ?? existingAllocation;
+            var resultDto = _mapper.Map<StaffSubjectAllocationResponseDto>(updatedAllocation);
+            if (staff != null && string.IsNullOrWhiteSpace(resultDto.StaffName))
+            {
+                resultDto.StaffName = $"{staff.FirstName} {staff.LastName}".Trim();
+                resultDto.FacultyName = resultDto.StaffName;
+            }
+            if (string.IsNullOrWhiteSpace(resultDto.SubjectName))
+                resultDto.SubjectName = subject.SubjectName;
+            if (string.IsNullOrWhiteSpace(resultDto.SubjectCode))
+                resultDto.SubjectCode = subject.SubjectCode;
+            if (string.IsNullOrWhiteSpace(resultDto.BoardName))
+                resultDto.BoardName = subject.BoardName;
+            if (string.IsNullOrWhiteSpace(resultDto.GroupName))
+                resultDto.GroupName = subject.GroupName;
+            if (string.IsNullOrWhiteSpace(resultDto.AcademicLevelName))
+                resultDto.AcademicLevelName = subject.AcademicLevelName;
+
+            return resultDto;
         }
 
         public async Task<bool> DeleteSubjectAllocationAsync(int id)

@@ -103,12 +103,8 @@ namespace CollegeManagement.API.Validators.StaffModuleValidators
             RuleFor(x => x.StaffId)
                 .GreaterThan(0).WithMessage("Valid Staff ID is required.");
 
-            RuleFor(x => x)
-                .Must(x => (x.SubjectId.HasValue && x.SubjectId.Value > 0) ||
-                           !string.IsNullOrWhiteSpace(x.Subject) ||
-                           !string.IsNullOrWhiteSpace(x.SubjectName) ||
-                           !string.IsNullOrWhiteSpace(x.SubjectCode))
-                .WithMessage("Please select or specify a Subject.");
+            RuleFor(x => x.SubjectId)
+                .GreaterThan(0).WithMessage("Valid Subject ID is required.");
         }
     }
 }
