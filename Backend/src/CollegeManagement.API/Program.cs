@@ -81,6 +81,17 @@ if (args.Contains("--test-sections-module"))
     return;
 }
 
+if (args.Contains("--test-db-all"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseMySql(connStr, ServerVersion.AutoDetect(connStr)));
+    var testApp = builder.Build();
+    var exitCode = await DbSchemaAndSpTester.RunAsync(testApp.Services);
+    Environment.Exit(exitCode);
+    return;
+}
+
 if (args.Contains("--validate-certificates-sql"))
 {
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
