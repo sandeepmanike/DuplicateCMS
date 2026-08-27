@@ -18,48 +18,73 @@ namespace CollegeManagement.API.Models
             set => SubjectId = value;
         }
 
+        [Column("BoardId")]
         public int BoardId { get; set; }
 
+        [Column("GroupId")]
         public int GroupId { get; set; }
 
+        [Column("AcademicLevelId")]
         public int AcademicLevelId { get; set; }
 
+        [NotMapped]
         public int? AcademicYearId { get; set; }
 
         [Required]
         [StringLength(150)]
+        [Column("SubjectName")]
         public string SubjectName { get; set; } = string.Empty;
 
         [Required]
         [StringLength(50)]
+        [Column("SubjectCode")]
         public string SubjectCode { get; set; } = string.Empty;
 
         [Required]
         [StringLength(50)]
+        [Column("SubjectType")]
         public string SubjectType { get; set; } = "Theory"; // Theory, Practical
 
+        [Column("Theory")]
         public bool Theory { get; set; } = true;
 
+        [Column("Practical")]
         public bool Practical { get; set; } = false;
 
+        [Column("Language")]
         public bool Language { get; set; } = false;
 
+        [Column("Elective")]
         public bool Elective { get; set; } = false;
 
+        [Column("InternalMarks")]
         public int InternalMarks { get; set; } = 0;
 
+        [Column("PracticalMarks")]
         public int PracticalMarks { get; set; } = 0;
 
+        [Column("ExternalMarks")]
         public int ExternalMarks { get; set; } = 0;
 
+        [Column("TotalMarks")]
         public int TotalMarks { get; set; } = 100;
 
+        [Column("PassingMarks")]
         public int PassingMarks { get; set; } = 35;
 
+        [Column("Department")]
+        public string? Department { get; set; }
+
+        [Column("WeeklyLectures")]
+        public int WeeklyLectures { get; set; } = 4;
+
+        [NotMapped]
         public string AcademicLevel { get; set; } = string.Empty;
 
+        [NotMapped]
         public string Board { get; set; } = string.Empty;
 
+        [NotMapped]
         public string Group { get; set; } = string.Empty;
 
         [NotMapped]
@@ -72,12 +97,19 @@ namespace CollegeManagement.API.Models
         public string AcademicLevelName => AcademicLevelNavigation?.LevelName ?? AcademicLevel ?? string.Empty;
 
         [NotMapped]
-        public int WeeklyPeriods { get; set; } = 4;
+        public int WeeklyPeriods
+        {
+            get => WeeklyLectures;
+            set => WeeklyLectures = value;
+        }
 
+        [Column("IsActive")]
         public bool IsActive { get; set; } = true;
 
+        [Column("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [Column("UpdatedAt")]
         public DateTime? UpdatedAt { get; set; }
 
         // Navigation Properties
