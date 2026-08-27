@@ -407,7 +407,7 @@ namespace CollegeManagement.API.Repositories.Implementations
         {
             var allocations = await _context.StaffSubjectAllocations
                 .Include(a => a.Staff)
-                .Where(a => a.IsActive && (subjectId == null || a.SubjectId == subjectId) && a.Staff != null && !a.Staff.IsDeleted && (sectionId == null || a.SectionId == sectionId))
+                .Where(a => a.IsActive && (subjectId == null || a.SubjectId == subjectId) && a.Staff != null && !a.Staff.IsDeleted)
                 .ToListAsync();
 
             return allocations.Select(a => new AllocatedFacultyDto

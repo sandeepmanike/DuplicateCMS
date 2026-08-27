@@ -413,7 +413,7 @@ namespace CollegeManagement.API.Services.Implementations
                     // Canonical Teaching Staff Resolution for Subject and Section
                     var eligibleStaffIds = eligibleAllocations
                         .Where(a => a.SubjectId == subject.SubjectId &&
-                                    (a.SectionId == null || a.SectionId == sec.SectionId))
+                                    true)
                         .Select(a => a.StaffId > 0 ? a.StaffId : (a.FacultyId ?? 0))
                         .Where(id => id > 0)
                         .Distinct()
@@ -421,7 +421,7 @@ namespace CollegeManagement.API.Services.Implementations
 
                     if (!eligibleStaffIds.Any())
                     {
-                        throw new InvalidOperationException($"No eligible Teaching Staff allocation found for SubjectId {subject.SubjectId} ({subject.SubjectName}) and SectionId {sec.SectionId} ({sec.SectionName}).");
+                        throw new InvalidOperationException($"No Teaching Staff is allocated to SubjectId {subject.SubjectId} ({subject.SubjectName}).");
                     }
 
                     int placedCount = 0;
