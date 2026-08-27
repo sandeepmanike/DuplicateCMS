@@ -11,6 +11,7 @@ using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
 using CollegeManagement.API.Models.Staff;
 using CollegeManagement.API.Profiles;
+using CollegeManagement.API.Repositories;
 using CollegeManagement.API.Repositories.Implementations;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Implementations;
@@ -137,6 +138,7 @@ namespace CollegeManagement.API.Tests
             // Repositories & Services
             services.AddScoped<IStaffRepository, StaffRepository>();
             services.AddScoped<IStaffSubjectAllocationRepository, StaffSubjectAllocationRepository>();
+            services.AddScoped<ISubjectRepository, SubjectRepository>();
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IDepartmentService, DepartmentService>();
             services.AddScoped<IDesignationRepository, DesignationRepository>();

@@ -8,34 +8,14 @@ namespace CollegeManagement.API.DTOs.Staff
         [Required(ErrorMessage = "Staff ID is required.")]
         public int StaffId { get; set; }
 
-        public int FacultyId
-        {
-            get => StaffId;
-            set => StaffId = value;
-        }
-
-        public int? SubjectId { get; set; }
-        public string? SubjectCode { get; set; }
-        public string? SubjectName { get; set; }
-        public string? Subject { get; set; }
-        public string? Board { get; set; }
-        public string? AcademicYear { get; set; }
-        public string? Group { get; set; }
-        public string? AcademicLevel { get; set; }
-        public string? Section { get; set; }
+        [Required(ErrorMessage = "Subject ID is required.")]
+        public int SubjectId { get; set; }
     }
 
     public class UpdateStaffSubjectAllocationDto
     {
-        public int? SubjectId { get; set; }
-        public string? SubjectCode { get; set; }
-        public string? SubjectName { get; set; }
-        public string? Subject { get; set; }
-        public string? Board { get; set; }
-        public string? AcademicYear { get; set; }
-        public string? Group { get; set; }
-        public string? AcademicLevel { get; set; }
-        public string? Section { get; set; }
+        [Required(ErrorMessage = "Subject ID is required.")]
+        public int SubjectId { get; set; }
     }
 
     public class StaffSubjectAllocationResponseDto

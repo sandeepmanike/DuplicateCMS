@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CollegeManagement.API.Models;
@@ -13,30 +12,13 @@ namespace CollegeManagement.API.Models.Staff
         [Column("Id")]
         public int Id { get; set; }
 
+        [Required]
         [Column("StaffId")]
         public int StaffId { get; set; }
 
-        [Column("FacultyId")]
-        public int? FacultyId { get; set; }
-
         [Required]
+        [Column("SubjectId")]
         public int SubjectId { get; set; }
-
-        public int? AcademicYearId { get; set; }
-
-        public int? SectionId { get; set; }
-
-        [Column("MaxWeeklyHours")]
-        public int MaxWeeklyHours { get; set; } = 0;
-
-        [NotMapped]
-        public int? WeeklyHours
-        {
-            get => MaxWeeklyHours;
-            set => MaxWeeklyHours = value ?? 0;
-        }
-
-        public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -49,10 +31,17 @@ namespace CollegeManagement.API.Models.Staff
         [ForeignKey(nameof(SubjectId))]
         public virtual Subject? Subject { get; set; }
 
-        [ForeignKey(nameof(AcademicYearId))]
-        public virtual AcademicYear? AcademicYear { get; set; }
+        // Unmapped in DB (ensures database table only contains Id, StaffId, SubjectId, CreatedAt, UpdatedAt)
+        [NotMapped]
+        public int? FacultyId { get => StaffId; set => StaffId = value ?? 0; }
 
-        [ForeignKey(nameof(SectionId))]
-        public virtual Section? Section { get; set; }
+        [NotMapped]
+        public int? AcademicYearId { get; set; }
+
+        [NotMapped]
+        public int? SectionId { get; set; }
+
+        [NotMapped]
+        public bool IsActive { get; set; } = true;
     }
 }
