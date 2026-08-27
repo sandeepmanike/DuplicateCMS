@@ -890,9 +890,9 @@ namespace CollegeManagement.API.Services.Implementations
             return await _repository.GetAcademicContextAsync(groupId, sectionId);
         }
 
-        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int periodId)
+        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int? periodId = null, string? sessionType = null)
         {
-            return await _repository.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId);
+            return await _repository.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId, sessionType);
         }
 
         public async Task<StudentMonthlyReportResponse> GetStudentMonthlyReportGridAsync(StudentMonthlyReportRequest request)

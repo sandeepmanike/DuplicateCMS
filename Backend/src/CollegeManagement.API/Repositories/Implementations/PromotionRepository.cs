@@ -354,8 +354,10 @@ SELECT
     StudentName,
     AcademicYearId,
     BoardId,
+    AcademicLevelId,
     AcademicLevel,
     GroupId,
+    SectionId,
     Section,
     Medium
 FROM Students
@@ -373,25 +375,6 @@ FOR UPDATE;
                     {
                         continue;
                     }
-
-                    /*
-                     * IMPORTANT:
-                     *
-                     * Your actual PromotionHistories table does NOT have:
-                     * FromBoardId
-                     * ToBoardId
-                     * FromMedium
-                     * ToMedium
-                     * PromotionBatchId
-                     * CreatedAt
-                     *
-                     * Therefore this INSERT only uses columns
-                     * that actually exist in your database.
-                     *
-                     * FromClassId and ToClassId are required by your
-                     * existing table. We use 0 because your current
-                     * Student model/code does not expose ClassId.
-                     */
 
                     await Connection.ExecuteAsync(
                         @"
@@ -435,11 +418,11 @@ VALUES
     @FromAcademicYearId,
     @ToAcademicYearId,
 
-    0,
-    0,
+    COALESCE(@FromClassId, 0),
+    COALESCE((SELECT AcademicLevelId FROM AcademicLevels WHERE LevelName = @ToAcademicLevel OR LevelCode = @ToAcademicLevel LIMIT 1), 0),
 
-    NULL,
-    NULL,
+    @FromSectionId,
+    (SELECT SectionId FROM Sections WHERE SectionName = @ToSection LIMIT 1),
 
     @FromGroupId,
     @ToGroupId,
@@ -468,29 +451,25 @@ VALUES
                         {
                             StudentId = studentId,
 
-                            FromAcademicYearId =
-                                (int)student.AcademicYearId,
+                            FromAcademicYearId = (int)student.AcademicYearId,
 
-                            ToAcademicYearId =
-                                request.TargetAcademicYearId,
+                            ToAcademicYearId = request.TargetAcademicYearId,
 
-                            FromGroupId =
-                                (int)student.GroupId,
+                            FromClassId = student.AcademicLevelId != null ? (int?)student.AcademicLevelId : null,
 
-                            ToGroupId =
-                                request.TargetGroupId,
+                            FromSectionId = student.SectionId != null ? (int?)student.SectionId : null,
 
-                            FromAcademicLevel =
-                                (string)student.AcademicLevel,
+                            FromGroupId = (int)student.GroupId,
 
-                            ToAcademicLevel =
-                                request.TargetAcademicLevel,
+                            ToGroupId = request.TargetGroupId,
 
-                            FromSection =
-                                (string)student.Section,
+                            FromAcademicLevel = (string)student.AcademicLevel,
 
-                            ToSection =
-                                request.TargetSection,
+                            ToAcademicLevel = request.TargetAcademicLevel,
+
+                            FromSection = (string)student.Section,
+
+                            ToSection = request.TargetSection,
 
                             PromotedBy = "System",
 
