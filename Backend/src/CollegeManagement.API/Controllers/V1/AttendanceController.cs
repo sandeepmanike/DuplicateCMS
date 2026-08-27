@@ -370,6 +370,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Auto-derives assigned Subject & Faculty (or Class Teacher) for specified Date, Group, Section, Period, or SessionType.
         /// </summary>
         [HttpGet("faculty-subject")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetFacultySubjectAllocation(
             [FromQuery] DateTime date,
             [FromQuery] int groupId,

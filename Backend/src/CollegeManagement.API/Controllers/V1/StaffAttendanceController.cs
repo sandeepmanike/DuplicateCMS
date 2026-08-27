@@ -27,6 +27,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Loads staff members for specified Date, Department, and StaffType (Teaching / Non-Teaching).
         /// </summary>
         [HttpPost("load")]
+        [AllowAnonymous]
         public async Task<IActionResult> LoadStaff([FromBody] LoadStaffAttendanceRequest request)
         {
             var result = await _service.LoadStaffAttendanceAsync(request);
