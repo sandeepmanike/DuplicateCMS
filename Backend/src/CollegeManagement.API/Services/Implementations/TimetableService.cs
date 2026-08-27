@@ -351,10 +351,9 @@ namespace CollegeManagement.API.Services.Implementations
 
             var eligibleAllocations = await _context.StaffSubjectAllocations
                 .Include(a => a.Staff)
-                .Where(a => a.IsActive &&
-                            (a.AcademicYearId == null || a.AcademicYearId == 0 || a.AcademicYearId == dto.AcademicYearId || a.AcademicYearId == 1) &&
-                            a.Staff != null &&
-                            a.Staff.StaffType == "Teaching")
+                .Where(a => a.Staff != null &&
+                            a.Staff.StaffType == "Teaching" &&
+                            !a.Staff.IsDeleted)
                 .ToListAsync();
 
             var otherSectionsTimetables = await _context.Timetables
@@ -414,7 +413,7 @@ namespace CollegeManagement.API.Services.Implementations
                     var eligibleStaffIds = eligibleAllocations
                         .Where(a => a.SubjectId == subject.SubjectId &&
                                     true)
-                        .Select(a => a.StaffId > 0 ? a.StaffId : (a.FacultyId ?? 0))
+                        .Select(a => a.StaffId)
                         .Where(id => id > 0)
                         .Distinct()
                         .ToList();

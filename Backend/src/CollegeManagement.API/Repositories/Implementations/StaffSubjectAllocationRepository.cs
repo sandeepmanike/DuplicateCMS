@@ -52,11 +52,17 @@ namespace CollegeManagement.API.Repositories.Implementations
                     SELECT 
                         a.Id, a.StaffId, a.SubjectId, a.CreatedAt, a.UpdatedAt,
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
-                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType, sub.Board, sub.`Group`, sub.AcademicLevel,
-                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive
+                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
+                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
+                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(g.GroupName, '') AS `Group`,
+                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
                     FROM StaffSubjectAllocations a
                     INNER JOIN Staffs s ON s.Id = a.StaffId
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
+                    LEFT JOIN Boards b ON b.BoardId = sub.BoardId
+                    LEFT JOIN `Groups` g ON g.GroupId = sub.GroupId
+                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = sub.AcademicLevelId
                     WHERE a.Id = @id;";
 
                 var list = await Connection.QueryAsync<StaffSubjectAllocation, Staff, Subject, StaffSubjectAllocation>(
@@ -115,11 +121,17 @@ namespace CollegeManagement.API.Repositories.Implementations
                     SELECT 
                         a.Id, a.StaffId, a.SubjectId, a.CreatedAt, a.UpdatedAt,
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
-                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType, sub.Board, sub.`Group`, sub.AcademicLevel,
-                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive
+                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
+                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
+                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(g.GroupName, '') AS `Group`,
+                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
                     FROM StaffSubjectAllocations a
                     INNER JOIN Staffs s ON s.Id = a.StaffId
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
+                    LEFT JOIN Boards b ON b.BoardId = sub.BoardId
+                    LEFT JOIN `Groups` g ON g.GroupId = sub.GroupId
+                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = sub.AcademicLevelId
                     WHERE a.StaffId = @staffId
                     ORDER BY a.Id DESC;";
 
@@ -181,11 +193,17 @@ namespace CollegeManagement.API.Repositories.Implementations
                     SELECT 
                         a.Id, a.StaffId, a.SubjectId, a.CreatedAt, a.UpdatedAt,
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
-                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType, sub.Board, sub.`Group`, sub.AcademicLevel,
-                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive
+                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
+                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
+                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(g.GroupName, '') AS `Group`,
+                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
                     FROM StaffSubjectAllocations a
                     INNER JOIN Staffs s ON s.Id = a.StaffId
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
+                    LEFT JOIN Boards b ON b.BoardId = sub.BoardId
+                    LEFT JOIN `Groups` g ON g.GroupId = sub.GroupId
+                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = sub.AcademicLevelId
                     WHERE a.SubjectId = @subjectId
                     ORDER BY a.Id DESC;";
 
@@ -207,6 +225,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 return await _context.StaffSubjectAllocations
                     .Include(a => a.Staff)
                     .Include(a => a.Subject)
+                        .ThenInclude(s => s.BoardNavigation)
+                    .Include(a => a.Subject)
+                        .ThenInclude(s => s.GroupNavigation)
+                    .Include(a => a.Subject)
+                        .ThenInclude(s => s.AcademicLevelNavigation)
                     .Where(a => a.SubjectId == subjectId)
                     .OrderByDescending(a => a.Id)
                     .ToListAsync();

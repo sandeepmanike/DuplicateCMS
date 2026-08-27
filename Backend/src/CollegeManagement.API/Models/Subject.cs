@@ -27,7 +27,7 @@ namespace CollegeManagement.API.Models
         [Column("AcademicLevelId")]
         public int AcademicLevelId { get; set; }
 
-        [NotMapped]
+        [Column("AcademicYearId")]
         public int? AcademicYearId { get; set; }
 
         [Required]
@@ -72,20 +72,27 @@ namespace CollegeManagement.API.Models
         [Column("PassingMarks")]
         public int PassingMarks { get; set; } = 35;
 
-        [Column("Department")]
+        [Column("AcademicLevel")]
+        public string? AcademicLevel { get; set; }
+
+        [Column("Board")]
+        public string? Board { get; set; }
+
+        [NotMapped]
+        public string? Group { get; set; }
+
+        [NotMapped]
         public string? Department { get; set; }
 
-        [Column("WeeklyLectures")]
+        [NotMapped]
         public int WeeklyLectures { get; set; } = 4;
 
         [NotMapped]
-        public string AcademicLevel { get; set; } = string.Empty;
-
-        [NotMapped]
-        public string Board { get; set; } = string.Empty;
-
-        [NotMapped]
-        public string Group { get; set; } = string.Empty;
+        public int WeeklyPeriods
+        {
+            get => WeeklyLectures;
+            set => WeeklyLectures = value;
+        }
 
         [NotMapped]
         public string BoardName => BoardNavigation?.BoardName ?? Board ?? string.Empty;
@@ -95,13 +102,6 @@ namespace CollegeManagement.API.Models
 
         [NotMapped]
         public string AcademicLevelName => AcademicLevelNavigation?.LevelName ?? AcademicLevel ?? string.Empty;
-
-        [NotMapped]
-        public int WeeklyPeriods
-        {
-            get => WeeklyLectures;
-            set => WeeklyLectures = value;
-        }
 
         [Column("IsActive")]
         public bool IsActive { get; set; } = true;

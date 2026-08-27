@@ -121,6 +121,7 @@ namespace CollegeManagement.API.DTOs.Timetable
         public int AcademicLevelId { get; set; }
         public string LevelCode { get; set; } = string.Empty;
         public string LevelName { get; set; } = string.Empty;
+        public string AcademicLevelName { get => LevelName; set => LevelName = value; }
 
         public int AcademicYearId { get; set; }
         public string AcademicYearName { get; set; } = string.Empty;
