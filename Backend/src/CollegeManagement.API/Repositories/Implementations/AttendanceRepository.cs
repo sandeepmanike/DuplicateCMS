@@ -417,7 +417,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             // Fallback: Default active teaching staff
             var subDef = await _context.Subjects.FirstOrDefaultAsync(s => s.IsActive);
-            var facDef = await _context.Faculties.FirstOrDefaultAsync(f => !f.IsDeleted && f.Status == "Active" && f.FacultyType.ToLower() == "teaching");
+            var facDef = await _context.Staffs.FirstOrDefaultAsync(f => !f.IsDeleted && f.Status == "Active");
 
             if (subDef == null || facDef == null) return null;
 
@@ -425,7 +425,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             {
                 SubjectId = subDef.SubjectId,
                 SubjectName = subDef.SubjectName,
-                FacultyId = facDef.FacultyId,
+                FacultyId = facDef.Id,
                 FacultyName = $"{facDef.FirstName} {facDef.LastName}".Trim(),
                 PeriodId = reqPeriodId,
                 PeriodName = $"Period {reqPeriodId}"

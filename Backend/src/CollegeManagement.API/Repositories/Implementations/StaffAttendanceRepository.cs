@@ -35,17 +35,17 @@ namespace CollegeManagement.API.Repositories.Implementations
                 targetDate = parsedDt.Date;
             }
 
-            // Fetch faculty members filtered by staff type and optional department
-            var query = _context.Faculties
+            // Fetch staff members filtered by staff type and optional department
+            var query = _context.Staffs
                 .Where(f => !f.IsDeleted && f.Status == "Active");
 
             if (request.StaffType == StaffType.Teaching)
             {
-                query = query.Where(f => f.FacultyType.ToLower() == "teaching");
+                query = query.Where(f => f.FacultyType == null || f.FacultyType.ToLower() == "teaching" || (f.StaffType != null && f.StaffType.ToLower() == "teaching"));
             }
             else
             {
-                query = query.Where(f => f.FacultyType.ToLower() != "teaching");
+                query = query.Where(f => (f.FacultyType != null && f.FacultyType.ToLower() != "teaching") || (f.StaffType != null && f.StaffType.ToLower() != "teaching"));
             }
 
             if (request.DepartmentId.HasValue && request.DepartmentId.Value > 0)
@@ -171,7 +171,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<StaffDetailsResponse?> GetStaffDetailsAsync(int facultyId, DateTime date)
         {
-            var faculty = await _context.Faculties
+            var faculty = await _context.Staffs
                 .FirstOrDefaultAsync(f => f.Id == facultyId);
 
             if (faculty == null) return null;
@@ -188,12 +188,12 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             return new StaffDetailsResponse
             {
-                FacultyId = faculty.FacultyId,
-                EmployeeId = string.IsNullOrEmpty(faculty.EmployeeId) ? $"EMP{faculty.FacultyId:D3}" : faculty.EmployeeId,
+                FacultyId = faculty.Id,
+                EmployeeId = string.IsNullOrEmpty(faculty.EmployeeId) ? $"EMP{faculty.Id:D3}" : faculty.EmployeeId,
                 StaffName = $"{faculty.FirstName} {faculty.LastName}".Trim(),
                 DepartmentName = !string.IsNullOrEmpty(faculty.Department) ? faculty.Department : "General",
                 DesignationName = !string.IsNullOrEmpty(faculty.Designation) ? faculty.Designation : "Staff",
-                StaffType = faculty.FacultyType.ToLower() == "teaching" ? StaffType.Teaching : StaffType.NonTeaching,
+                StaffType = (faculty.FacultyType == null || faculty.FacultyType.ToLower() == "teaching") ? StaffType.Teaching : StaffType.NonTeaching,
                 TodayStatus = status,
                 InTime = attendance?.InTime,
                 OutTime = attendance?.OutTime,
@@ -225,16 +225,16 @@ namespace CollegeManagement.API.Repositories.Implementations
                 });
             }
 
-            var facultyQuery = _context.Faculties
+            var facultyQuery = _context.Staffs
                 .Where(f => !f.IsDeleted && f.Status == "Active");
 
             if (request.StaffType == StaffType.Teaching)
             {
-                facultyQuery = facultyQuery.Where(f => f.FacultyType.ToLower() == "teaching");
+                facultyQuery = facultyQuery.Where(f => f.FacultyType == null || f.FacultyType.ToLower() == "teaching" || (f.StaffType != null && f.StaffType.ToLower() == "teaching"));
             }
             else
             {
-                facultyQuery = facultyQuery.Where(f => f.FacultyType.ToLower() != "teaching");
+                facultyQuery = facultyQuery.Where(f => (f.FacultyType != null && f.FacultyType.ToLower() != "teaching") || (f.StaffType != null && f.StaffType.ToLower() != "teaching"));
             }
 
             if (request.DepartmentId.HasValue && request.DepartmentId.Value > 0)
@@ -244,7 +244,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             if (request.FacultyId.HasValue && request.FacultyId.Value > 0)
             {
-                facultyQuery = facultyQuery.Where(f => f.FacultyId == request.FacultyId.Value);
+                facultyQuery = facultyQuery.Where(f => f.Id == request.FacultyId.Value);
             }
 
             var facultyList = await facultyQuery.OrderBy(f => f.FirstName).ToListAsync();
