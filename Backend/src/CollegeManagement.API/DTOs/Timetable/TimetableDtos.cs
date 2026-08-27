@@ -1,21 +1,52 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using CollegeManagement.API.Models.Timetable;
 
 namespace CollegeManagement.API.DTOs.Timetable
 {
     public class CreateTimetableDto
     {
+        [Required]
         public int BoardId { get; set; }
+
+        [Required]
         public int AcademicLevelId { get; set; }
+
+        [Required]
         public int AcademicYearId { get; set; }
+
+        [Required]
         public int GroupId { get; set; }
+
+        public int? ProgramId { get; set; }
+
+        [Required]
         public int SectionId { get; set; }
-        public int DayOfWeek { get; set; } // 1=Monday .. 6=Saturday
+
+        [Required]
+        [Range(1, 7)]
+        public int DayOfWeek { get; set; }
+
+        [Required]
         public int PeriodId { get; set; }
+
+        [Required]
         public int SubjectId { get; set; }
-        public int FacultyId { get; set; }
+
+        public int StaffId { get; set; }
+
+        public int FacultyId
+        {
+            get => StaffId;
+            set => StaffId = value;
+        }
+
+        [Required]
         public int RoomId { get; set; }
+
         public bool IsPublished { get; set; } = false;
+
         public string? Remarks { get; set; }
     }
 
@@ -25,11 +56,17 @@ namespace CollegeManagement.API.DTOs.Timetable
         public int AcademicLevelId { get; set; }
         public int AcademicYearId { get; set; }
         public int GroupId { get; set; }
+        public int? ProgramId { get; set; }
         public int SectionId { get; set; }
         public int DayOfWeek { get; set; }
         public int PeriodId { get; set; }
         public int SubjectId { get; set; }
-        public int FacultyId { get; set; }
+        public int StaffId { get; set; }
+        public int FacultyId
+        {
+            get => StaffId;
+            set => StaffId = value;
+        }
         public int RoomId { get; set; }
         public bool IsPublished { get; set; } = false;
         public string? Remarks { get; set; }
@@ -50,9 +87,24 @@ namespace CollegeManagement.API.DTOs.Timetable
 
     public class AllocatedFacultyDto
     {
-        public int FacultyId { get; set; }
-        public string FacultyEmployeeId { get; set; } = string.Empty;
-        public string FacultyName { get; set; } = string.Empty;
+        public int StaffId { get; set; }
+        public int FacultyId
+        {
+            get => StaffId;
+            set => StaffId = value;
+        }
+        public string StaffEmployeeId { get; set; } = string.Empty;
+        public string FacultyEmployeeId
+        {
+            get => StaffEmployeeId;
+            set => StaffEmployeeId = value;
+        }
+        public string StaffName { get; set; } = string.Empty;
+        public string FacultyName
+        {
+            get => StaffName;
+            set => StaffName = value;
+        }
         public string Email { get; set; } = string.Empty;
         public string Mobile { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
@@ -74,6 +126,8 @@ namespace CollegeManagement.API.DTOs.Timetable
         public string AcademicYearName { get; set; } = string.Empty;
 
         public int GroupId { get; set; }
+        public int? ProgramId { get; set; }
+        public string? ProgramName { get; set; }
         public string GroupCode { get; set; } = string.Empty;
         public string GroupName { get; set; } = string.Empty;
 
@@ -93,9 +147,26 @@ namespace CollegeManagement.API.DTOs.Timetable
         public string SubjectCode { get; set; } = string.Empty;
         public string SubjectName { get; set; } = string.Empty;
 
-        public int FacultyId { get; set; }
-        public string FacultyEmployeeId { get; set; } = string.Empty;
-        public string FacultyName { get; set; } = string.Empty;
+        public int StaffId { get; set; }
+        public int FacultyId
+        {
+            get => StaffId;
+            set => StaffId = value;
+        }
+
+        public string StaffEmployeeId { get; set; } = string.Empty;
+        public string FacultyEmployeeId
+        {
+            get => StaffEmployeeId;
+            set => StaffEmployeeId = value;
+        }
+
+        public string StaffName { get; set; } = string.Empty;
+        public string FacultyName
+        {
+            get => StaffName;
+            set => StaffName = value;
+        }
 
         public int RoomId { get; set; }
         public string RoomCode { get; set; } = string.Empty;
@@ -116,9 +187,15 @@ namespace CollegeManagement.API.DTOs.Timetable
         public int? AcademicLevelId { get; set; }
         public int? AcademicYearId { get; set; }
         public int? GroupId { get; set; }
+        public int? ProgramId { get; set; }
         public int? SectionId { get; set; }
         public int? DayOfWeek { get; set; }
-        public int? FacultyId { get; set; }
+        public int? StaffId { get; set; }
+        public int? FacultyId
+        {
+            get => StaffId;
+            set => StaffId = value;
+        }
         public int? RoomId { get; set; }
         public bool? IsPublished { get; set; }
         public int? ApprovalStatus { get; set; }
@@ -132,6 +209,7 @@ namespace CollegeManagement.API.DTOs.Timetable
         public int AcademicLevelId { get; set; }
         public int AcademicYearId { get; set; }
         public int GroupId { get; set; }
+        public int? ProgramId { get; set; }
 
         public List<int> SectionIds { get; set; } = new List<int>();
 
@@ -189,8 +267,18 @@ namespace CollegeManagement.API.DTOs.Timetable
         public string PeriodName { get; set; } = string.Empty;
         public int SubjectId { get; set; }
         public string SubjectName { get; set; } = string.Empty;
-        public int FacultyId { get; set; }
-        public string FacultyName { get; set; } = string.Empty;
+        public int StaffId { get; set; }
+        public int FacultyId
+        {
+            get => StaffId;
+            set => StaffId = value;
+        }
+        public string StaffName { get; set; } = string.Empty;
+        public string FacultyName
+        {
+            get => StaffName;
+            set => StaffName = value;
+        }
         public int RoomId { get; set; }
         public string RoomName { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;

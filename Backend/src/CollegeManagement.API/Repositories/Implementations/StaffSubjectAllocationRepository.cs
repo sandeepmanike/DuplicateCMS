@@ -225,7 +225,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     "sp_AssignStaffSubject",
                     new
                     {
-                        p_StaffId = allocation.StaffId > 0 ? allocation.StaffId : allocation.FacultyId,
+                        p_StaffId = allocation.StaffId > 0 ? allocation.StaffId : (allocation.FacultyId ?? 0),
                         p_SubjectId = allocation.SubjectId
                     },
                     commandType: CommandType.StoredProcedure);
@@ -235,7 +235,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             catch
             {
-                int sid = allocation.StaffId > 0 ? allocation.StaffId : allocation.FacultyId;
+                int sid = allocation.StaffId > 0 ? allocation.StaffId : (allocation.FacultyId ?? 0);
                 var insertSql = @"
                     INSERT INTO StaffSubjectAllocations (StaffId, FacultyId, SubjectId, CreatedAt)
                     VALUES (@sid, @sid, @subjectId, UTC_TIMESTAMP());
@@ -249,7 +249,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task UpdateAsync(StaffSubjectAllocation allocation)
         {
-            int sid = allocation.StaffId > 0 ? allocation.StaffId : allocation.FacultyId;
+            int sid = allocation.StaffId > 0 ? allocation.StaffId : (allocation.FacultyId ?? 0);
             var sql = @"
                 UPDATE StaffSubjectAllocations 
                 SET StaffId = @sid, FacultyId = @sid, SubjectId = @subjectId, UpdatedAt = UTC_TIMESTAMP()

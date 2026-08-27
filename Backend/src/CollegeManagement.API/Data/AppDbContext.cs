@@ -954,6 +954,7 @@ namespace CollegeManagement.API.Data
                 entity.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(x => x.Section).WithMany().HasForeignKey(x => x.SectionId).OnDelete(DeleteBehavior.Restrict);
+                entity.Property(x => x.ProgramId).IsRequired(false);
             });
 
             modelBuilder.Entity<TimetableBackupSlot>(entity =>
@@ -966,9 +967,11 @@ namespace CollegeManagement.API.Data
                 entity.HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(x => x.Section).WithMany().HasForeignKey(x => x.SectionId).OnDelete(DeleteBehavior.Restrict);
+                entity.Property(x => x.ProgramId).IsRequired(false);
+                entity.Property(x => x.StaffId).HasColumnName("StaffId");
                 entity.HasOne(x => x.Period).WithMany().HasForeignKey(x => x.PeriodId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
-                entity.HasOne(x => x.Faculty).WithMany().HasForeignKey(x => x.FacultyId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(x => x.Staff).WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(x => x.Room).WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
             });
             #endregion
@@ -1046,7 +1049,7 @@ namespace CollegeManagement.API.Data
             modelBuilder.Entity<Staff>(entity =>
             {
                 entity.HasOne(s => s.DesignationRef)
-                    .WithMany()
+                    .WithMany(d => d.Staffs)
                     .HasForeignKey(s => s.DesignationId)
                     .OnDelete(DeleteBehavior.Restrict);
 

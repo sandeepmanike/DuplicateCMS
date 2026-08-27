@@ -1,7 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using CollegeManagement.API.Models.Faculty;
+using CollegeManagement.API.Models.Staff;
 
 namespace CollegeManagement.API.Models.Timetable
 {
@@ -26,6 +26,8 @@ namespace CollegeManagement.API.Models.Timetable
         [Required]
         public int SectionId { get; set; }
 
+        public int? ProgramId { get; set; }
+
         [Required]
         [Range(1, 7)]
         public int DayOfWeek { get; set; }
@@ -37,7 +39,7 @@ namespace CollegeManagement.API.Models.Timetable
         public int SubjectId { get; set; }
 
         [Required]
-        public int FacultyId { get; set; }
+        public int StaffId { get; set; }
 
         [Required]
         public int RoomId { get; set; }
@@ -75,8 +77,8 @@ namespace CollegeManagement.API.Models.Timetable
         [ForeignKey(nameof(SubjectId))]
         public virtual Subject? Subject { get; set; }
 
-        [ForeignKey(nameof(FacultyId))]
-        public virtual Models.Faculty.Faculty? Faculty { get; set; }
+        [ForeignKey(nameof(StaffId))]
+        public virtual Staff.Staff? Staff { get; set; }
 
         [ForeignKey(nameof(RoomId))]
         public virtual Room? Room { get; set; }

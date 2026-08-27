@@ -8,8 +8,15 @@ namespace CollegeManagement.API.Models
     public class Subject
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        [Column("SubjectId")]
         public int SubjectId { get; set; }
+
+        [NotMapped]
+        public int Id
+        {
+            get => SubjectId;
+            set => SubjectId = value;
+        }
 
         public int BoardId { get; set; }
 
@@ -17,44 +24,68 @@ namespace CollegeManagement.API.Models
 
         public int AcademicLevelId { get; set; }
 
-        [NotMapped]
-        public string? BoardName { get; set; }
+        public int? AcademicYearId { get; set; }
 
-        [NotMapped]
-        public string? GroupName { get; set; }
-
-        [NotMapped]
-        public string? AcademicLevelName { get; set; }
-
-        [Required, MaxLength(150)]
+        [Required]
+        [StringLength(150)]
         public string SubjectName { get; set; } = string.Empty;
 
-        [Required, MaxLength(50)]
+        [Required]
+        [StringLength(50)]
         public string SubjectCode { get; set; } = string.Empty;
 
-        [Required, MaxLength(50)]
-        public string SubjectType { get; set; } = string.Empty;
+        [Required]
+        [StringLength(50)]
+        public string SubjectType { get; set; } = "Theory"; // Theory, Practical
 
-        public bool Theory { get; set; }
-        public bool Practical { get; set; }
-        public bool Language { get; set; }
-        public bool Elective { get; set; }
-        public int InternalMarks { get; set; }
-        public int PracticalMarks { get; set; }
-        public int ExternalMarks { get; set; }
-        public int TotalMarks { get; set; }
-        public int PassingMarks { get; set; }
+        public bool Theory { get; set; } = true;
+
+        public bool Practical { get; set; } = false;
+
+        public bool Language { get; set; } = false;
+
+        public bool Elective { get; set; } = false;
+
+        public int InternalMarks { get; set; } = 0;
+
+        public int PracticalMarks { get; set; } = 0;
+
+        public int ExternalMarks { get; set; } = 0;
+
+        public int TotalMarks { get; set; } = 100;
+
+        public int PassingMarks { get; set; } = 35;
+
+        public string AcademicLevel { get; set; } = string.Empty;
+
+        public string Board { get; set; } = string.Empty;
+
+        [NotMapped]
+        public string BoardName => BoardNavigation?.BoardName ?? Board ?? string.Empty;
+
+        [NotMapped]
+        public string GroupName => GroupNavigation?.GroupName ?? string.Empty;
+
+        [NotMapped]
+        public string AcademicLevelName => AcademicLevelNavigation?.LevelName ?? AcademicLevel ?? string.Empty;
+
+        [NotMapped]
+        public int WeeklyPeriods { get; set; } = 4;
+
         public bool IsActive { get; set; } = true;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
         public DateTime? UpdatedAt { get; set; }
 
+        // Navigation Properties
         [ForeignKey(nameof(BoardId))]
         public virtual Board? BoardNavigation { get; set; }
 
-        [ForeignKey(nameof(GroupId))]
-        public virtual Group? GroupNavigation { get; set; }
-
         [ForeignKey(nameof(AcademicLevelId))]
         public virtual AcademicLevel? AcademicLevelNavigation { get; set; }
+
+        [ForeignKey(nameof(GroupId))]
+        public virtual Group? GroupNavigation { get; set; }
     }
 }

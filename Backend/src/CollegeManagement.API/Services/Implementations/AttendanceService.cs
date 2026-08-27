@@ -99,7 +99,7 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
                 }
-                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.FacultyId != request.FacultyId)
+                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
                 {
                     throw new ValidationException("Timetable structural elements (Section, Subject, Faculty) do not match request parameters.");
                 }
@@ -197,7 +197,7 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
                 }
-                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.FacultyId != request.FacultyId)
+                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
                 {
                     throw new ValidationException("Timetable structural elements do not match request parameters.");
                 }

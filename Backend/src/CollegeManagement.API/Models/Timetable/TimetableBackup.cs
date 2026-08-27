@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -25,6 +25,8 @@ namespace CollegeManagement.API.Models.Timetable
 
         [Required]
         public int SectionId { get; set; }
+
+        public int? ProgramId { get; set; }
 
         public DateTime ArchivedAt { get; set; } = DateTime.UtcNow;
 

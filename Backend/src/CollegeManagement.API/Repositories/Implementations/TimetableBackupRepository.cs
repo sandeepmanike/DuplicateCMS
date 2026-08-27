@@ -70,7 +70,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
                 var periodMap = await _context.Periods.ToDictionaryAsync(p => p.PeriodId, p => p);
                 var subjectMap = await _context.Subjects.ToDictionaryAsync(s => s.SubjectId, s => s);
-                var facultyMap = await _context.Faculties.ToDictionaryAsync(f => f.Id, f => f);
+                var staffMap = await _context.Staffs.ToDictionaryAsync(f => f.Id, f => f);
                 var roomMap = await _context.Rooms.ToDictionaryAsync(r => r.RoomId, r => r);
 
                 var slotDtos = entity.Slots.Select(s => new TimetableResponseDto
@@ -95,9 +95,10 @@ namespace CollegeManagement.API.Repositories.Implementations
                     SubjectId = s.SubjectId,
                     SubjectCode = subjectMap.TryGetValue(s.SubjectId, out var sub) ? sub.SubjectCode : string.Empty,
                     SubjectName = subjectMap.TryGetValue(s.SubjectId, out var subName) ? subName.SubjectName : string.Empty,
-                    FacultyId = s.FacultyId,
-                    FacultyEmployeeId = facultyMap.TryGetValue(s.FacultyId, out var fac) ? fac.EmployeeId : string.Empty,
-                    FacultyName = facultyMap.TryGetValue(s.FacultyId, out var facName) ? $"{facName.FirstName} {facName.LastName}" : string.Empty,
+                    StaffId = s.StaffId,
+                    
+                    StaffName = staffMap.TryGetValue(s.StaffId, out var stf) ? $"{stf.FirstName} {stf.LastName}" : string.Empty,
+                    StaffEmployeeId = staffMap.TryGetValue(s.StaffId, out var stfe) ? stfe.EmployeeId : string.Empty,
                     RoomId = s.RoomId,
                     RoomCode = roomMap.TryGetValue(s.RoomId, out var rmCode) ? rmCode.RoomCode : string.Empty,
                     RoomName = roomMap.TryGetValue(s.RoomId, out var rmName) ? rmName.RoomName : string.Empty,
@@ -183,7 +184,14 @@ namespace CollegeManagement.API.Repositories.Implementations
                 await _context.TimetableBackups.AddAsync(newBackup);
                 await _context.SaveChangesAsync();
 
-                var backupSlots = currentSlots.Select(s => new TimetableBackupSlot
+                var backupSlots = currentSlots.Select(s =>
+                {
+                    if (s.StaffId <= 0)
+                    {
+                        throw new InvalidOperationException($"Cannot create timetable backup because TimetableId {s.Id} has an invalid StaffId ({s.StaffId}).");
+                    }
+
+                    return new TimetableBackupSlot
                 {
                     TimetableBackupId = newBackup.Id,
                     OriginalTimetableId = s.Id,
@@ -195,12 +203,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     DayOfWeek = s.DayOfWeek,
                     PeriodId = s.PeriodId,
                     SubjectId = s.SubjectId,
-                    FacultyId = s.FacultyId,
+                    StaffId = s.StaffId,
                     RoomId = s.RoomId,
                     IsPublished = s.IsPublished,
                     ApprovalStatus = s.ApprovalStatus,
                     Remarks = s.Remarks,
                     CreatedAt = DateTime.UtcNow
+                    };
                 }).ToList();
 
                 await _context.TimetableBackupSlots.AddRangeAsync(backupSlots);
@@ -265,7 +274,14 @@ namespace CollegeManagement.API.Repositories.Implementations
                     await _context.TimetableBackups.AddAsync(newBackup);
                     await _context.SaveChangesAsync();
 
-                    var newBackupSlots = currentSlots.Select(s => new TimetableBackupSlot
+                    var newBackupSlots = currentSlots.Select(s =>
+                    {
+                        if (s.StaffId <= 0)
+                        {
+                            throw new InvalidOperationException($"Cannot create timetable backup because TimetableId {s.Id} has an invalid StaffId ({s.StaffId}).");
+                        }
+
+                        return new TimetableBackupSlot
                     {
                         TimetableBackupId = newBackup.Id,
                         OriginalTimetableId = s.Id,
@@ -277,12 +293,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                         DayOfWeek = s.DayOfWeek,
                         PeriodId = s.PeriodId,
                         SubjectId = s.SubjectId,
-                        FacultyId = s.FacultyId,
+                        StaffId = s.StaffId,
                         RoomId = s.RoomId,
                         IsPublished = s.IsPublished,
                         ApprovalStatus = s.ApprovalStatus,
                         Remarks = s.Remarks,
                         CreatedAt = DateTime.UtcNow
+                        };
                     }).ToList();
 
                     await _context.TimetableBackupSlots.AddRangeAsync(newBackupSlots);
@@ -299,7 +316,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     DayOfWeek = s.DayOfWeek,
                     PeriodId = s.PeriodId,
                     SubjectId = s.SubjectId,
-                    FacultyId = s.FacultyId,
+                    StaffId = s.StaffId,
                     RoomId = s.RoomId,
                     IsPublished = false,
                     ApprovalStatus = TimetableApprovalStatus.Draft,

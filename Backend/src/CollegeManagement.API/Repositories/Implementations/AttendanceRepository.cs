@@ -344,21 +344,21 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             var ttSlot = await _context.Timetables
                 .Include(t => t.Subject)
-                .Include(t => t.Faculty)
+                .Include(t => t.Staff)
                 .Include(t => t.Period)
                 .FirstOrDefaultAsync(t => t.GroupId == groupId
                                           && t.SectionId == sectionId
                                           && t.PeriodId == periodId
                                           && t.DayOfWeek == dayOfWeekInt);
 
-            if (ttSlot != null && ttSlot.Subject != null && ttSlot.Faculty != null)
+            if (ttSlot != null && ttSlot.Subject != null && ttSlot.Staff != null)
             {
                 return new FacultySubjectDerivationResponse
                 {
                     SubjectId = ttSlot.SubjectId,
                     SubjectName = ttSlot.Subject.SubjectName,
-                    FacultyId = ttSlot.FacultyId,
-                    FacultyName = $"{ttSlot.Faculty.FirstName} {ttSlot.Faculty.LastName}".Trim(),
+                    FacultyId = ttSlot.StaffId,
+                    FacultyName = $"{ttSlot.Staff.FirstName} {ttSlot.Staff.LastName}".Trim(),
                     PeriodId = periodId,
                     PeriodName = ttSlot.Period?.PeriodName ?? $"Period {periodId}"
                 };

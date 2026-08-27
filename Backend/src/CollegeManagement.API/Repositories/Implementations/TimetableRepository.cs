@@ -53,11 +53,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_AcademicLevelId = queryParams.AcademicLevelId,
                         p_AcademicYearId = queryParams.AcademicYearId,
                         p_GroupId = queryParams.GroupId,
+                        p_ProgramId = queryParams.ProgramId,
                         p_SectionId = queryParams.SectionId,
                         p_DayOfWeek = queryParams.DayOfWeek,
-                        p_FacultyId = queryParams.FacultyId,
+                        p_StaffId = queryParams.StaffId,
                         p_RoomId = queryParams.RoomId,
-                        p_IsPublished = queryParams.IsPublished
+                        p_IsPublished = queryParams.IsPublished.HasValue ? (queryParams.IsPublished.Value ? 1 : 0) : (int?)null,
+                        p_Status = (string?)null
                     },
                     commandType: CommandType.StoredProcedure);
 
@@ -78,7 +80,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     (queryParams.GroupId == null || t.GroupId == queryParams.GroupId) &&
                     (queryParams.SectionId == null || t.SectionId == queryParams.SectionId) &&
                     (queryParams.DayOfWeek == null || t.DayOfWeek == queryParams.DayOfWeek) &&
-                    (queryParams.FacultyId == null || t.FacultyId == queryParams.FacultyId) &&
+                    (queryParams.StaffId == null || t.StaffId == queryParams.StaffId) &&
                     (queryParams.RoomId == null || t.RoomId == queryParams.RoomId) &&
                     (queryParams.IsPublished == null || t.IsPublished == queryParams.IsPublished));
 
@@ -102,48 +104,109 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_AcademicLevelId = (int?)null,
                         p_AcademicYearId = academicYearId,
                         p_GroupId = (int?)null,
+                        p_ProgramId = (int?)null,
                         p_SectionId = (int?)null,
                         p_DayOfWeek = (int?)null,
-                        p_FacultyId = facultyId,
+                        p_StaffId = facultyId,
                         p_RoomId = (int?)null,
-                        p_IsPublished = 1
+                        p_IsPublished = 1,
+                        p_Status = (string?)null
                     },
                     commandType: CommandType.StoredProcedure);
             }
             else
             {
-                return await GetInMemoryTimetableDtosAsync(t => t.FacultyId == facultyId && (academicYearId == null || t.AcademicYearId == academicYearId) && t.IsPublished);
+                return await GetInMemoryTimetableDtosAsync(t => t.StaffId == facultyId && (academicYearId == null || t.AcademicYearId == academicYearId) && t.IsPublished);
             }
         }
 
         public async Task<IEnumerable<TimetableResponseDto>> GetBySectionIdAsync(int sectionId, int? academicYearId = null, bool? isPublished = null)
         {
+            int? resolvedProgramId = null;
+            if (sectionId > 0)
+            {
+                resolvedProgramId = await _context.Sections
+                    .Where(s => s.SectionId == sectionId)
+                    .Select(s => s.ProgramId)
+                    .FirstOrDefaultAsync();
+            }
+
             if (IsRelational)
             {
+                const string query = @"
+    SELECT 
+        t.Id,
+        t.BoardId,
+        b.BoardName,
+        t.AcademicLevelId,
+        al.LevelName AS AcademicLevelName,
+        t.AcademicYearId,
+        ay.AcademicYearName,
+        t.GroupId,
+        g.GroupName,
+        t.ProgramId,
+        p.ProgramName,
+        t.SectionId,
+        s.SectionName,
+        t.DayOfWeek,
+        t.PeriodId,
+        per.PeriodName,
+        COALESCE(per.DisplayOrder, per.PeriodId) AS PeriodNumber,
+        per.StartTime,
+        per.EndTime,
+        per.IsBreak,
+        t.SubjectId,
+        sub.SubjectName,
+        sub.SubjectCode,
+        t.StaffId,
+        t.StaffId AS FacultyId,
+        st.EmployeeId AS StaffEmployeeId,
+        CONCAT(COALESCE(st.FirstName, ''), ' ', COALESCE(st.LastName, '')) AS StaffName,
+        CONCAT(COALESCE(st.FirstName, ''), ' ', COALESCE(st.LastName, '')) AS FacultyName,
+        t.RoomId,
+        r.RoomName,
+        t.IsPublished,
+        t.ApprovalStatus,
+        t.Remarks,
+        t.CreatedAt,
+        t.UpdatedAt
+    FROM Timetables t
+    LEFT JOIN Boards b ON t.BoardId = b.BoardId
+    LEFT JOIN AcademicLevels al ON t.AcademicLevelId = al.AcademicLevelId
+    LEFT JOIN AcademicYears ay ON t.AcademicYearId = ay.AcademicYearId
+    LEFT JOIN Groups g ON t.GroupId = g.GroupId
+    LEFT JOIN Programs p ON t.ProgramId = p.ProgramId
+    LEFT JOIN Sections s ON t.SectionId = s.SectionId
+    LEFT JOIN Periods per ON t.PeriodId = per.PeriodId
+    LEFT JOIN Subjects sub ON t.SubjectId = sub.SubjectId
+    LEFT JOIN Staff st ON t.StaffId = st.Id
+    LEFT JOIN Rooms r ON t.RoomId = r.RoomId
+    WHERE (@SectionId IS NULL OR t.SectionId = @SectionId)
+      AND (@AcademicYearId IS NULL OR t.AcademicYearId = @AcademicYearId)
+      AND (@IsPublished IS NULL OR t.IsPublished = @IsPublished)
+    ORDER BY t.DayOfWeek, COALESCE(per.DisplayOrder, per.PeriodId);";
+
                 return await Connection.QueryAsync<TimetableResponseDto>(
-                    "sp_GetTimetables",
+                    query,
                     new
                     {
-                        p_BoardId = (int?)null,
-                        p_AcademicLevelId = (int?)null,
-                        p_AcademicYearId = academicYearId,
-                        p_GroupId = (int?)null,
-                        p_SectionId = sectionId,
-                        p_DayOfWeek = (int?)null,
-                        p_FacultyId = (int?)null,
-                        p_RoomId = (int?)null,
-                        p_IsPublished = isPublished
-                    },
-                    commandType: CommandType.StoredProcedure);
+                        SectionId = sectionId,
+                        AcademicYearId = academicYearId,
+                        IsPublished = isPublished
+                    });
             }
             else
             {
-                return await GetInMemoryTimetableDtosAsync(t => t.SectionId == sectionId && (academicYearId == null || t.AcademicYearId == academicYearId) && (isPublished == null || t.IsPublished == isPublished));
+                return await GetInMemoryTimetableDtosAsync(t => t.SectionId == sectionId &&
+                                                              (academicYearId == null || t.AcademicYearId == academicYearId) &&
+                                                              (isPublished == null || t.IsPublished == isPublished));
             }
         }
 
         public async Task<int> AddAsync(CreateTimetableDto dto)
         {
+            int resolvedStaffId = dto.StaffId;
+
             if (IsRelational)
             {
                 return await Connection.ExecuteScalarAsync<int>(
@@ -154,14 +217,15 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_AcademicLevelId = dto.AcademicLevelId,
                         p_AcademicYearId = dto.AcademicYearId,
                         p_GroupId = dto.GroupId,
+                        p_ProgramId = dto.ProgramId,
                         p_SectionId = dto.SectionId,
                         p_DayOfWeek = dto.DayOfWeek,
                         p_PeriodId = dto.PeriodId,
                         p_SubjectId = dto.SubjectId,
-                        p_FacultyId = dto.FacultyId,
+                        p_StaffId = resolvedStaffId,
                         p_RoomId = dto.RoomId,
                         p_IsPublished = dto.IsPublished,
-                        p_Remarks = dto.Remarks
+                        p_Remarks = dto.Remarks ?? ""
                     },
                     commandType: CommandType.StoredProcedure);
             }
@@ -173,11 +237,12 @@ namespace CollegeManagement.API.Repositories.Implementations
                     AcademicLevelId = dto.AcademicLevelId,
                     AcademicYearId = dto.AcademicYearId,
                     GroupId = dto.GroupId,
+                    ProgramId = dto.ProgramId,
                     SectionId = dto.SectionId,
                     DayOfWeek = dto.DayOfWeek,
                     PeriodId = dto.PeriodId,
                     SubjectId = dto.SubjectId,
-                    FacultyId = dto.FacultyId,
+                    StaffId = resolvedStaffId,
                     RoomId = dto.RoomId,
                     IsPublished = dto.IsPublished,
                     ApprovalStatus = dto.IsPublished ? TimetableApprovalStatus.Published : TimetableApprovalStatus.Draft,
@@ -192,6 +257,8 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task UpdateAsync(int id, UpdateTimetableDto dto)
         {
+            int resolvedStaffId = dto.StaffId;
+
             if (IsRelational)
             {
                 await Connection.ExecuteAsync(
@@ -203,11 +270,12 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_AcademicLevelId = dto.AcademicLevelId,
                         p_AcademicYearId = dto.AcademicYearId,
                         p_GroupId = dto.GroupId,
+                        p_ProgramId = dto.ProgramId,
                         p_SectionId = dto.SectionId,
                         p_DayOfWeek = dto.DayOfWeek,
                         p_PeriodId = dto.PeriodId,
                         p_SubjectId = dto.SubjectId,
-                        p_FacultyId = dto.FacultyId,
+                        p_StaffId = resolvedStaffId,
                         p_RoomId = dto.RoomId,
                         p_IsPublished = dto.IsPublished,
                         p_Remarks = dto.Remarks
@@ -223,11 +291,12 @@ namespace CollegeManagement.API.Repositories.Implementations
                     entity.AcademicLevelId = dto.AcademicLevelId;
                     entity.AcademicYearId = dto.AcademicYearId;
                     entity.GroupId = dto.GroupId;
+                    entity.ProgramId = dto.ProgramId;
                     entity.SectionId = dto.SectionId;
                     entity.DayOfWeek = dto.DayOfWeek;
                     entity.PeriodId = dto.PeriodId;
                     entity.SubjectId = dto.SubjectId;
-                    entity.FacultyId = dto.FacultyId;
+                    entity.StaffId = resolvedStaffId;
                     entity.RoomId = dto.RoomId;
                     entity.IsPublished = dto.IsPublished;
                     entity.Remarks = dto.Remarks;
@@ -248,7 +317,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             else
             {
-                var entity = await _context.Timetables.FirstOrDefaultAsync(t => t.Id == id);
+                var entity = await _context.Timetables.FindAsync(id);
                 if (entity != null)
                 {
                     _context.Timetables.Remove(entity);
@@ -262,13 +331,13 @@ namespace CollegeManagement.API.Repositories.Implementations
             if (IsRelational)
             {
                 await Connection.ExecuteAsync(
-                    "sp_PublishTimetableSlot",
+                    "sp_TogglePublishTimetableSlot",
                     new { p_Id = id, p_IsPublished = isPublished },
                     commandType: CommandType.StoredProcedure);
             }
             else
             {
-                var entity = await _context.Timetables.FirstOrDefaultAsync(t => t.Id == id);
+                var entity = await _context.Timetables.FindAsync(id);
                 if (entity != null)
                 {
                     entity.IsPublished = isPublished;
@@ -290,8 +359,11 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
             else
             {
-                var slots = await _context.Timetables.Where(t => t.SectionId == sectionId && t.AcademicYearId == academicYearId).ToListAsync();
-                foreach (var s in slots)
+                var entities = await _context.Timetables
+                    .Where(t => t.SectionId == sectionId && t.AcademicYearId == academicYearId)
+                    .ToListAsync();
+
+                foreach (var s in entities)
                 {
                     s.IsPublished = isPublished;
                     s.ApprovalStatus = isPublished ? TimetableApprovalStatus.Published : TimetableApprovalStatus.Draft;
@@ -303,122 +375,50 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<bool> HasSectionSlotConflictAsync(int academicYearId, int sectionId, int dayOfWeek, int periodId, int? excludeId = null)
         {
-            if (IsRelational)
-            {
-                int count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckSectionSlotConflict",
-                    new
-                    {
-                        p_AcademicYearId = academicYearId,
-                        p_SectionId = sectionId,
-                        p_DayOfWeek = dayOfWeek,
-                        p_PeriodId = periodId,
-                        p_ExcludeId = excludeId
-                    },
-                    commandType: CommandType.StoredProcedure);
-                return count > 0;
-            }
-            else
-            {
-                return await _context.Timetables.AnyAsync(t =>
-                    t.AcademicYearId == academicYearId &&
-                    t.SectionId == sectionId &&
-                    t.DayOfWeek == dayOfWeek &&
-                    t.PeriodId == periodId &&
-                    (excludeId == null || t.Id != excludeId.Value));
-            }
+            return await _context.Timetables.AnyAsync(t =>
+                t.AcademicYearId == academicYearId &&
+                t.SectionId == sectionId &&
+                t.DayOfWeek == dayOfWeek &&
+                t.PeriodId == periodId &&
+                (excludeId == null || t.Id != excludeId.Value));
         }
 
         public async Task<bool> HasFacultySlotConflictAsync(int academicYearId, int facultyId, int dayOfWeek, int periodId, int? excludeId = null)
         {
-            if (IsRelational)
-            {
-                int count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckFacultySlotConflict",
-                    new
-                    {
-                        p_AcademicYearId = academicYearId,
-                        p_FacultyId = facultyId,
-                        p_DayOfWeek = dayOfWeek,
-                        p_PeriodId = periodId,
-                        p_ExcludeId = excludeId
-                    },
-                    commandType: CommandType.StoredProcedure);
-                return count > 0;
-            }
-            else
-            {
-                return await _context.Timetables.AnyAsync(t =>
-                    t.AcademicYearId == academicYearId &&
-                    t.FacultyId == facultyId &&
-                    t.DayOfWeek == dayOfWeek &&
-                    t.PeriodId == periodId &&
-                    (excludeId == null || t.Id != excludeId.Value));
-            }
+            return await _context.Timetables.AnyAsync(t =>
+                t.AcademicYearId == academicYearId &&
+                t.StaffId == facultyId &&
+                t.DayOfWeek == dayOfWeek &&
+                t.PeriodId == periodId &&
+                (excludeId == null || t.Id != excludeId.Value));
         }
 
         public async Task<bool> HasRoomSlotConflictAsync(int academicYearId, int roomId, int dayOfWeek, int periodId, int? excludeId = null)
         {
-            if (IsRelational)
-            {
-                int count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckRoomSlotConflict",
-                    new
-                    {
-                        p_AcademicYearId = academicYearId,
-                        p_RoomId = roomId,
-                        p_DayOfWeek = dayOfWeek,
-                        p_PeriodId = periodId,
-                        p_ExcludeId = excludeId
-                    },
-                    commandType: CommandType.StoredProcedure);
-                return count > 0;
-            }
-            else
-            {
-                return await _context.Timetables.AnyAsync(t =>
-                    t.AcademicYearId == academicYearId &&
-                    t.RoomId == roomId &&
-                    t.DayOfWeek == dayOfWeek &&
-                    t.PeriodId == periodId &&
-                    (excludeId == null || t.Id != excludeId.Value));
-            }
+            return await _context.Timetables.AnyAsync(t =>
+                t.AcademicYearId == academicYearId &&
+                t.RoomId == roomId &&
+                t.DayOfWeek == dayOfWeek &&
+                t.PeriodId == periodId &&
+                (excludeId == null || t.Id != excludeId.Value));
         }
 
         public async Task<IEnumerable<AllocatedFacultyDto>> GetAllocatedFacultiesAsync(int? boardId, int? academicLevelId, int? academicYearId, int? groupId, int? sectionId, int? subjectId)
         {
-            if (IsRelational)
-            {
-                return await Connection.QueryAsync<AllocatedFacultyDto>(
-                    "sp_GetAllocatedFacultiesForSlot",
-                    new
-                    {
-                        p_BoardId = boardId,
-                        p_AcademicLevelId = academicLevelId,
-                        p_AcademicYearId = academicYearId,
-                        p_GroupId = groupId,
-                        p_SectionId = sectionId,
-                        p_SubjectId = subjectId
-                    },
-                    commandType: CommandType.StoredProcedure);
-            }
-            else
-            {
-                var allocations = await _context.FacultySubjectAllocations
-                    .Include(a => a.Faculty)
-                    .Where(a => (subjectId == null || a.SubjectId == subjectId) && a.Faculty != null && !a.Faculty.IsDeleted)
-                    .ToListAsync();
+            var allocations = await _context.StaffSubjectAllocations
+                .Include(a => a.Staff)
+                .Where(a => a.IsActive && (subjectId == null || a.SubjectId == subjectId) && a.Staff != null && !a.Staff.IsDeleted && (sectionId == null || a.SectionId == sectionId))
+                .ToListAsync();
 
-                return allocations.Select(a => new AllocatedFacultyDto
-                {
-                    FacultyId = a.Faculty!.Id,
-                    FacultyEmployeeId = a.Faculty.EmployeeId,
-                    FacultyName = $"{a.Faculty.FirstName} {a.Faculty.LastName}",
-                    Email = a.Faculty.Email ?? string.Empty,
-                    Mobile = a.Faculty.Mobile ?? string.Empty,
-                    Designation = a.Faculty.Designation ?? string.Empty
-                });
-            }
+            return allocations.Select(a => new AllocatedFacultyDto
+            {
+                StaffId = a.Staff!.StaffId,
+                StaffEmployeeId = a.Staff.EmployeeId,
+                StaffName = $"{a.Staff.FirstName} {a.Staff.LastName}",
+                Email = a.Staff.Email ?? string.Empty,
+                Mobile = a.Staff.Mobile ?? string.Empty,
+                Designation = a.Staff.Designation ?? string.Empty
+            });
         }
 
         public async Task CopySectionTimetableAsync(CopyTimetableDto dto)
@@ -448,11 +448,12 @@ namespace CollegeManagement.API.Repositories.Implementations
                     AcademicLevelId = s.AcademicLevelId,
                     AcademicYearId = dto.TargetAcademicYearId,
                     GroupId = s.GroupId,
+                    ProgramId = s.ProgramId,
                     SectionId = dto.TargetSectionId,
                     DayOfWeek = s.DayOfWeek,
                     PeriodId = s.PeriodId,
                     SubjectId = s.SubjectId,
-                    FacultyId = s.FacultyId,
+                    StaffId = s.StaffId,
                     RoomId = s.RoomId,
                     IsPublished = false,
                     ApprovalStatus = TimetableApprovalStatus.Draft,
@@ -477,7 +478,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             var sections = await _context.Sections.ToDictionaryAsync(s => s.SectionId, s => s.SectionName);
             var periods = await _context.Periods.ToDictionaryAsync(p => p.PeriodId, p => p);
             var subjects = await _context.Subjects.ToDictionaryAsync(s => s.SubjectId, s => s);
-            var faculties = await _context.Faculties.ToDictionaryAsync(f => f.Id, f => f);
+            var staffs = await _context.Staffs.ToDictionaryAsync(s => s.StaffId, s => s);
             var rooms = await _context.Rooms.ToDictionaryAsync(r => r.RoomId, r => r);
 
             return entities.Select(e => new TimetableResponseDto
@@ -491,6 +492,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                 AcademicYearName = years.GetValueOrDefault(e.AcademicYearId, string.Empty),
                 GroupId = e.GroupId,
                 GroupName = groups.GetValueOrDefault(e.GroupId, string.Empty),
+                ProgramId = e.ProgramId,
                 SectionId = e.SectionId,
                 SectionName = sections.GetValueOrDefault(e.SectionId, string.Empty),
                 DayOfWeek = e.DayOfWeek,
@@ -502,9 +504,9 @@ namespace CollegeManagement.API.Repositories.Implementations
                 SubjectId = e.SubjectId,
                 SubjectCode = subjects.TryGetValue(e.SubjectId, out var sub) ? sub.SubjectCode : string.Empty,
                 SubjectName = subjects.TryGetValue(e.SubjectId, out var subName) ? subName.SubjectName : string.Empty,
-                FacultyId = e.FacultyId,
-                FacultyEmployeeId = faculties.TryGetValue(e.FacultyId, out var fac) ? fac.EmployeeId : string.Empty,
-                FacultyName = faculties.TryGetValue(e.FacultyId, out var facName) ? $"{facName.FirstName} {facName.LastName}" : string.Empty,
+                StaffId = e.StaffId,
+                StaffEmployeeId = staffs.TryGetValue(e.StaffId, out var st) ? st.EmployeeId : string.Empty,
+                StaffName = staffs.TryGetValue(e.StaffId, out var stName) ? $"{stName.FirstName} {stName.LastName}" : string.Empty,
                 RoomId = e.RoomId,
                 RoomCode = rooms.TryGetValue(e.RoomId, out var rm) ? rm.RoomCode : string.Empty,
                 RoomName = rooms.TryGetValue(e.RoomId, out var rmName) ? rmName.RoomName : string.Empty,
