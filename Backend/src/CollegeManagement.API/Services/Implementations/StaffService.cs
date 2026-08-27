@@ -485,24 +485,31 @@ namespace CollegeManagement.API.Services.Implementations
         {
             if (allocationDtos == null || !allocationDtos.Any()) return;
 
-            var timetableSlots = await _timetableRepository.GetByFacultyIdAsync(staffId, null);
-            if (timetableSlots == null || !timetableSlots.Any()) return;
-
-            var subjectSectionsMap = timetableSlots
-                .Where(t => !string.IsNullOrWhiteSpace(t.SectionName))
-                .GroupBy(t => t.SubjectId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => string.Join(", ", g.Select(x => x.SectionName).Distinct())
-                );
-
-            foreach (var dto in allocationDtos)
+            try
             {
-                if (subjectSectionsMap.TryGetValue(dto.SubjectId, out var secName) && !string.IsNullOrWhiteSpace(secName))
+                var timetableSlots = await _timetableRepository.GetByFacultyIdAsync(staffId, null);
+                if (timetableSlots == null || !timetableSlots.Any()) return;
+
+                var subjectSectionsMap = timetableSlots
+                    .Where(t => !string.IsNullOrWhiteSpace(t.SectionName))
+                    .GroupBy(t => t.SubjectId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => string.Join(", ", g.Select(x => x.SectionName).Distinct())
+                    );
+
+                foreach (var dto in allocationDtos)
                 {
-                    dto.Section = secName;
-                    dto.SectionName = secName;
+                    if (subjectSectionsMap.TryGetValue(dto.SubjectId, out var secName) && !string.IsNullOrWhiteSpace(secName))
+                    {
+                        dto.Section = secName;
+                        dto.SectionName = secName;
+                    }
                 }
+            }
+            catch
+            {
+                // Graceful fallback if timetable lookup is empty or unavailable
             }
         }
 

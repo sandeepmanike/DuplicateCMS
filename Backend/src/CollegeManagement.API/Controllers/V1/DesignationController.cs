@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Asp.Versioning;
-using CollegeManagement.API.DTOs.Faculty;
+using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

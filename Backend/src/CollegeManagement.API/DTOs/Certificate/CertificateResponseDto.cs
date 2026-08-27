@@ -1,3 +1,5 @@
+using System;
+
 namespace CollegeManagement.API.DTOs.Certificate;
 
 public class CertificateResponseDto
@@ -12,13 +14,7 @@ public class CertificateResponseDto
 
     public string StudentName { get; set; } = string.Empty;
 
-    public int GroupId { get; set; }
-
     public string? GroupName { get; set; }
-
-    public string? Section { get; set; }
-
-    public string? Board { get; set; }
 
     public string? AcademicLevel { get; set; }
 
@@ -30,7 +26,9 @@ public class CertificateResponseDto
 
     public string? Remarks { get; set; }
 
-    public string Status { get; set; } = string.Empty;
+    public string Status { get; set; } = "Generated";
+
+    public DateTime RequestDate { get; set; }
 
     public DateTime IssueDate { get; set; }
 
@@ -44,11 +42,5 @@ public class CertificateResponseDto
 
     public string? IssuedBy { get; set; }
 
-    public bool IsReissued { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public bool IsActive { get; set; }
-
-    public string? Signature { get; set; }
+    public bool IsActive { get; set; } = true;
 }
