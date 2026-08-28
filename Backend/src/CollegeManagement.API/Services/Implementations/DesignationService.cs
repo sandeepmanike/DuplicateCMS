@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
-using CollegeManagement.API.DTOs.Faculty;
+using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Exceptions;
 using CollegeManagement.API.Models.Faculty;
 using CollegeManagement.API.Repositories.Interfaces;

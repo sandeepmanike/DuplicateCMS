@@ -9,11 +9,14 @@ using CollegeManagement.API.Models;
 using CollegeManagement.API.Profiles;
 using CollegeManagement.API.Repositories;
 
+
+
+
 using CollegeManagement.API.Services;
 using CollegeManagement.API.Services.Implementations;
 using CollegeManagement.API.Services.Interfaces;
 using CollegeManagement.API.Services.Location;
-using CollegeManagement.API.Validators.FacultyModuleValidators;
+using CollegeManagement.API.Validators.StaffValidators;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -41,6 +44,71 @@ if (args.Contains("--validate-staff-db"))
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
     var validator = new StaffDbValidator(connStr!);
     await validator.ValidateAndSeedCleanDataAsync();
+    Environment.Exit(0);
+    return;
+}
+
+if (args.Contains("--inspect-certificates-db"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var inspector = new CertificateDbInspector(connStr!);
+    await inspector.InspectAsync();
+    Environment.Exit(0);
+    return;
+}
+
+if (args.Contains("--test-certificates-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new CertificateModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--test-reports-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new ReportModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--test-sections-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new SectionModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--test-db-all"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseMySql(connStr, ServerVersion.AutoDetect(connStr)));
+    var testApp = builder.Build();
+    var exitCode = await DbSchemaAndSpTester.RunAsync(testApp.Services);
+    Environment.Exit(exitCode);
+    return;
+}
+
+if (args.Contains("--validate-certificates-sql"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var validator = new CertificateSqlValidator(connStr!);
+    await validator.ValidateAndExecuteScriptAsync();
+    Environment.Exit(0);
+    return;
+}
+
+if (args.Contains("--inspect-certificate-deps"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var inspector = new CertificateDependencyInspector(connStr!);
+    await inspector.RunInspectionAsync();
     Environment.Exit(0);
     return;
 }
@@ -123,13 +191,13 @@ builder.Services.AddMemoryCache();
 #region AutoMapper & FluentValidation
 
 builder.Services.AddAutoMapper(
-    typeof(FacultyMappingProfile),
+    typeof(StaffMappingProfile),
     typeof(MarksMappingProfile),
     typeof(AttendanceProfile),
     typeof(CollegeManagement.API.Profiles.TimetableMappingProfile),
     typeof(SectionMappingProfile));
 
-builder.Services.AddValidatorsFromAssemblyContaining<CreateFacultyDtoValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateStaffDtoValidator>();
 
 #endregion
 
@@ -147,12 +215,10 @@ builder.Services.AddScoped<IAcademicYearRepository, AcademicYearRepository>();
 builder.Services.AddScoped<IBoardRepository, BoardRepository>();
 builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
-// Faculty & Staff
+// Staff, Designations & Departments
 builder.Services.AddScoped<IDesignationRepository, DesignationRepository>();
 builder.Services.AddScoped<IStaffRepository, StaffRepository>();
 builder.Services.AddScoped<IStaffSubjectAllocationRepository, StaffSubjectAllocationRepository>();
-builder.Services.AddScoped<IFacultyRepository, FacultyRepository>();
-builder.Services.AddScoped<IFacultySubjectAllocationRepository, FacultySubjectAllocationRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
 
@@ -206,7 +272,6 @@ builder.Services.AddScoped<IBoardExportService, BoardExportService>();
 
 builder.Services.AddScoped<IDesignationService, DesignationService>();
 builder.Services.AddScoped<IStaffService, StaffService>();
-builder.Services.AddScoped<IFacultyService, FacultyService>();
 builder.Services.AddScoped<IDepartmentService, DepartmentService>();
 
 
@@ -354,6 +419,8 @@ builder.Services.AddSwaggerGen(c =>
     {
         c.IncludeXmlComments(xmlPath);
     }
+
+    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
 
     c.AddSecurityDefinition("Bearer",
         new OpenApiSecurityScheme

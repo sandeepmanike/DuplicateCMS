@@ -245,7 +245,7 @@ const StaffSubjectAllocation = () => {
       <div className="ssa-header">
         <h1 className="ssa-title">Staff Subject Allocation</h1>
         <p className="ssa-subtitle">
-          Map intermediate subjects and sections to teaching faculty members.
+          Map intermediate subjects and sections to teaching staff members.
         </p>
       </div>
 
@@ -401,7 +401,7 @@ const StaffSubjectAllocation = () => {
           </div>
           <div>
             <h2>Current Subject Allocations</h2>
-            <p>Active subject mappings for selected teaching faculty.</p>
+            <p>Active subject mappings for selected teaching staff.</p>
           </div>
         </div>
 
@@ -419,7 +419,7 @@ const StaffSubjectAllocation = () => {
             <table className="ssa-table">
               <thead>
                 <tr>
-                  <th>FACULTY MEMBER</th>
+                  <th>STAFF MEMBER</th>
                   <th>SUBJECT</th>
                   <th>BOARD</th>
                   <th>GROUP</th>

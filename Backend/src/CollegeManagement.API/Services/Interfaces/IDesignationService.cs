@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CollegeManagement.API.DTOs.Faculty;
+using CollegeManagement.API.DTOs.Staff;
 
 namespace CollegeManagement.API.Services.Interfaces
 {

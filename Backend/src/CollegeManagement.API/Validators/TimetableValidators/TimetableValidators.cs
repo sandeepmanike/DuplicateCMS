@@ -1,5 +1,6 @@
 using CollegeManagement.API.DTOs.Timetable;
 using FluentValidation;
+using System.Linq;
 
 namespace CollegeManagement.API.Validators.TimetableValidators
 {
@@ -15,7 +16,7 @@ namespace CollegeManagement.API.Validators.TimetableValidators
             RuleFor(x => x.DayOfWeek).InclusiveBetween(1, 7).WithMessage("Day of week must be between 1 (Monday) and 7 (Sunday).");
             RuleFor(x => x.PeriodId).GreaterThan(0).WithMessage("Period ID is required.");
             RuleFor(x => x.SubjectId).GreaterThan(0).WithMessage("Subject ID is required.");
-            RuleFor(x => x.FacultyId).GreaterThan(0).WithMessage("Faculty ID is required.");
+            RuleFor(x => x.StaffId).GreaterThan(0).WithMessage("Teaching Staff ID is required.");
             RuleFor(x => x.RoomId).GreaterThan(0).WithMessage("Room ID is required.");
             RuleFor(x => x.Remarks).MaximumLength(250).WithMessage("Remarks cannot exceed 250 characters.");
         }
@@ -33,7 +34,7 @@ namespace CollegeManagement.API.Validators.TimetableValidators
             RuleFor(x => x.DayOfWeek).InclusiveBetween(1, 7).WithMessage("Day of week must be between 1 (Monday) and 7 (Sunday).");
             RuleFor(x => x.PeriodId).GreaterThan(0).WithMessage("Period ID is required.");
             RuleFor(x => x.SubjectId).GreaterThan(0).WithMessage("Subject ID is required.");
-            RuleFor(x => x.FacultyId).GreaterThan(0).WithMessage("Faculty ID is required.");
+            RuleFor(x => x.StaffId).GreaterThan(0).WithMessage("Teaching Staff ID is required.");
             RuleFor(x => x.RoomId).GreaterThan(0).WithMessage("Room ID is required.");
             RuleFor(x => x.Remarks).MaximumLength(250).WithMessage("Remarks cannot exceed 250 characters.");
         }

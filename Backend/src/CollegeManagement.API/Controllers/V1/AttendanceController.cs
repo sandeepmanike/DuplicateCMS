@@ -367,19 +367,21 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Auto-derives assigned Subject & Faculty for specified Date, Group, Section, and Period.
+        /// Auto-derives assigned Subject & Faculty (or Class Teacher) for specified Date, Group, Section, Period, or SessionType.
         /// </summary>
         [HttpGet("faculty-subject")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetFacultySubjectAllocation(
             [FromQuery] DateTime date,
             [FromQuery] int groupId,
             [FromQuery] int sectionId,
-            [FromQuery] int periodId)
+            [FromQuery] int? periodId = null,
+            [FromQuery] string? sessionType = null)
         {
-            var result = await _attendanceService.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId);
+            var result = await _attendanceService.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId, sessionType);
             if (result == null)
             {
-                return NotFound(new { Status = false, Message = "No faculty or subject allocation found for the specified period." });
+                return NotFound(new { Status = false, Message = "No faculty or subject allocation found for the specified period or section." });
             }
             return Ok(new { Status = true, Message = "Faculty and subject derived successfully.", Data = result });
         }

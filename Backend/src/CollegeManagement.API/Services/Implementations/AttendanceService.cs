@@ -99,7 +99,7 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
                 }
-                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.FacultyId != request.FacultyId)
+                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
                 {
                     throw new ValidationException("Timetable structural elements (Section, Subject, Faculty) do not match request parameters.");
                 }
@@ -197,7 +197,7 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
                 }
-                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.FacultyId != request.FacultyId)
+                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
                 {
                     throw new ValidationException("Timetable structural elements do not match request parameters.");
                 }
@@ -890,9 +890,9 @@ namespace CollegeManagement.API.Services.Implementations
             return await _repository.GetAcademicContextAsync(groupId, sectionId);
         }
 
-        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int periodId)
+        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int? periodId = null, string? sessionType = null)
         {
-            return await _repository.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId);
+            return await _repository.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId, sessionType);
         }
 
         public async Task<StudentMonthlyReportResponse> GetStudentMonthlyReportGridAsync(StudentMonthlyReportRequest request)

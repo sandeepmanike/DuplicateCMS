@@ -42,9 +42,23 @@ function DashboardLayout() {
             Staff Subject Allocation
           </NavLink>
 
+          <div className="sidebar-title">
+            Certificates
+          </div>
 
-</nav>
+          <NavLink to="/dashboard/certificates">
+            Certificate Management
+          </NavLink>
 
+          <div className="sidebar-title">
+            Reports &amp; Analytics
+          </div>
+
+          <NavLink to="/dashboard/reports">
+            Reports &amp; Analytics
+          </NavLink>
+
+        </nav>
       </aside>
 
       {/* Main Content */}

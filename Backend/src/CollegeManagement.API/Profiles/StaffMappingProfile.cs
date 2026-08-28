@@ -48,13 +48,23 @@ namespace CollegeManagement.API.Profiles
 
             // StaffSubjectAllocation Entity -> StaffSubjectAllocationResponseDto
             CreateMap<StaffSubjectAllocation, StaffSubjectAllocationResponseDto>()
+                .ForMember(dest => dest.StaffId, opt => opt.MapFrom(src => src.StaffId))
                 .ForMember(dest => dest.StaffName, opt => opt.MapFrom(src => src.Staff != null ? $"{src.Staff.FirstName} {src.Staff.LastName}".Trim() : string.Empty))
                 .ForMember(dest => dest.FacultyName, opt => opt.MapFrom(src => src.Staff != null ? $"{src.Staff.FirstName} {src.Staff.LastName}".Trim() : string.Empty))
-                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectName : string.Empty))
+                .ForMember(dest => dest.EmployeeId, opt => opt.MapFrom(src => src.Staff != null ? (src.Staff.EmployeeId ?? string.Empty) : string.Empty))
+                .ForMember(dest => dest.AcademicYearId, opt => opt.MapFrom(src => src.AcademicYearId))
+                .ForMember(dest => dest.SubjectId, opt => opt.MapFrom(src => src.SubjectId))
                 .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectCode : string.Empty))
+                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectName : string.Empty))
+                .ForMember(dest => dest.BoardId, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.BoardId : 0))
                 .ForMember(dest => dest.BoardName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.BoardName ?? string.Empty) : string.Empty))
+                .ForMember(dest => dest.GroupId, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.GroupId : 0))
                 .ForMember(dest => dest.GroupName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.GroupName ?? string.Empty) : string.Empty))
-                .ForMember(dest => dest.AcademicLevelName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.AcademicLevelName ?? string.Empty) : string.Empty));
+                .ForMember(dest => dest.AcademicLevelId, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.AcademicLevelId : 0))
+                .ForMember(dest => dest.AcademicLevelName, opt => opt.MapFrom(src => src.Subject != null ? (src.Subject.AcademicLevelName ?? string.Empty) : string.Empty))
+                .ForMember(dest => dest.MaxWeeklyHours, opt => opt.MapFrom(src => src.MaxWeeklyHours > 0 ? src.MaxWeeklyHours : 18))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Allocated"));
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace CollegeManagement.API.DTOs.Subject
 {
@@ -14,6 +15,22 @@ namespace CollegeManagement.API.DTOs.Subject
         public string SubjectName { get; set; } = string.Empty;
         public string SubjectCode { get; set; } = string.Empty;
         public string SubjectType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Formatted Contextual Subject Name: [SubjectName] — [GroupName] — [AcademicLevelName]
+        /// </summary>
+        public string SubjectDisplayName
+        {
+            get
+            {
+                var parts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(SubjectName)) parts.Add(SubjectName);
+                if (!string.IsNullOrWhiteSpace(GroupName)) parts.Add(GroupName);
+                if (!string.IsNullOrWhiteSpace(AcademicLevelName)) parts.Add(AcademicLevelName);
+                return parts.Count > 0 ? string.Join(" — ", parts) : SubjectName;
+            }
+        }
+
         public bool Theory { get; set; }
         public bool Practical { get; set; }
         public bool Language { get; set; }

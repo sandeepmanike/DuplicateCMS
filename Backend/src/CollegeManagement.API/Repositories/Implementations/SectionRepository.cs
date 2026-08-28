@@ -25,27 +25,22 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<IEnumerable<SectionResponse>> GetAllSectionsAsync(SectionFilterDto? filter = null)
         {
-            var parameters = new DynamicParameters();
-            
             // Resolve BoardId
             int? boardId = (filter?.BoardId.HasValue == true && filter.BoardId.Value > 0) 
                 ? filter.BoardId.Value 
                 : await ResolveBoardIdAsync(null, filter?.Board);
-            parameters.Add("p_BoardId", boardId);
 
-            parameters.Add("p_AcademicYearId", (filter?.AcademicYearId.HasValue == true && filter.AcademicYearId.Value > 0) ? filter.AcademicYearId.Value : null);
+            int? academicYearId = (filter?.AcademicYearId.HasValue == true && filter.AcademicYearId.Value > 0) ? filter.AcademicYearId.Value : null;
 
             // Resolve AcademicLevelId
             int? academicLevelId = (filter?.AcademicLevelId.HasValue == true && filter.AcademicLevelId.Value > 0)
                 ? filter.AcademicLevelId.Value
                 : await ResolveAcademicLevelIdAsync(null, filter?.AcademicLevel ?? filter?.YearOfStudy);
-            parameters.Add("p_AcademicLevelId", academicLevelId);
 
             // Resolve GroupId
             int? groupId = (filter?.GroupId.HasValue == true && filter.GroupId.Value > 0)
                 ? filter.GroupId.Value
                 : await ResolveGroupIdAsync(null, filter?.Group);
-            parameters.Add("p_GroupId", groupId);
 
             // Resolve GroupProgramId & ProgramId
             int? programId = (filter?.ProgramId.HasValue == true && filter.ProgramId.Value > 0)
@@ -56,16 +51,69 @@ namespace CollegeManagement.API.Repositories.Implementations
                 ? filter.GroupProgramId.Value
                 : await ResolveGroupProgramIdAsync(null, groupId, programId);
 
-            parameters.Add("p_GroupProgramId", groupProgramId);
-            parameters.Add("p_ProgramId", programId);
+            string? searchTerm = string.IsNullOrWhiteSpace(filter?.SearchTerm ?? filter?.Search) ? null : (filter?.SearchTerm ?? filter?.Search)!.Trim();
 
-            parameters.Add("p_SearchTerm", string.IsNullOrWhiteSpace(filter?.SearchTerm ?? filter?.Search) ? null : (filter?.SearchTerm ?? filter?.Search)!.Trim());
-            parameters.Add("p_IsActive", filter?.IsActive);
+            const string sql = @"
+                SELECT 
+                    s.SectionId,
+                    s.BoardId,
+                    b.BoardName,
+                    s.AcademicYearId,
+                    ay.AcademicYearName,
+                    s.AcademicLevelId,
+                    al.LevelName AS AcademicLevelName,
+                    s.GroupId,
+                    g.GroupName,
+                    s.GroupProgramId,
+                    s.ProgramId,
+                    COALESCE(p.ProgramName, '') AS ProgramName,
+                    '' AS ProgramCode,
+                    '' AS Department,
+                    s.SectionName,
+                    s.RoomId,
+                    COALESCE(r.RoomName, '') AS RoomName,
+                    s.InchargeId,
+                    CONCAT(COALESCE(st.FirstName, ''), ' ', COALESCE(st.LastName, '')) AS InchargeName,
+                    s.MaximumStrength,
+                    s.IsActive,
+                    s.CreatedAt,
+                    s.UpdatedAt
+                FROM `Sections` s
+                LEFT JOIN Boards b ON s.BoardId = b.BoardId
+                LEFT JOIN AcademicYears ay ON s.AcademicYearId = ay.AcademicYearId
+                LEFT JOIN AcademicLevels al ON s.AcademicLevelId = al.AcademicLevelId
+                LEFT JOIN `Groups` g ON s.GroupId = g.GroupId
+                LEFT JOIN Programs p ON s.ProgramId = p.ProgramId
+                LEFT JOIN Rooms r ON s.RoomId = r.RoomId
+                LEFT JOIN Staff st ON s.InchargeId = st.Id
+                WHERE (@BoardId IS NULL OR s.BoardId = @BoardId)
+                  AND (@AcademicYearId IS NULL OR s.AcademicYearId = @AcademicYearId)
+                  AND (@AcademicLevelId IS NULL OR s.AcademicLevelId = @AcademicLevelId)
+                  AND (@GroupId IS NULL OR s.GroupId = @GroupId)
+                  AND (@GroupProgramId IS NULL OR s.GroupProgramId = @GroupProgramId)
+                  AND (@ProgramId IS NULL OR s.ProgramId = @ProgramId)
+                  AND (@IsActive IS NULL OR s.IsActive = @IsActive)
+                  AND (
+                      @SearchTerm IS NULL OR @SearchTerm = '' 
+                      OR s.SectionName LIKE CONCAT('%', @SearchTerm, '%') 
+                      OR p.ProgramName LIKE CONCAT('%', @SearchTerm, '%')
+                  )
+                ORDER BY s.SectionName ASC;";
 
             var result = await Connection.QueryAsync<SectionResponse>(
-                "sp_GetAllSections",
-                parameters,
-                commandType: CommandType.StoredProcedure);
+                sql,
+                new
+                {
+                    BoardId = boardId,
+                    AcademicYearId = academicYearId,
+                    AcademicLevelId = academicLevelId,
+                    GroupId = groupId,
+                    GroupProgramId = groupProgramId,
+                    ProgramId = programId,
+                    IsActive = filter?.IsActive,
+                    SearchTerm = searchTerm
+                });
+
             return result;
         }
 

@@ -73,6 +73,8 @@ UPDATE `Staffs` SET `FacultyType` = `StaffType` WHERE `FacultyType` IS NULL;
 -- -----------------------------------------------------------------------------
 -- 2. Create or Rename StaffSubjectAllocations Table (from FacultySubjectAllocations)
 -- -----------------------------------------------------------------------------
+-- 2. Create or Normalize StaffSubjectAllocations Table (Retains: Id, StaffId, SubjectId, CreatedAt, UpdatedAt)
+-- -----------------------------------------------------------------------------
 SET @fsa_table_exists = 0;
 SELECT COUNT(*) INTO @fsa_table_exists 
 FROM information_schema.tables 
@@ -90,10 +92,10 @@ PREPARE stmt_fsa_rename FROM @rename_fsa_sql;
 EXECUTE stmt_fsa_rename;
 DEALLOCATE PREPARE stmt_fsa_rename;
 
-CREATE TABLE IF NOT EXISTS `StaffSubjectAllocations` (
+-- Create Clean Normalized Table Structure
+CREATE TABLE IF NOT EXISTS `StaffSubjectAllocations_Clean` (
     `Id` INT NOT NULL AUTO_INCREMENT,
     `StaffId` INT NOT NULL,
-    `FacultyId` INT NULL,
     `SubjectId` INT NOT NULL,
     `CreatedAt` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `UpdatedAt` DATETIME(6) NULL,
@@ -102,56 +104,71 @@ CREATE TABLE IF NOT EXISTS `StaffSubjectAllocations` (
     KEY `IX_StaffSubjectAllocations_SubjectId` (`SubjectId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Ensure FacultyId / StaffId columns are synced
-SET @col_staffid_exists = 0;
-SELECT COUNT(*) INTO @col_staffid_exists FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'StaffSubjectAllocations' AND column_name = 'StaffId';
-SET @sql_add_staffid = IF(@col_staffid_exists = 0, 'ALTER TABLE `StaffSubjectAllocations` ADD COLUMN `StaffId` INT NOT NULL DEFAULT 0 AFTER `Id`;', 'SELECT 1;');
-PREPARE stmt_si FROM @sql_add_staffid; EXECUTE stmt_si; DEALLOCATE PREPARE stmt_si;
+-- Migrate data safely from existing table if present
+SET @ssa_exists = 0;
+SELECT COUNT(*) INTO @ssa_exists 
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() AND table_name = 'StaffSubjectAllocations' AND table_type = 'BASE TABLE';
 
-UPDATE `StaffSubjectAllocations` SET `StaffId` = `FacultyId` WHERE (`StaffId` = 0 OR `StaffId` IS NULL) AND `FacultyId` IS NOT NULL;
-UPDATE `StaffSubjectAllocations` SET `FacultyId` = `StaffId` WHERE `FacultyId` IS NULL;
+SET @has_fac_col = 0;
+SELECT COUNT(*) INTO @has_fac_col 
+FROM information_schema.columns 
+WHERE table_schema = DATABASE() AND table_name = 'StaffSubjectAllocations' AND column_name = 'FacultyId';
+
+SET @copy_sql = IF(@ssa_exists = 1 AND @has_fac_col > 0,
+    'INSERT IGNORE INTO `StaffSubjectAllocations_Clean` (`Id`, `StaffId`, `SubjectId`, `CreatedAt`, `UpdatedAt`) SELECT `Id`, COALESCE(NULLIF(`StaffId`, 0), `FacultyId`), `SubjectId`, COALESCE(`CreatedAt`, CURRENT_TIMESTAMP(6)), `UpdatedAt` FROM `StaffSubjectAllocations`;',
+    IF(@ssa_exists = 1,
+       'INSERT IGNORE INTO `StaffSubjectAllocations_Clean` (`Id`, `StaffId`, `SubjectId`, `CreatedAt`, `UpdatedAt`) SELECT `Id`, `StaffId`, `SubjectId`, COALESCE(`CreatedAt`, CURRENT_TIMESTAMP(6)), `UpdatedAt` FROM `StaffSubjectAllocations`;',
+       'SELECT 1;'));
+PREPARE stmt_copy FROM @copy_sql;
+EXECUTE stmt_copy;
+DEALLOCATE PREPARE stmt_copy;
+
+-- Swap table atomically
+DROP TABLE IF EXISTS `StaffSubjectAllocations_Old`;
+SET @swap_sql = IF(@ssa_exists = 1,
+    'RENAME TABLE `StaffSubjectAllocations` TO `StaffSubjectAllocations_Old`, `StaffSubjectAllocations_Clean` TO `StaffSubjectAllocations`;',
+    'RENAME TABLE `StaffSubjectAllocations_Clean` TO `StaffSubjectAllocations`;');
+PREPARE stmt_swap FROM @swap_sql;
+EXECUTE stmt_swap;
+DEALLOCATE PREPARE stmt_swap;
+DROP TABLE IF EXISTS `StaffSubjectAllocations_Old`;
 
 -- -----------------------------------------------------------------------------
--- 3. Compatibility Views (Zero data loss and zero breakage for other modules)
+-- 3. Compatibility Views (Safe creation without Error 1347)
 -- -----------------------------------------------------------------------------
-CREATE OR REPLACE VIEW `Faculties` AS 
-SELECT 
-    `Id`,
-    `EmployeeId`,
-    `FirstName`,
-    `LastName`,
-    `Gender`,
-    `DateOfBirth`,
-    `Aadhaar`,
-    `Mobile`,
-    `Email`,
-    `BloodGroup`,
-    `Qualification`,
-    `Designation`,
-    `DesignationId`,
-    `StaffType` AS `FacultyType`,
-    `DepartmentId`,
-    `JoiningDate`,
-    `Experience`,
-    `Status`,
-    `PhotoPath`,
-    `CreatedAt`,
-    `UpdatedAt`,
-    `IsDeleted`
-FROM `Staffs`;
+-- Faculties View (only if Faculties is not a BASE TABLE)
+SET @is_faculties_table = 0;
+SELECT COUNT(*) INTO @is_faculties_table 
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() AND table_name = 'Faculties' AND table_type = 'BASE TABLE';
 
-CREATE OR REPLACE VIEW `Staff` AS 
-SELECT * FROM `Staffs`;
+SET @create_fac_view = IF(@is_faculties_table = 0,
+    'CREATE OR REPLACE VIEW `Faculties` AS SELECT `Id`, `EmployeeId`, `FirstName`, `LastName`, `Gender`, `DateOfBirth`, `Aadhaar`, `Mobile`, `Email`, `BloodGroup`, `Qualification`, `Designation`, `DesignationId`, `StaffType` AS `FacultyType`, `DepartmentId`, `JoiningDate`, `Experience`, `Status`, `PhotoPath`, `CreatedAt`, `UpdatedAt`, `IsDeleted` FROM `Staffs` WHERE `IsDeleted` = 0;',
+    'SELECT "Faculties is base table" AS Notice;');
+PREPARE stmt_cfv FROM @create_fac_view; EXECUTE stmt_cfv; DEALLOCATE PREPARE stmt_cfv;
 
-CREATE OR REPLACE VIEW `FacultySubjectAllocations` AS 
-SELECT 
-    `Id`,
-    COALESCE(`StaffId`, `FacultyId`) AS `FacultyId`,
-    COALESCE(`StaffId`, `FacultyId`) AS `StaffId`,
-    `SubjectId`,
-    `CreatedAt`,
-    `UpdatedAt`
-FROM `StaffSubjectAllocations`;
+-- Staff View (only if Staff is not a BASE TABLE)
+SET @is_staff_table = 0;
+SELECT COUNT(*) INTO @is_staff_table 
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() AND table_name = 'Staff' AND table_type = 'BASE TABLE';
+
+SET @create_staff_view = IF(@is_staff_table = 0,
+    'CREATE OR REPLACE VIEW `Staff` AS SELECT * FROM `Staffs`;',
+    'SELECT "Staff is base table" AS Notice;');
+PREPARE stmt_csv FROM @create_staff_view; EXECUTE stmt_csv; DEALLOCATE PREPARE stmt_csv;
+
+-- FacultySubjectAllocations View (only if not a BASE TABLE)
+SET @is_fsa_table = 0;
+SELECT COUNT(*) INTO @is_fsa_table 
+FROM information_schema.tables 
+WHERE table_schema = DATABASE() AND table_name = 'FacultySubjectAllocations' AND table_type = 'BASE TABLE';
+
+SET @create_fsa_view = IF(@is_fsa_table = 0,
+    'CREATE OR REPLACE VIEW `FacultySubjectAllocations` AS SELECT `Id`, `StaffId` AS `FacultyId`, `StaffId`, `SubjectId`, `CreatedAt`, `UpdatedAt` FROM `StaffSubjectAllocations`;',
+    'SELECT "FacultySubjectAllocations is base table" AS Notice;');
+PREPARE stmt_cfsa FROM @create_fsa_view; EXECUTE stmt_cfsa; DEALLOCATE PREPARE stmt_cfsa;
 
 -- -----------------------------------------------------------------------------
 -- 4. Seed Intermediate College Fixed Departments
@@ -802,8 +819,7 @@ CREATE PROCEDURE `sp_GetSubjectAllocationsByStaffId`(IN p_StaffId INT)
 BEGIN
     SELECT 
         ssa.Id,
-        COALESCE(ssa.StaffId, ssa.FacultyId) AS StaffId,
-        COALESCE(ssa.StaffId, ssa.FacultyId) AS FacultyId,
+        ssa.StaffId,
         ssa.SubjectId,
         ssa.CreatedAt,
         ssa.UpdatedAt,
@@ -821,9 +837,9 @@ BEGIN
         sub.Group,
         sub.AcademicLevel
     FROM StaffSubjectAllocations ssa
-    LEFT JOIN Staffs s ON s.Id = COALESCE(ssa.StaffId, ssa.FacultyId)
-    LEFT JOIN Subjects sub ON sub.SubjectId = ssa.SubjectId
-    WHERE ssa.StaffId = p_StaffId OR ssa.FacultyId = p_StaffId
+    INNER JOIN Staffs s ON s.Id = ssa.StaffId
+    INNER JOIN Subjects sub ON sub.SubjectId = ssa.SubjectId
+    WHERE ssa.StaffId = p_StaffId
     ORDER BY ssa.Id DESC;
 END //
 
@@ -835,6 +851,7 @@ DELIMITER ;
 
 DROP PROCEDURE IF EXISTS `sp_CreateSubjectAllocation`;
 DROP PROCEDURE IF EXISTS `sp_CreateStaffSubjectAllocation`;
+DROP PROCEDURE IF EXISTS `sp_AssignStaffSubject`;
 DELIMITER //
 CREATE PROCEDURE `sp_CreateStaffSubjectAllocation`(
     IN p_StaffId INT,
@@ -842,11 +859,16 @@ CREATE PROCEDURE `sp_CreateStaffSubjectAllocation`(
 )
 BEGIN
     INSERT INTO StaffSubjectAllocations (
-        StaffId, FacultyId, SubjectId, CreatedAt
+        StaffId, SubjectId, CreatedAt
     ) VALUES (
-        p_StaffId, p_StaffId, p_SubjectId, UTC_TIMESTAMP()
+        p_StaffId, p_SubjectId, UTC_TIMESTAMP()
     );
     SELECT LAST_INSERT_ID() AS Id;
+END //
+
+CREATE PROCEDURE `sp_AssignStaffSubject`(IN p_StaffId INT, IN p_SubjectId INT)
+BEGIN
+    CALL sp_CreateStaffSubjectAllocation(p_StaffId, p_SubjectId);
 END //
 
 CREATE PROCEDURE `sp_CreateSubjectAllocation`(IN p_FacultyId INT, IN p_SubjectId INT)
@@ -891,6 +913,7 @@ DELIMITER ;
 
 DROP PROCEDURE IF EXISTS `sp_CheckDuplicateSubjectAllocation`;
 DROP PROCEDURE IF EXISTS `sp_CheckDuplicateStaffSubjectAllocation`;
+DROP PROCEDURE IF EXISTS `sp_CheckStaffSubjectAllocationExists`;
 DELIMITER //
 CREATE PROCEDURE `sp_CheckDuplicateStaffSubjectAllocation`(
     IN p_StaffId INT,
@@ -900,9 +923,14 @@ CREATE PROCEDURE `sp_CheckDuplicateStaffSubjectAllocation`(
 BEGIN
     SELECT COUNT(*) 
     FROM StaffSubjectAllocations
-    WHERE (StaffId = p_StaffId OR FacultyId = p_StaffId)
+    WHERE StaffId = p_StaffId
       AND SubjectId = p_SubjectId
       AND (p_ExcludeId IS NULL OR p_ExcludeId <= 0 OR Id <> p_ExcludeId);
+END //
+
+CREATE PROCEDURE `sp_CheckStaffSubjectAllocationExists`(IN p_StaffId INT, IN p_SubjectId INT, IN p_ExcludeId INT)
+BEGIN
+    CALL sp_CheckDuplicateStaffSubjectAllocation(p_StaffId, p_SubjectId, p_ExcludeId);
 END //
 
 CREATE PROCEDURE `sp_CheckDuplicateSubjectAllocation`(IN p_FacultyId INT, IN p_SubjectId INT, IN p_ExcludeId INT)

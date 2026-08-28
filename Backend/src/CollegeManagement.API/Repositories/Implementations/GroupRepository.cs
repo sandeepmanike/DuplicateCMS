@@ -440,7 +440,7 @@ namespace CollegeManagement.API.Repositories
             {
                 await SyncGroupProgramsAsync(
                     result.GroupId,
-                    request.ProgramIds);
+                    request.GetResolvedProgramIds());
 
                 return (await GetByIdAsync(
                     result.GroupId))!;
@@ -482,7 +482,7 @@ namespace CollegeManagement.API.Repositories
 
             await SyncGroupProgramsAsync(
                 entity.GroupId,
-                request.ProgramIds);
+                request.GetResolvedProgramIds());
 
             return (await GetByIdAsync(
                 entity.GroupId))!;
@@ -548,7 +548,7 @@ namespace CollegeManagement.API.Repositories
             {
                 await SyncGroupProgramsAsync(
                     groupId,
-                    request.ProgramIds);
+                    request.GetResolvedProgramIds());
 
                 return await GetByIdAsync(groupId);
             }
@@ -590,7 +590,7 @@ namespace CollegeManagement.API.Repositories
 
             await SyncGroupProgramsAsync(
                 groupId,
-                request.ProgramIds);
+                request.GetResolvedProgramIds());
 
             return await GetByIdAsync(groupId);
         }
@@ -1088,73 +1088,46 @@ namespace CollegeManagement.API.Repositories
         {
             programIds ??= new List<int>();
 
-            programIds =
+            var distinctProgramIds =
                 programIds
                     .Where(x => x > 0)
                     .Distinct()
                     .ToList();
 
-            var existing =
-                await _context.GroupPrograms
-                    .Where(gp =>
-                        gp.GroupId ==
-                        groupId)
-                    .ToListAsync();
+            var connection = _context.Database.GetDbConnection();
+            if (connection.State != System.Data.ConnectionState.Open)
+                await connection.OpenAsync();
 
-            if (existing.Count > 0)
+            using var transaction = connection.BeginTransaction();
+            try
             {
-                _context.GroupPrograms.RemoveRange(
-                    existing);
+                await connection.ExecuteAsync(
+                    "DELETE FROM GroupPrograms WHERE GroupId = @GroupId;",
+                    new { GroupId = groupId },
+                    transaction);
 
-                await _context.SaveChangesAsync();
+                if (distinctProgramIds.Count > 0)
+                {
+                    var insertSql = @"INSERT INTO GroupPrograms (GroupId, ProgramId, IsActive, CreatedAt)
+                                      VALUES (@GroupId, @ProgramId, 1, NOW(6));";
+
+                    foreach (var pid in distinctProgramIds)
+                    {
+                        await connection.ExecuteAsync(
+                            insertSql,
+                            new { GroupId = groupId, ProgramId = pid },
+                            transaction);
+                    }
+                }
+
+                transaction.Commit();
             }
-
-            if (programIds.Count == 0)
-                return;
-
-            var validProgramIds =
-                await _context.Programs
-                    .Where(p =>
-                        programIds.Contains(
-                            p.ProgramId) &&
-                        p.IsActive)
-                    .Select(p =>
-                        p.ProgramId)
-                    .ToListAsync();
-
-            if (validProgramIds.Count == 0)
-                return;
-
-            var mappings =
-                validProgramIds
-                    .Select(programId =>
-                        new GroupProgram
-                        {
-                            GroupId =
-                                groupId,
-
-                            ProgramId =
-                                programId,
-
-                            IsActive =
-                                true,
-
-                            CreatedAt =
-                                DateTime.UtcNow
-                        })
-                    .ToList();
-
-            await _context.GroupPrograms
-                .AddRangeAsync(mappings);
-
-            await _context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                throw new InvalidOperationException($"Failed to synchronize group programs: {ex.Message}", ex);
+            }
         }
-
-
-        // =========================================================
-        // LOAD PROGRAMS FOR GROUP LIST
-        // =========================================================
-
         private async Task LoadProgramsForGroupsAsync(
             List<GroupListItemDto> groups)
         {
