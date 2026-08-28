@@ -26,10 +26,14 @@ namespace CollegeManagement.API.DTOs.Examination.Responses
 
         public int AssessmentTypeId { get; set; }
         public string ExamType { get; set; } = string.Empty;
+        public string AssessmentType { get => ExamType; set => ExamType = value; }
+        public string AssessmentTypeName { get => ExamType; set => ExamType = value; }
 
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
         public string? ExamPattern { get; set; }
+        public string? Pattern { get => ExamPattern; set => ExamPattern = value; }
+        public string? PatternName { get => ExamPattern; set => ExamPattern = value; }
         public int? TotalMarks { get; set; }
         public decimal? PassPercentage { get; set; }
         public string? Description { get; set; }

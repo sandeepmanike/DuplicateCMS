@@ -33,6 +33,51 @@ namespace CollegeManagement.API.Controllers.V1
             _logger = logger;
         }
 
+        #region Lookups & Metadata APIs
+
+        /// <summary>
+        /// Retrieves all available examination patterns for dropdown selection.
+        /// </summary>
+        [HttpGet("patterns")]
+        [HttpGet("exam-patterns")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public IActionResult GetExamPatterns()
+        {
+            var patterns = new[]
+            {
+                new { patternId = 1, patternCode = "REGULAR_ACADEMIC", patternName = "Regular Academic Pattern", description = "Subject-wise theory and practical examination pattern." },
+                new { patternId = 2, patternCode = "OBJECTIVE_COMBINED", patternName = "Objective Combined Pattern", description = "Combined session MCQ based online/OMR examination pattern." },
+                new { patternId = 3, patternCode = "JEE_MAIN", patternName = "JEE Main Pattern", description = "Physics, Chemistry, Mathematics combined 300 marks objective pattern." },
+                new { patternId = 4, patternCode = "JEE_ADVANCED", patternName = "JEE Advanced Pattern", description = "Paper 1 & Paper 2 advanced objective and numerical pattern." },
+                new { patternId = 5, patternCode = "NEET", patternName = "NEET UG Pattern", description = "Physics, Chemistry, Botany, Zoology combined 720 marks objective pattern." },
+                new { patternId = 6, patternCode = "SEM", patternName = "Semester / Annual System", description = "Semester-wise grading and credit pattern." },
+                new { patternId = 7, patternCode = "ANN", patternName = "Yearly System", description = "Yearly comprehensive board pattern." }
+            };
+            return Ok(patterns);
+        }
+
+        /// <summary>
+        /// Retrieves all available assessment / exam types for dropdown selection.
+        /// </summary>
+        [HttpGet("types")]
+        [HttpGet("assessment-types")]
+        [HttpGet("exam-types")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public IActionResult GetAssessmentTypes()
+        {
+            var types = new[]
+            {
+                new { assessmentTypeId = 1, examTypeId = 1, id = 1, assessmentTypeName = "Unit Test", examType = "Unit Test", name = "Unit Test" },
+                new { assessmentTypeId = 2, examTypeId = 2, id = 2, assessmentTypeName = "Quarterly Exam", examType = "Quarterly Exam", name = "Quarterly Exam" },
+                new { assessmentTypeId = 3, examTypeId = 3, id = 3, assessmentTypeName = "Half-Yearly Exam", examType = "Half-Yearly Exam", name = "Half-Yearly Exam" },
+                new { assessmentTypeId = 4, examTypeId = 4, id = 4, assessmentTypeName = "Pre-Final Exam", examType = "Pre-Final Exam", name = "Pre-Final Exam" },
+                new { assessmentTypeId = 5, examTypeId = 5, id = 5, assessmentTypeName = "Annual Board Exam", examType = "Annual Board Exam", name = "Annual Board Exam" }
+            };
+            return Ok(types);
+        }
+
+        #endregion
+
         #region Examination Base APIs
 
         /// <summary>
