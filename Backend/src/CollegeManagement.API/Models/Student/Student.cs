@@ -39,7 +39,7 @@ namespace CollegeManagement.API.Models
         [MaxLength(50)]
         public string? Medium { get; set; }
 
-        [MaxLength(50)]
+        [MaxLength(100)]
         public string? SecondLanguage { get; set; }
 
 
@@ -135,6 +135,17 @@ namespace CollegeManagement.API.Models
         [ForeignKey(nameof(GroupId))]
         public Group? GroupNavigation { get; set; }
 
+
+        [Required]
+        public int ProgramId { get; set; }
+
+        [ForeignKey(nameof(ProgramId))]
+        public AcademicProgram? ProgramNavigation { get; set; }
+
+
+        // =========================================================
+        // SECTION
+        // =========================================================
 
         [Required]
         public int SectionId { get; set; }
@@ -247,38 +258,6 @@ namespace CollegeManagement.API.Models
         public decimal? CGPA { get; set; }
 
         public int? Rank { get; set; }
-
-
-        // =========================================================
-        // DOCUMENTS
-        // =========================================================
-
-        [MaxLength(500)]
-        public string? BirthCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? TransferCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? StudyCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? AadhaarDocument { get; set; }
-
-        [MaxLength(500)]
-        public string? CommunityCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? IncomeCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? CasteCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? TenthCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? MarksMemo { get; set; }
 
 
         // =========================================================

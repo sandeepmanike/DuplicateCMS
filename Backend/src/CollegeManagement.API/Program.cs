@@ -9,7 +9,8 @@ using CollegeManagement.API.Models;
 using CollegeManagement.API.Profiles;
 using CollegeManagement.API.Repositories;
 
-
+using System.Data;
+using MySqlConnector;
 
 
 using CollegeManagement.API.Services;
@@ -183,6 +184,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Dapper
 builder.Services.AddSingleton<DatabaseContext>();
 
+
+// IDbConnection
+builder.Services.AddScoped<IDbConnection>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    return new MySqlConnection(
+        config.GetConnectionString("DefaultConnection"));
+});
 // Caching
 builder.Services.AddMemoryCache();
 

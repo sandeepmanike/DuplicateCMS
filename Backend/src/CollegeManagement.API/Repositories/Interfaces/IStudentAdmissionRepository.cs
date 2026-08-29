@@ -4,92 +4,79 @@ namespace CollegeManagement.API.Repositories.Interfaces
 {
     public interface IStudentAdmissionRepository
     {
-        // =========================================================
-        // GET ALL
-        // =========================================================
+        // =====================================================
+        // ADMISSION
+        // =====================================================
 
-        Task<IEnumerable<StudentAdmissionResponseDto>> GetAllAsync();
-
-
-        // =========================================================
-        // GET BY ID
-        // =========================================================
+        Task<StudentAdmissionResponseDto> CreateAsync(
+            CreateStudentAdmissionRequest request,
+            string? studentPhoto);
 
         Task<StudentAdmissionResponseDto?> GetByIdAsync(
             int admissionId);
 
-
-        // =========================================================
-        // CREATE
-        // =========================================================
-
-        Task<StudentAdmissionResponseDto> CreateAsync(
-            CreateStudentAdmissionRequest request,
-            string? studentPhoto,
-            string? birthCertificate,
-            string? transferCertificate,
-            string? studyCertificate,
-            string? aadhaarDocument,
-            string? communityCertificate,
-            string? incomeCertificate,
-            string? casteCertificate,
-            string? tenthCertificate,
-            string? marksMemo);
-
-
-        // =========================================================
-        // UPDATE
-        // =========================================================
+        Task<IEnumerable<StudentAdmissionResponseDto>> GetAllAsync();
 
         Task<StudentAdmissionResponseDto?> UpdateAsync(
             int admissionId,
             UpdateStudentAdmissionRequest request,
-            string? studentPhoto,
-            string? birthCertificate,
-            string? transferCertificate,
-            string? studyCertificate,
-            string? aadhaarDocument,
-            string? communityCertificate,
-            string? incomeCertificate,
-            string? casteCertificate,
-            string? tenthCertificate,
-            string? marksMemo);
+            string? studentPhoto);
 
 
-        // =========================================================
-        // DELETE / SOFT DELETE
-        // =========================================================
 
-        Task<bool> DeleteAsync(
-            int admissionId);
-        //validatio//
-        Task<dynamic?> SubmitAsync(int admissionId);
+        //bloodgroup//
+        public Task<IEnumerable<string>> GetBloodGroupsAsync()
+        {
+            IEnumerable<string> bloodGroups = new[]
+            {
+        "A+",
+        "A-",
+        "B+",
+        "B-",
+        "AB+",
+        "AB-",
+        "O+",
+        "O-"
+    };
 
-        // =========================================================
-        // VERIFY
-        // =========================================================
+            return Task.FromResult(bloodGroups);
+        }
+        //generate//
+        Task<string> GenerateAdmissionNumberAsync();
+
+
+        // =====================================================
+        // VERIFY / APPROVE / REJECT
+        // =====================================================
 
         Task<bool> VerifyAsync(
-            int admissionId);
+            VerifyStudentAdmissionRequest request);
 
-
-        // =========================================================
-        // APPROVE
-        // Creates Student + generates RollNo
-        // =========================================================
-
-        Task<AdmissionApprovalResponseDto?> ApproveAsync(
-            int admissionId);
-
-
-        // =========================================================
-        // REJECT
-        // =========================================================
+        Task<bool> ApproveAsync(
+            ApproveStudentAdmissionRequest request);
 
         Task<bool> RejectAsync(
-            int admissionId);
+            RejectStudentAdmissionRequest request);
 
-        //GENERATE//
-        Task<string> GenerateAdmissionNumberAsync();
+
+        // =====================================================
+        // SECTION ALLOCATION
+        // =====================================================
+
+        Task<bool> AllocateSectionAsync(
+            AllocateSectionRequest request);
+
+        Task<int> BulkAllocateSectionAsync(
+            BulkSectionAllocationRequest request);
+
+
+        // =====================================================
+        // ROLL NUMBER ALLOCATION
+        // =====================================================
+
+        Task<int> BulkAllocateRollNumbersAsync(
+            BulkRollNumberAllocationRequest request);
     }
-}
+
+
+    }

@@ -65,8 +65,7 @@ public class FeeStructureResponse
     public string BoardName { get; set; } = string.Empty;
     public int AcademicYearId { get; set; }
     public string AcademicYearName { get; set; } = string.Empty;
-    public int AcademicLevelId { get; set; }
-    public string AcademicLevelName { get; set; } = string.Empty;
+   
     public int GroupId { get; set; }
     public string GroupName { get; set; } = string.Empty;
     public int? ProgramId { get; set; }

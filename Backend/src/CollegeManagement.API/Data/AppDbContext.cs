@@ -265,37 +265,37 @@ namespace CollegeManagement.API.Data
             });
             #endregion
 
-            #region StudentAdmission / Student relations
-            modelBuilder.Entity<StudentAdmission>()
-                .HasOne(sa => sa.Board)
-                .WithMany()
-                .HasForeignKey(sa => sa.BoardId)
-                .OnDelete(DeleteBehavior.Restrict);
+            #region
+            //StudentAdmission / Student relations
+
+            // StudentAdmission stores relationship IDs.
+            // Names are resolved through SQL JOINs in stored procedures.
 
             modelBuilder.Entity<StudentAdmission>()
-                .HasOne(sa => sa.AcademicYear)
-                .WithMany()
-                .HasForeignKey(sa => sa.AcademicYearId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .Property(sa => sa.BoardId)
+                .HasColumnName("BoardId");
 
             modelBuilder.Entity<StudentAdmission>()
-                .HasOne(sa => sa.AcademicLevelNavigation)
-                .WithMany()
-                .HasForeignKey(sa => sa.AcademicLevelId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .Property(sa => sa.AcademicYearId)
+                .HasColumnName("AcademicYearId");
 
             modelBuilder.Entity<StudentAdmission>()
-                .HasOne(sa => sa.Group)
-                .WithMany()
-                .HasForeignKey(sa => sa.GroupId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .Property(sa => sa.AcademicLevelId)
+                .HasColumnName("AcademicLevelId");
 
             modelBuilder.Entity<StudentAdmission>()
-                .HasOne(sa => sa.Section)
-                .WithMany()
-                .HasForeignKey(sa => sa.SectionId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .Property(sa => sa.GroupId)
+                .HasColumnName("GroupId");
 
+            modelBuilder.Entity<StudentAdmission>()
+                .Property(sa => sa.ProgramId)
+                .HasColumnName("ProgramId");
+
+            modelBuilder.Entity<StudentAdmission>()
+                .Property(sa => sa.SectionId)
+                .HasColumnName("SectionId");
+
+             #endregion
             modelBuilder.Entity<Student>()
                 .HasIndex(s => s.BoardId);
 
@@ -368,7 +368,7 @@ namespace CollegeManagement.API.Data
                       .HasForeignKey(es => es.SubjectId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
-            #endregion
+          
 
 
 

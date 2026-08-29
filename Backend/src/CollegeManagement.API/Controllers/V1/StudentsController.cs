@@ -1,15 +1,11 @@
-using Asp.Versioning;
 using CollegeManagement.API.DTOs.Students;
 using CollegeManagement.API.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
-    [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/students")]
-    [Authorize]
+    [Route("api/v1/students")]
     public class StudentsController : ControllerBase
     {
         private readonly IStudentService _service;
@@ -19,222 +15,342 @@ namespace CollegeManagement.API.Controllers.V1
             _service = service;
         }
 
+
         // =========================================================
         // GET ALL STUDENTS
         // =========================================================
+
         [HttpGet]
-        [ProducesResponseType(typeof(List<StudentListItemDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAll()
         {
-            var result = await _service.GetAllAsync();
-            return Ok(result);
+            var students = await _service.GetAllAsync();
+
+            return Ok(students);
         }
+
 
         // =========================================================
         // GET STUDENT BY ID
         // =========================================================
+
         [HttpGet("{studentId:int}")]
-        [ProducesResponseType(typeof(StudentResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetById(int studentId)
         {
             var student = await _service.GetByIdAsync(studentId);
+
             if (student == null)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
+                return NotFound(new
+                {
+                    message = "Student not found"
+                });
 
             return Ok(student);
         }
 
+
         // =========================================================
-        // UPDATE STUDENT (ADMIN FULL EDIT)
+        // CREATE STUDENT
         // =========================================================
-        [HttpPut("{studentId:int}")]
-        [ProducesResponseType(typeof(StudentResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Update(int studentId, [FromBody] UpdateStudentRequest request)
+
+        [HttpPost]
+        public async Task<IActionResult> Create(
+            [FromBody] CreateStudentRequest request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return ValidationProblem(ModelState);
 
-            var updated = await _service.UpdateAsync(studentId, request);
-            if (updated == null)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
+            var result = await _service.CreateAsync(request);
 
-            return Ok(updated);
+            return Ok(result);
         }
 
+
         // =========================================================
-        // DELETE STUDENT (SOFT DELETE)
+        // UPDATE STUDENT
         // =========================================================
+
+        [HttpPut("{studentId:int}")]
+        public async Task<IActionResult> Update(
+            int studentId,
+            [FromBody] UpdateStudentRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var result = await _service.UpdateAsync(
+                studentId,
+                request);
+
+            if (result == null)
+                return NotFound(new
+                {
+                    message = "Student not found"
+                });
+
+            return Ok(result);
+        }
+
+
+        // =========================================================
+        // DELETE STUDENT
+        // =========================================================
+
         [HttpDelete("{studentId:int}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Delete(int studentId)
+        public async Task<IActionResult> Delete(
+            int studentId)
         {
-            var success = await _service.DeleteAsync(studentId);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
+            var result = await _service.DeleteAsync(studentId);
 
-            return Ok(new { message = "Student deactivated successfully." });
+            if (!result)
+                return NotFound(new
+                {
+                    message = "Student not found"
+                });
+
+            return Ok(new
+            {
+                message = "Student deleted successfully"
+            });
         }
 
+
         // =========================================================
-        // GET STUDENT 360 PROFILE
+        // GET STUDENT PROFILE
         // =========================================================
+
         [HttpGet("{studentId:int}/profile")]
-        [ProducesResponseType(typeof(StudentProfileDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetProfile(int studentId)
+        public async Task<IActionResult> GetProfile(
+            int studentId)
         {
-            var profile = await _service.GetProfileAsync(studentId);
+            var profile = await _service.GetProfileAsync(
+                studentId);
+
             if (profile == null)
-                return NotFound(new { message = $"Student profile for ID {studentId} not found." });
+                return NotFound(new
+                {
+                    message = "Student not found"
+                });
 
             return Ok(profile);
         }
 
+
         // =========================================================
         // UPDATE STUDENT PROFILE
         // =========================================================
+
         [HttpPut("{studentId:int}/profile")]
-        [ProducesResponseType(typeof(StudentProfileDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> UpdateProfile(int studentId, [FromBody] UpdateStudentProfileRequest request)
+        public async Task<IActionResult> UpdateProfile(
+            int studentId,
+            [FromBody] StudentProfileDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return ValidationProblem(ModelState);
 
-            var updated = await _service.UpdateProfileAsync(studentId, request);
-            if (updated == null)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
+            var profile = await _service.UpdateProfileAsync(
+                studentId,
+                request);
 
-            return Ok(updated);
+            if (profile == null)
+                return NotFound(new
+                {
+                    message = "Student not found"
+                });
+
+            return Ok(profile);
         }
+
 
         // =========================================================
         // CHANGE SECTION
         // =========================================================
-        [HttpPatch("{studentId:int}/section")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ChangeSection(int studentId, [FromBody] ChangeSectionRequest request)
-        {
-            if (request.SectionId <= 0)
-                return BadRequest(new { message = "Valid SectionId is required." });
 
-            var success = await _service.ChangeSectionAsync(studentId, request);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found or invalid section." });
-
-            return Ok(new { message = "Student section changed successfully." });
-        }
-
-        // =========================================================
-        // CHANGE GROUP (REQUIRES TARGET GROUP + SECTION)
-        // =========================================================
-        [HttpPatch("{studentId:int}/group")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ChangeGroup(int studentId, [FromBody] ChangeGroupRequest request)
-        {
-            if (request.GroupId <= 0 || request.SectionId <= 0)
-                return BadRequest(new { message = "Valid GroupId and SectionId are required." });
-
-            var success = await _service.ChangeGroupAsync(studentId, request);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found or invalid group/section." });
-
-            return Ok(new { message = "Student group and section updated successfully." });
-        }
-
-        // =========================================================
-        // TRANSFER STUDENT (FULL ACADEMIC TRANSFER)
-        // =========================================================
-        [HttpPost("{studentId:int}/transfer")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Transfer(int studentId, [FromBody] TransferStudentRequest request)
+        [HttpPut("{studentId:int}/section")]
+        public async Task<IActionResult> ChangeSection(
+            int studentId,
+            [FromBody] ChangeSectionRequest request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return ValidationProblem(ModelState);
 
-            var success = await _service.TransferAsync(studentId, request);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found or transfer failed." });
+            var result = await _service.ChangeSectionAsync(
+                studentId,
+                request);
 
-            return Ok(new { message = "Student transferred successfully." });
+            if (!result)
+                return BadRequest(new
+                {
+                    message = "Section update failed"
+                });
+
+            return Ok(new
+            {
+                message = "Student section updated successfully"
+            });
         }
+
+
+        // =========================================================
+        // CHANGE GROUP
+        // =========================================================
+
+        [HttpPut("{studentId:int}/group")]
+        public async Task<IActionResult> ChangeGroup(
+            int studentId,
+            [FromBody] ChangeGroupRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var result = await _service.ChangeGroupAsync(
+                studentId,
+                request);
+
+            if (!result)
+                return BadRequest(new
+                {
+                    message = "Group update failed"
+                });
+
+            return Ok(new
+            {
+                message = "Student group updated successfully"
+            });
+        }
+
+
+        // =========================================================
+        // TRANSFER STUDENT
+        // =========================================================
+
+        [HttpPost("{studentId:int}/transfer")]
+        public async Task<IActionResult> Transfer(
+            int studentId,
+            [FromBody] TransferStudentRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var result = await _service.TransferAsync(
+                studentId,
+                request);
+
+            if (!result)
+                return BadRequest(new
+                {
+                    message = "Student transfer failed"
+                });
+
+            return Ok(new
+            {
+                message = "Student transferred successfully"
+            });
+        }
+
 
         // =========================================================
         // SUSPEND STUDENT
         // =========================================================
-        [HttpPatch("{studentId:int}/suspend")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Suspend(int studentId, [FromBody] SuspendStudentRequest request)
-        {
-            var success = await _service.SuspendAsync(studentId, request);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
 
-            return Ok(new { message = "Student suspended successfully." });
+        [HttpPost("{studentId:int}/suspend")]
+        public async Task<IActionResult> Suspend(
+            int studentId,
+            [FromBody] SuspendStudentRequest request)
+        {
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
+
+            var result = await _service.SuspendAsync(
+                studentId,
+                request);
+
+            if (!result)
+                return BadRequest(new
+                {
+                    message = "Student suspension failed"
+                });
+
+            return Ok(new
+            {
+                message = "Student suspended successfully"
+            });
         }
+
 
         // =========================================================
         // ACTIVATE STUDENT
         // =========================================================
-        [HttpPatch("{studentId:int}/activate")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> Activate(int studentId)
-        {
-            var success = await _service.ActivateAsync(studentId);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
 
-            return Ok(new { message = "Student activated successfully." });
+        [HttpPost("{studentId:int}/activate")]
+        public async Task<IActionResult> Activate(
+            int studentId)
+        {
+            var result = await _service.ActivateAsync(
+                studentId);
+
+            if (!result)
+                return BadRequest(new
+                {
+                    message = "Student activation failed"
+                });
+
+            return Ok(new
+            {
+                message = "Student activated successfully"
+            });
         }
+
 
         // =========================================================
         // RESET PASSWORD
         // =========================================================
-        [HttpPost("{studentId:int}/reset-password")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ResetPassword(int studentId)
-        {
-            var success = await _service.ResetPasswordAsync(studentId);
-            if (!success)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
 
-            return Ok(new { message = "Student password reset successfully." });
+        [HttpPost("{studentId:int}/reset-password")]
+        public async Task<IActionResult> ResetPassword(
+            int studentId)
+        {
+            var result = await _service.ResetPasswordAsync(
+                studentId);
+
+            if (!result)
+                return BadRequest(new
+                {
+                    message = "Password reset failed"
+                });
+
+            return Ok(new
+            {
+                message = "Student password reset successfully"
+            });
         }
+
 
         // =========================================================
         // STUDENT DASHBOARD
         // =========================================================
+
         [HttpGet("{studentId:int}/dashboard")]
-        [ProducesResponseType(typeof(StudentDashboardDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> GetDashboard(int studentId)
+        public async Task<IActionResult> GetDashboard(
+            int studentId)
         {
-            var dashboard = await _service.GetDashboardAsync(studentId);
+            var dashboard = await _service.GetDashboardAsync(
+                studentId);
+
             if (dashboard == null)
-                return NotFound(new { message = $"Student with ID {studentId} not found." });
+                return NotFound(new
+                {
+                    message = "Student not found"
+                });
 
             return Ok(dashboard);
         }
 
+
         // =========================================================
-        // SEARCH STUDENTS (WITH BOARD, YEAR, LEVEL, GROUP, SECTION)
+        // SEARCH STUDENTS
         // =========================================================
+
         [HttpGet("search")]
-        [ProducesResponseType(typeof(List<StudentListItemDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> Search(
             [FromQuery] string? search,
             [FromQuery] int? boardId,
@@ -244,7 +360,7 @@ namespace CollegeManagement.API.Controllers.V1
             [FromQuery] int? sectionId,
             [FromQuery] bool? isActive)
         {
-            var result = await _service.SearchAsync(
+            var students = await _service.SearchAsync(
                 search,
                 boardId,
                 academicYearId,
@@ -253,68 +369,90 @@ namespace CollegeManagement.API.Controllers.V1
                 sectionId,
                 isActive);
 
-            return Ok(result);
+            return Ok(students);
         }
 
-        // =========================================================
-        // GET ACTIVE STUDENTS
-        // =========================================================
-        [HttpGet("active")]
-        [ProducesResponseType(typeof(List<StudentListItemDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetActive()
-        {
-            var result = await _service.GetActiveAsync();
-            return Ok(result);
-        }
 
         // =========================================================
         // GET STUDENTS BY GROUP
         // =========================================================
+
         [HttpGet("group/{groupId:int}")]
-        [ProducesResponseType(typeof(List<StudentListItemDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetByGroup(int groupId)
+        public async Task<IActionResult> GetByGroup(
+            int groupId)
         {
-            var result = await _service.GetByGroupAsync(groupId);
-            return Ok(result);
+            var students = await _service.GetByGroupAsync(
+                groupId);
+
+            return Ok(students);
         }
+
 
         // =========================================================
         // GET STUDENTS BY SECTION
         // =========================================================
+
         [HttpGet("section/{sectionId:int}")]
-        [ProducesResponseType(typeof(List<StudentListItemDto>), StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetBySection(int sectionId)
+        public async Task<IActionResult> GetBySection(
+            int sectionId)
         {
-            var result = await _service.GetBySectionAsync(sectionId);
-            return Ok(result);
+            var students = await _service.GetBySectionAsync(
+                sectionId);
+
+            return Ok(students);
         }
+
+
+        // =========================================================
+        // GET ACTIVE STUDENTS
+        // =========================================================
+
+        [HttpGet("active")]
+        public async Task<IActionResult> GetActive()
+        {
+            var students = await _service.GetActiveAsync();
+
+            return Ok(students);
+        }
+
 
         // =========================================================
         // CHECK EMAIL
         // =========================================================
-        [HttpGet("check-email")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<IActionResult> CheckEmail([FromQuery] string email, [FromQuery] int? excludeStudentId = null)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-                return BadRequest(new { message = "Email query parameter is required." });
 
-            var exists = await _service.EmailExistsAsync(email, excludeStudentId);
-            return Ok(new { exists });
+        [HttpGet("check-email")]
+        public async Task<IActionResult> EmailExists(
+            [FromQuery] string email,
+            [FromQuery] int? excludeStudentId = null)
+        {
+            var exists = await _service.EmailExistsAsync(
+                email,
+                excludeStudentId);
+
+            return Ok(new
+            {
+                exists
+            });
         }
+
 
         // =========================================================
         // CHECK MOBILE
         // =========================================================
-        [HttpGet("check-mobile")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<IActionResult> CheckMobile([FromQuery] string mobileNumber, [FromQuery] int? excludeStudentId = null)
-        {
-            if (string.IsNullOrWhiteSpace(mobileNumber))
-                return BadRequest(new { message = "Mobile number query parameter is required." });
 
-            var exists = await _service.MobileExistsAsync(mobileNumber, excludeStudentId);
-            return Ok(new { exists });
+        [HttpGet("check-mobile")]
+        public async Task<IActionResult> MobileExists(
+            [FromQuery] string mobile,
+            [FromQuery] int? excludeStudentId = null)
+        {
+            var exists = await _service.MobileExistsAsync(
+                mobile,
+                excludeStudentId);
+
+            return Ok(new
+            {
+                exists
+            });
         }
     }
 }
