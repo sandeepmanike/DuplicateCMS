@@ -4,72 +4,44 @@ namespace CollegeManagement.API.Services.Interfaces
 {
     public interface IStudentAdmissionService
     {
-        // =========================================================
-        // GET ALL
-        // =========================================================
-
-        Task<IEnumerable<StudentAdmissionResponseDto>> GetAllAsync();
-
-
-        // =========================================================
-        // GET BY ID
-        // =========================================================
+        // Admission
+        Task<StudentAdmissionResponseDto> CreateAsync(
+            CreateStudentAdmissionRequest request);
 
         Task<StudentAdmissionResponseDto?> GetByIdAsync(
             int admissionId);
 
-
-        // =========================================================
-        // CREATE
-        // =========================================================
-
-        Task<StudentAdmissionResponseDto> CreateAsync(
-            CreateStudentAdmissionRequest request);
-
-
-        // =========================================================
-        // UPDATE
-        // =========================================================
+        Task<IEnumerable<StudentAdmissionResponseDto>> GetAllAsync();
 
         Task<StudentAdmissionResponseDto?> UpdateAsync(
             int admissionId,
             UpdateStudentAdmissionRequest request);
+        Task<IEnumerable<string>> GetBloodGroupsAsync();
+        //generate//
+        Task<string> GenerateAdmissionNumberAsync();
 
 
-        // =========================================================
-        // DELETE / SOFT DELETE
-        // =========================================================
-
-        Task<bool> DeleteAsync(
-            int admissionId);
-        //validation//
-        Task<dynamic?> SubmitAsync(int admissionId);
-
-        // =========================================================
-        // VERIFY
-        // =========================================================
-
+        // Verify / Approve / Reject
         Task<bool> VerifyAsync(
-            int admissionId);
+            VerifyStudentAdmissionRequest request);
 
-
-        // =========================================================
-        // APPROVE
-        // Creates Student + generates RollNo
-        // =========================================================
-
-        Task<AdmissionApprovalResponseDto?> ApproveAsync(
-            int admissionId);
-
-
-        // =========================================================
-        // REJECT
-        // =========================================================
+        Task<bool> ApproveAsync(
+            ApproveStudentAdmissionRequest request);
 
         Task<bool> RejectAsync(
-            int admissionId);
+            RejectStudentAdmissionRequest request);
 
-        //GENEATE//
-        Task<string> GenerateAdmissionNumberAsync();
+
+        // Section
+        Task<bool> AllocateSectionAsync(
+            AllocateSectionRequest request);
+
+        Task<int> BulkAllocateSectionAsync(
+            BulkSectionAllocationRequest request);
+
+
+        // Roll Number
+        Task<int> BulkAllocateRollNumbersAsync(
+            BulkRollNumberAllocationRequest request);
     }
 }

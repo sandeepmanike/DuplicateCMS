@@ -1,873 +1,180 @@
-﻿using CollegeManagement.API.DTOs.Fee;
+﻿using CollegeManagement.API.DTOs.Fees;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CollegeManagement.API.Controllers
+namespace CollegeManagement.API.Controllers.V1;
+
+/// <summary>Fee Management APIs used by the Fee Management screens.</summary>
+[ApiController]
+[Route("api/v1/fees")]
+public class FeeController : ControllerBase
 {
-    [ApiController]
-    [Route("api/fees")]
-    public class FeesController : ControllerBase
+    private readonly IFeeService _service;
+    public FeeController(IFeeService service) => _service = service;
+
+    // ---------------- Fee Types ----------------
+    /// <summary>Create a reusable fee type such as Admission Fee or Course Fee.</summary>
+    [HttpPost("types")]
+    public async Task<IActionResult> CreateFeeType(CreateFeeTypeRequest request) => Ok(await _service.CreateFeeTypeAsync(request));
+
+    /// <summary>List active and inactive fee types for Fee Setup.</summary>
+    [HttpGet("types")]
+    public async Task<IActionResult> GetFeeTypes() => Ok(await _service.GetFeeTypesAsync());
+
+    /// <summary>Get one fee type by ID.</summary>
+    [HttpGet("types/{id:int}")]
+    public async Task<IActionResult> GetFeeType(int id) => Ok(await _service.GetFeeTypeByIdAsync(id));
+
+    /// <summary>Update fee type name, category or status.</summary>
+    [HttpPut("types/{id:int}")]
+    public async Task<IActionResult> UpdateFeeType(int id, UpdateFeeTypeRequest request) => Ok(await _service.UpdateFeeTypeAsync(id, request));
+
+    /// <summary>Deactivate a fee type.</summary>
+    [HttpDelete("types/{id:int}")]
+    public async Task<IActionResult> DeleteFeeType(int id) => Ok(new { success = await _service.DeleteFeeTypeAsync(id) });
+
+    // ---------------- Fee Structures ----------------
+    /// <summary>Create a fee structure for Board, Academic Year, Group and optional Program.</summary>
+    [HttpPost("structures")]
+    public async Task<IActionResult> CreateFeeStructure(CreateFeeStructureRequest request) => Ok(await _service.CreateFeeStructureAsync(request));
+
+    /// <summary>List configured fee structures with configured fee types and total fee.</summary>
+    [HttpGet("structures")]
+    public async Task<IActionResult> GetFeeStructures() => Ok(await _service.GetFeeStructuresAsync());
+
+    /// <summary>Get one fee structure and all configured fee types.</summary>
+    [HttpGet("structures/{id:int}")]
+    public async Task<IActionResult> GetFeeStructure(int id) => Ok(await _service.GetFeeStructureByIdAsync(id));
+
+    /// <summary>Update fee structure program or active status.</summary>
+    [HttpPut("structures/{id:int}")]
+    public async Task<IActionResult> UpdateFeeStructure(int id, UpdateFeeStructureRequest request) => Ok(await _service.UpdateFeeStructureAsync(id, request));
+
+    /// <summary>Deactivate a fee structure.</summary>
+    [HttpDelete("structures/{id:int}")]
+    public async Task<IActionResult> DeleteFeeStructure(int id) => Ok(new { success = await _service.DeleteFeeStructureAsync(id) });
+
+    /// <summary>Add a fee type and amount to an existing fee structure.</summary>
+    [HttpPost("structures/{id:int}/items")]
+    public async Task<IActionResult> AddStructureItem(int id, CreateFeeStructureItemRequest request) => Ok(await _service.AddFeeStructureItemAsync(id, request));
+
+    /// <summary>Get configured fee types for one fee structure.</summary>
+    [HttpGet("structures/{id:int}/items")]
+    public async Task<IActionResult> GetStructureItems(int id) => Ok(await _service.GetFeeStructureItemsAsync(id));
+
+    /// <summary>Update amount or Mandatory/Optional rule of a configured fee type.</summary>
+    [HttpPut("items/{id:int}")]
+    public async Task<IActionResult> UpdateStructureItem(int id, UpdateFeeStructureItemRequest request) => Ok(await _service.UpdateFeeStructureItemAsync(id, request));
+
+    /// <summary>Deactivate a configured fee type from a structure.</summary>
+    [HttpDelete("items/{id:int}")]
+    public async Task<IActionResult> DeleteStructureItem(int id) => Ok(new { success = await _service.DeleteFeeStructureItemAsync(id) });
+
+    // ---------------- Scholarships ----------------
+    /// <summary>Add a scholarship or concession scheme to Fee Setup.</summary>
+    [HttpPost("scholarships")]
+    public async Task<IActionResult> CreateScholarship(CreateScholarshipRequest request) => Ok(await _service.CreateScholarshipAsync(request));
+
+    /// <summary>List scholarship and concession schemes.</summary>
+    [HttpGet("scholarships")]
+    public async Task<IActionResult> GetScholarships() => Ok(await _service.GetScholarshipsAsync());
+
+    /// <summary>Get one scholarship scheme.</summary>
+    [HttpGet("scholarships/{id:int}")]
+    public async Task<IActionResult> GetScholarship(int id) => Ok(await _service.GetScholarshipByIdAsync(id));
+
+    /// <summary>Update scholarship name, discount type, value or status.</summary>
+    [HttpPut("scholarships/{id:int}")]
+    public async Task<IActionResult> UpdateScholarship(int id, UpdateScholarshipRequest request) => Ok(await _service.UpdateScholarshipAsync(id, request));
+
+    /// <summary>Deactivate a scholarship scheme.</summary>
+    [HttpDelete("scholarships/{id:int}")]
+    public async Task<IActionResult> DeleteScholarship(int id) => Ok(new { success = await _service.DeleteScholarshipAsync(id) });
+
+    // ---------------- Student Fee ----------------
+    /// <summary>Assign a configured fee structure to an approved student.</summary>
+    [HttpPost("student-fees/assign")]
+    public async Task<IActionResult> AssignStudentFee(AssignStudentFeeRequest request) => Ok(await _service.AssignStudentFeeAsync(request));
+
+    /// <summary>Get the complete student fee details, breakdown, schedules and payment history.</summary>
+    [HttpGet("student-fees/{id:int}")]
+    public async Task<IActionResult> GetStudentFee(int id)
     {
-        private readonly IFeeService _feeService;
-
-        public FeesController(IFeeService feeService)
-        {
-            _feeService = feeService;
-        }
-
-        // =====================================================
-        // 1. GET FEE TYPES
-        // =====================================================
-
-        [HttpGet("types")]
-        public async Task<IActionResult> GetFeeTypes()
-        {
-            try
-            {
-                var result = await _feeService.GetFeeTypesAsync();
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 2. CREATE FEE STRUCTURE
-        // =====================================================
-
-        [HttpPost("structure")]
-        public async Task<IActionResult> CreateFeeStructure(
-            [FromBody] FeeStructureRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService.CreateFeeStructureAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fee structure created successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 3. GET ALL FEE STRUCTURES
-        // =====================================================
-
-        [HttpGet("structure")]
-        public async Task<IActionResult> GetFeeStructures()
-        {
-            try
-            {
-                var result =
-                    await _feeService.GetFeeStructuresAsync();
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 4. GET FEE STRUCTURE BY ID
-        // =====================================================
-
-        [HttpGet("structure/{id:int}")]
-        public async Task<IActionResult> GetFeeStructureById(int id)
-        {
-            try
-            {
-                var result =
-                    await _feeService.GetFeeStructureByIdAsync(id);
-
-                if (result == null)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Fee structure not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 5. UPDATE FEE STRUCTURE
-        // =====================================================
-
-        [HttpPut("structure/{id:int}")]
-        public async Task<IActionResult> UpdateFeeStructure(
-            int id,
-            [FromBody] FeeStructureRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService
-                        .UpdateFeeStructureAsync(id, dto);
-
-                if (result == null)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Fee structure not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fee structure updated successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 6. DELETE FEE STRUCTURE
-        // =====================================================
-
-        [HttpDelete("structure/{id:int}")]
-        public async Task<IActionResult> DeleteFeeStructure(int id)
-        {
-            try
-            {
-                var result =
-                    await _feeService.DeleteFeeStructureAsync(id);
-
-                if (!result)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Fee structure not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fee structure deactivated successfully."
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 7. ASSIGN FEE TO STUDENT
-        // =====================================================
-
-        [HttpPost("assign")]
-        public async Task<IActionResult> AssignStudentFee(
-            [FromBody] StudentFeeAssignmentRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService.AssignStudentFeeAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fee assigned to student successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 8. GET STUDENT FEE DETAILS
-        // =====================================================
-
-        [HttpGet("student/{studentId:int}")]
-        public async Task<IActionResult> GetStudentFeeDetails(
-            int studentId)
-        {
-            try
-            {
-                var result =
-                    await _feeService
-                        .GetStudentFeeDetailsAsync(studentId);
-
-                if (result == null || !result.Any())
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "No fee details found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 9. GET ASSIGNMENT BY ID
-        // =====================================================
-
-        [HttpGet("assignment/{id:int}")]
-        public async Task<IActionResult>
-            GetStudentFeeAssignmentById(int id)
-        {
-            try
-            {
-                var result =
-                    await _feeService
-                        .GetStudentFeeAssignmentByIdAsync(id);
-
-                if (result == null)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Fee assignment not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 10. UPDATE STUDENT FEE ASSIGNMENT
-        // =====================================================
-
-        [HttpPut("assignment/{id:int}")]
-        public async Task<IActionResult>
-            UpdateStudentFeeAssignment(
-                int id,
-                [FromBody] StudentFeeAssignmentUpdateDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService
-                        .UpdateStudentFeeAssignmentAsync(id, dto);
-
-                if (result == null)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Fee assignment not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fee assignment updated successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 11. COLLECT FEE
-        // =====================================================
-
-        [HttpPost("collect")]
-        public async Task<IActionResult> CollectFee(
-            [FromBody] FeePaymentRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService.CollectFeeAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fee payment completed successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 12. PAYMENT HISTORY
-        // =====================================================
-
-        [HttpGet("history/{studentId:int}")]
-        public async Task<IActionResult>
-            GetPaymentHistory(int studentId)
-        {
-            try
-            {
-                var result =
-                    await _feeService
-                        .GetPaymentHistoryAsync(studentId);
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 13. RECEIPT
-        // =====================================================
-
-        [HttpGet("receipt/{receiptId:int}")]
-        public async Task<IActionResult>
-            GetReceipt(int receiptId)
-        {
-            try
-            {
-                var result =
-                    await _feeService.GetReceiptAsync(receiptId);
-
-                if (result == null)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Receipt not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 14. CANCEL PAYMENT
-        // =====================================================
-
-        [HttpDelete("payment/{id:int}")]
-        public async Task<IActionResult>
-            CancelPayment(int id)
-        {
-            try
-            {
-                var result =
-                    await _feeService.CancelPaymentAsync(id);
-
-                if (!result)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Payment not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Payment cancelled successfully."
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 15. DISCOUNT
-        // =====================================================
-
-        [HttpPost("discount")]
-        public async Task<IActionResult> ApplyDiscount(
-    [FromBody] DiscountRequestDto dto)
-        {
-            try
-            {
-                if (dto == null)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Request is required."
-                    });
-                }
-
-                if (dto.AdmissionId <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Valid AdmissionId is required."
-                    });
-                }
-
-                if (dto.DiscountAmount <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Discount amount must be greater than zero."
-                    });
-                }
-
-                var result = await _feeService.ApplyDiscountAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Discount applied successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-        // =====================================================
-        // 16. SCHOLARSHIP
-        // =====================================================
-
-        [HttpPost("scholarship")]
-        public async Task<IActionResult> ApplyScholarship(
-            [FromBody] ScholarshipRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService.ApplyScholarshipAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Scholarship applied successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 17. FINE
-        // =====================================================
-
-        [HttpPost("fine")]
-        public async Task<IActionResult> ApplyFine(
-            [FromBody] FineRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService.ApplyFineAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fine applied successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 18. WAIVE FINE
-        // =====================================================
-
-        [HttpPatch("fine/{id:int}/waive")]
-        public async Task<IActionResult> WaiveFine(int id)
-        {
-            try
-            {
-                var result =
-                    await _feeService.WaiveFineAsync(id);
-
-                if (!result)
-                    return NotFound(new
-                    {
-                        success = false,
-                        message = "Fine not found."
-                    });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Fine waived successfully."
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 19. REFUND
-        // =====================================================
-
-        [HttpPost("refund")]
-        public async Task<IActionResult> CreateRefund(
-            [FromBody] RefundRequestDto dto)
-        {
-            try
-            {
-                var result =
-                    await _feeService.CreateRefundAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Refund processed successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // 20. DUE FEES
-        // =====================================================
-
-        [HttpGet("due")]
-        public async Task<IActionResult> GetDueFees(
-     [FromQuery] int? studentId)
-        {
-            try
-            {
-                var result =
-                    await _feeService.GetDueFeesAsync(studentId);
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
-                    message = ex.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // ADMISSION FEE APIs
-        // =====================================================
-
-        [HttpPost("admission/assign")]
-        public async Task<IActionResult> AssignAdmissionFees(
-     AdmissionFeeAssignDto dto)
-        {
-            try
-            {
-                var result = await _feeService.AssignAdmissionFeesAsync(dto);
-
-                return Ok(new
-                {
-                    success = true,
-                    data = result
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = ex.Message,
-                    innerException = ex.InnerException?.Message,
-                    details = ex.ToString()
-                });
-            }
-        }
-
-        [HttpGet("admission/{admissionId}/summary")]
-        public async Task<IActionResult> GetAdmissionFeeSummary(
-            int admissionId)
-        {
-            if (admissionId <= 0)
-                return BadRequest(new
-                {
-                    message = "Valid AdmissionId is required"
-                });
-
-            var result =
-                await _feeService.GetAdmissionFeeSummaryAsync(admissionId);
-
-            if (result == null)
-                return NotFound(new
-                {
-                    message = "Admission fee details not found"
-                });
-
-            return Ok(result);
-        }
-
-
-        [HttpPost("admission/{admissionId}/payment")]
-        public async Task<IActionResult> CollectAdmissionFee(
-            int admissionId,
-            [FromBody] AdmissionFeePaymentDto request)
-        {
-            if (admissionId <= 0)
-                return BadRequest(new
-                {
-                    message = "Valid AdmissionId is required"
-                });
-
-            if (request == null)
-                return BadRequest(new
-                {
-                    message = "Payment request is required"
-                });
-
-            if (request.Amount <= 0)
-                return BadRequest(new
-                {
-                    message = "Payment amount must be greater than zero"
-                });
-
-            if (string.IsNullOrWhiteSpace(request.PaymentMode))
-                return BadRequest(new
-                {
-                    message = "Payment mode is required"
-                });
-
-            var result =
-                await _feeService.CollectAdmissionFeeAsync(
-                    admissionId,
-                    request);
-
-            if (result == null)
-                return BadRequest(new
-                {
-                    message = "Unable to collect admission fee"
-                });
-
-            return Ok(new
-            {
-                message = "Admission fee paid successfully",
-                data = result
-            });
-        }
+        var result = await _service.GetStudentFeeAsync(id);
+        return result == null ? NotFound(new { message = "Student fee record not found." }) : Ok(result);
     }
+
+    /// <summary>Get student fee details by student ID.</summary>
+    [HttpGet("students/{studentId:int}/fee-details")]
+    public async Task<IActionResult> GetStudentFeeDetails(int studentId)
+    {
+        var result = await _service.GetStudentFeeDetailsByStudentAsync(studentId);
+        return result == null ? NotFound(new { message = "Student fee record not found." }) : Ok(result);
+    }
+
+    /// <summary>Student Fee Ledger with search and screen filters.</summary>
+    [HttpGet("ledger")]
+    public async Task<IActionResult> GetLedger([FromQuery] int? academicYearId, [FromQuery] int? groupId, [FromQuery] int? sectionId, [FromQuery] string? paymentPlan, [FromQuery] string? status, [FromQuery] string? search)
+        => Ok(await _service.GetStudentFeeLedgerAsync(academicYearId, groupId, sectionId, paymentPlan, status, search));
+
+    /// <summary>Compatibility route for student-specific fee ledger.</summary>
+    [HttpGet("students/{studentId:int}/fee-ledger")]
+    public async Task<IActionResult> GetStudentLedger(int studentId) => Ok(await _service.GetStudentFeeDetailsByStudentAsync(studentId));
+
+    // ---------------- Concession ----------------
+    /// <summary>Apply a student-specific concession or scholarship after fee assignment.</summary>
+    [HttpPost("concession")]
+    public async Task<IActionResult> ApplyConcession(ApplyFeeConcessionRequest request) => Ok(await _service.ApplyFeeConcessionAsync(request));
+
+    // ---------------- Payment Plan / Schedules ----------------
+    /// <summary>Create a Full Payment or Fee Schedule Payment plan for a student fee.</summary>
+    [HttpPost("payment-plans")]
+    public async Task<IActionResult> CreatePaymentPlan(CreatePaymentPlanRequest request) => Ok(await _service.CreatePaymentPlanAsync(request));
+
+    /// <summary>Add one fee schedule installment and due date.</summary>
+    [HttpPost("payment-plans/{id:int}/installments")]
+    public async Task<IActionResult> AddInstallment(int id, CreateInstallmentRequest request) => Ok(await _service.AddPaymentPlanInstallmentAsync(id, request));
+
+    // ---------------- Collection ----------------
+    /// <summary>List student accounts with payable, paid, balance, next due and status.</summary>
+    [HttpGet("collection")]
+    public async Task<IActionResult> GetCollection([FromQuery] string? search) => Ok(await _service.GetFeeCollectionAsync(search));
+
+    /// <summary>Collect full or partial payment against a selected fee schedule.</summary>
+    [HttpPost("collect")]
+    public async Task<IActionResult> Collect(CreateFeePaymentRequest request) => Ok(await _service.CreateFeePaymentAsync(request));
+
+    // ---------------- Payment History / Receipt ----------------
+    /// <summary>View payment history for one student.</summary>
+    [HttpGet("history/{studentId:int}")]
+    public async Task<IActionResult> GetHistory(int studentId) => Ok(await _service.GetFeePaymentsAsync(studentId));
+
+    /// <summary>Fetch one payment transaction by payment ID.</summary>
+    [HttpGet("payments/{id:int}")]
+    public async Task<IActionResult> GetPayment(int id) => Ok(await _service.GetFeePaymentByIdAsync(id));
+
+    /// <summary>Fetch one payment receipt by receipt number.</summary>
+    [HttpGet("receipt/{receiptNumber}")]
+    public async Task<IActionResult> GetReceipt(string receiptNumber)
+    {
+        var result = await _service.GetReceiptAsync(receiptNumber);
+        return result == null ? NotFound(new { message = "Receipt not found." }) : Ok(result);
+    }
+
+    // ---------------- Due / Dashboard / Reports ----------------
+    /// <summary>List students and fee schedules with outstanding fees.</summary>
+    [HttpGet("due")]
+    public async Task<IActionResult> GetDue() => Ok(await _service.GetDueAsync());
+
+    /// <summary>Fee dashboard data for overview cards, upcoming schedules, recent payments and group-wise collection charts.</summary>
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> GetDashboard() => Ok(await _service.GetDashboardAsync());
+
+    /// <summary>Return daily fee collection report.</summary>
+    [HttpGet("reports/daily")]
+    public async Task<IActionResult> DailyReport([FromQuery] DateTime? date) => Ok(await _service.GetDailyReportAsync(date));
+
+    /// <summary>Return monthly fee collection report.</summary>
+    [HttpGet("reports/monthly")]
+    public async Task<IActionResult> MonthlyReport([FromQuery] int? year, [FromQuery] int? month) => Ok(await _service.GetMonthlyReportAsync(year, month));
 }

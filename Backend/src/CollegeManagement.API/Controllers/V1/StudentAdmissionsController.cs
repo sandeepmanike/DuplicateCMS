@@ -1,108 +1,27 @@
-﻿using CollegeManagement.API.DTOs.StudentAdmission;
-using CollegeManagement.API.Services.Implementations;
+﻿using Asp.Versioning;
+using CollegeManagement.API.DTOs.StudentAdmission;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CollegeManagement.API.Controllers
+namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
-    [Route("api/v1/admissions")]
-    public class StudentAdmissionsController : ControllerBase
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/student-admissions")]
+    public class StudentAdmissionController : ControllerBase
     {
         private readonly IStudentAdmissionService _service;
-        private readonly ILogger<StudentAdmissionsController> _logger;
 
-        public StudentAdmissionsController(
-            IStudentAdmissionService service,
-            ILogger<StudentAdmissionsController> logger)
+        public StudentAdmissionController(
+            IStudentAdmissionService service)
         {
             _service = service;
-            _logger = logger;
         }
 
-
-        // =====================================================
-        // GET ALL
-        // =====================================================
-
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            try
-            {
-                var result = await _service.GetAllAsync();
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Error while getting all student admissions.");
-
-                return StatusCode(500, new
-                {
-                    message = "An error occurred while retrieving admissions."
-                });
-            }
-        }
-
-
-        // =====================================================
-        // GET BY ID
-        // =====================================================
-
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        message = "Invalid admission ID."
-                    });
-                }
-
-                var result =
-                    await _service.GetByIdAsync(id);
-
-                if (result == null)
-                {
-                    return NotFound(new
-                    {
-                        message = "Admission not found."
-                    });
-                }
-
-                return Ok(result);
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Error while getting admission {AdmissionId}.",
-                    id);
-
-                return StatusCode(500, new
-                {
-                    message = "An error occurred while retrieving the admission."
-                });
-            }
-        }
-
-
-        // =====================================================
-        // CREATE
-        // =====================================================
+        // =========================================================
+        // CREATE ADMISSION
+        // POST: api/v1/student-admissions
+        // =========================================================
 
         [HttpPost]
         [Consumes("multipart/form-data")]
@@ -110,9 +29,7 @@ namespace CollegeManagement.API.Controllers
             [FromForm] CreateStudentAdmissionRequest request)
         {
             if (!ModelState.IsValid)
-            {
                 return ValidationProblem(ModelState);
-            }
 
             try
             {
@@ -121,16 +38,14 @@ namespace CollegeManagement.API.Controllers
 
                 return CreatedAtAction(
                     nameof(GetById),
-                    new
-                    {
-                        id = result.AdmissionId
-                    },
+                    new { id = result.AdmissionId },
                     result);
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new
                 {
+                    statusCode = 400,
                     message = ex.Message
                 });
             }
@@ -138,17 +53,90 @@ namespace CollegeManagement.API.Controllers
             {
                 return StatusCode(500, new
                 {
-                    message = ex.Message,
-                    innerMessage = ex.InnerException?.Message
+                    statusCode = 500,
+                    message = "An unexpected server error occurred.",
+                    details = ex.Message
                 });
             }
         }
 
 
+        // =========================================================
+        // GET ALL ADMISSIONS
+        // GET: api/v1/student-admissions
+        // =========================================================
 
-        // =====================================================
-        // UPDATE
-        // =====================================================
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                var result =
+                    await _service.GetAllAsync();
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "An unexpected server error occurred.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
+        // =========================================================
+        // GET ADMISSION BY ID
+        // GET: api/v1/student-admissions/{id}
+        // =========================================================
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById(
+            int id)
+        {
+            try
+            {
+                var result =
+                    await _service.GetByIdAsync(id);
+
+                if (result == null)
+                {
+                    return NotFound(new
+                    {
+                        statusCode = 404,
+                        message = "Student admission not found."
+                    });
+                }
+
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message = "An unexpected server error occurred.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
+        // =========================================================
+        // UPDATE ADMISSION
+        // PUT: api/v1/student-admissions/{id}
+        // =========================================================
 
         [HttpPut("{id:int}")]
         [Consumes("multipart/form-data")]
@@ -157,20 +145,10 @@ namespace CollegeManagement.API.Controllers
             [FromForm] UpdateStudentAdmissionRequest request)
         {
             if (!ModelState.IsValid)
-            {
                 return ValidationProblem(ModelState);
-            }
 
             try
             {
-                if (id <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        message = "Invalid admission ID."
-                    });
-                }
-
                 var result =
                     await _service.UpdateAsync(
                         id,
@@ -180,7 +158,8 @@ namespace CollegeManagement.API.Controllers
                 {
                     return NotFound(new
                     {
-                        message = "Admission not found."
+                        statusCode = 404,
+                        message = "Student admission not found."
                     });
                 }
 
@@ -190,100 +169,7 @@ namespace CollegeManagement.API.Controllers
             {
                 return BadRequest(new
                 {
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Error while updating admission {AdmissionId}.",
-                    id);
-
-                return StatusCode(500, new
-                {
-                    message = "An error occurred while updating the admission."
-                });
-            }
-        }
-
-
-        // =====================================================
-        // DELETE / SOFT DELETE
-        // =====================================================
-
-        [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        message = "Invalid admission ID."
-                    });
-                }
-
-                var result =
-                    await _service.DeleteAsync(id);
-
-                if (!result)
-                {
-                    return NotFound(new
-                    {
-                        message = "Admission not found."
-                    });
-                }
-
-                return Ok(new
-                {
-                    message = "Admission deleted successfully."
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Error while deleting admission {AdmissionId}.",
-                    id);
-
-                return StatusCode(500, new
-                {
-                    message = "An error occurred while deleting the admission."
-                });
-            }
-        }
-
-
-        //validation//
-        [HttpPost("{id:int}/submit")]
-
-        public async Task<IActionResult> SubmitAdmission(int id)
-        {
-            try
-            {
-                var result = await _service.SubmitAsync(id);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Admission submitted successfully.",
-                    data = result
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    success = false,
+                    statusCode = 400,
                     message = ex.Message
                 });
             }
@@ -291,49 +177,53 @@ namespace CollegeManagement.API.Controllers
             {
                 return StatusCode(500, new
                 {
-                    success = false,
-                    message = ex.Message
+                    statusCode = 500,
+                    message = "An unexpected server error occurred.",
+                    details = ex.Message
                 });
             }
         }
 
-        // =====================================================
-        // VERIFY
-        // =====================================================
+
+        // =========================================================
+        // VERIFY ADMISSION
+        // POST: api/v1/student-admissions/{id}/verify
+        // =========================================================
 
         [HttpPost("{id:int}/verify")]
-        public async Task<IActionResult> Verify(int id)
+        public async Task<IActionResult> Verify(
+            int id,
+            [FromBody] VerifyStudentAdmissionRequest request)
         {
             try
             {
-                if (id <= 0)
+                request.AdmissionId = id;
+
+                var success =
+                    await _service.VerifyAsync(request);
+
+                if (!success)
                 {
                     return BadRequest(new
                     {
-                        message = "Invalid admission ID."
-                    });
-                }
-
-                var result =
-                    await _service.VerifyAsync(id);
-
-                if (!result)
-                {
-                    return NotFound(new
-                    {
-                        message = "Admission not found or cannot be verified."
+                        statusCode = 400,
+                        message =
+                            "Admission could not be verified."
                     });
                 }
 
                 return Ok(new
                 {
-                    message = "Admission verified successfully."
+                    statusCode = 200,
+                    message =
+                        "Student admission verified successfully."
                 });
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new
                 {
+                    statusCode = 400,
                     message = ex.Message
                 });
             }
@@ -341,59 +231,54 @@ namespace CollegeManagement.API.Controllers
             {
                 return StatusCode(500, new
                 {
-                    message = ex.Message,
-                    innerMessage = ex.InnerException?.Message
+                    statusCode = 500,
+                    message =
+                        "An unexpected server error occurred.",
+                    details = ex.Message
                 });
             }
         }
 
 
-        // =====================================================
-        // APPROVE
-        // Creates Student + generates RollNo
-        // =====================================================
+        // =========================================================
+        // APPROVE ADMISSION
+        // POST: api/v1/student-admissions/{id}/approve
+        // =========================================================
 
         [HttpPost("{id:int}/approve")]
-        public async Task<IActionResult> Approve(int id)
+        public async Task<IActionResult> Approve(
+            int id,
+            [FromBody] ApproveStudentAdmissionRequest request)
         {
             try
             {
-                if (id <= 0)
+                request.AdmissionId = id;
+
+                var success =
+                    await _service.ApproveAsync(request);
+
+                if (!success)
                 {
                     return BadRequest(new
                     {
-                        message = "Invalid admission ID."
-                    });
-                }
-
-                var result =
-                    await _service.ApproveAsync(id);
-
-                if (result == null)
-                {
-                    return NotFound(new
-                    {
+                        statusCode = 400,
                         message =
-                            "Admission not found or cannot be approved."
+                            "Admission could not be approved."
                     });
                 }
 
                 return Ok(new
                 {
+                    statusCode = 200,
                     message =
-                        "Admission approved successfully.",
-
-                    studentId =
-                        result.StudentId,
-
-                    rollNo =
-                        result.RollNo
+                        "Student admission approved successfully."
                 });
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new
                 {
+                    statusCode = 400,
                     message = ex.Message
                 });
             }
@@ -401,110 +286,234 @@ namespace CollegeManagement.API.Controllers
             {
                 return StatusCode(500, new
                 {
-                    message = ex.Message,
-                    innerMessage = ex.InnerException?.Message
-                });
-            }
-        }
-
-
-        // =====================================================
-        // REJECT
-        // =====================================================
-
-        [HttpPost("{id:int}/reject")]
-        public async Task<IActionResult> Reject(int id)
-        {
-            try
-            {
-                if (id <= 0)
-                {
-                    return BadRequest(new
-                    {
-                        message = "Invalid admission ID."
-                    });
-                }
-
-                var result =
-                    await _service.RejectAsync(id);
-
-                if (!result)
-                {
-                    return NotFound(new
-                    {
-                        message =
-                            "Admission not found or cannot be rejected."
-                    });
-                }
-
-                return Ok(new
-                {
+                    statusCode = 500,
                     message =
-                        "Admission rejected successfully."
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new
-                {
-                    message = ex.Message
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Error while rejecting admission {AdmissionId}.",
-                    id);
-
-                return StatusCode(500, new
-                {
-                    message = "An error occurred while rejecting the admission."
+                        "An unexpected server error occurred.",
+                    details = ex.Message
                 });
             }
         }
 
 
-        // =====================================================
-        // BLOOD GROUPS
-        // =====================================================
-
+        //bloodgroup//
         [HttpGet("blood-groups")]
-        public IActionResult GetBloodGroups()
+        public async Task<IActionResult> GetBloodGroups()
         {
-            var bloodGroups = new[]
-            {
-                "A+",
-                "A-",
-                "B+",
-                "B-",
-                "AB+",
-                "AB-",
-                "O+",
-                "O-"
-            };
+            var bloodGroups = await _service.GetBloodGroupsAsync();
 
-            return Ok(new
-            {
-                statusCode = 200,
-                message = "Blood groups retrieved successfully.",
-                data = bloodGroups
-            });
+            return Ok(bloodGroups);
         }
-
-        // =====================================================
-        // GENERATE ADMISSION NUMBER
-        // =====================================================
+        //generatenumber//
         [HttpPost("generate-number")]
         public async Task<IActionResult> GenerateAdmissionNumber()
         {
-            var admissionNo =
+            var admissionNumber =
                 await _service.GenerateAdmissionNumberAsync();
 
             return Ok(new
             {
-                admissionNumber = admissionNo
+                admissionNumber
             });
+        }
+
+        // =========================================================
+        // REJECT ADMISSION
+        // POST: api/v1/student-admissions/{id}/reject
+        // =========================================================
+
+        [HttpPost("{id:int}/reject")]
+        public async Task<IActionResult> Reject(
+            int id,
+            [FromBody] RejectStudentAdmissionRequest request)
+        {
+            try
+            {
+                request.AdmissionId = id;
+
+                var success =
+                    await _service.RejectAsync(request);
+
+                if (!success)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message =
+                            "Admission could not be rejected."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message =
+                        "Student admission rejected successfully."
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message =
+                        "An unexpected server error occurred.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
+        // =========================================================
+        // SECTION ALLOCATION - SINGLE
+        // POST: api/v1/student-admissions/{id}/section
+        // =========================================================
+
+        [HttpPost("{id:int}/section")]
+        public async Task<IActionResult> AllocateSection(
+            int id,
+            [FromBody] AllocateSectionRequest request)
+        {
+            try
+            {
+                request.AdmissionId = id;
+
+                var success =
+                    await _service.AllocateSectionAsync(
+                        request);
+
+                if (!success)
+                {
+                    return BadRequest(new
+                    {
+                        statusCode = 400,
+                        message =
+                            "Section could not be allocated."
+                    });
+                }
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message =
+                        "Section allocated successfully."
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message =
+                        "An unexpected server error occurred.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
+        // =========================================================
+        // BULK SECTION ALLOCATION
+        // POST: api/v1/student-admissions/bulk-section
+        // =========================================================
+
+        [HttpPost("bulk-section")]
+        public async Task<IActionResult> BulkAllocateSection(
+            [FromBody] BulkSectionAllocationRequest request)
+        {
+            try
+            {
+                var count =
+                    await _service
+                        .BulkAllocateSectionAsync(request);
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message =
+                        "Section allocated successfully.",
+                    allocatedCount = count
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message =
+                        "An unexpected server error occurred.",
+                    details = ex.Message
+                });
+            }
+        }
+
+
+        // =========================================================
+        // BULK ROLL NUMBER ALLOCATION
+        // POST: api/v1/student-admissions/bulk-roll-numbers
+        // =========================================================
+
+        [HttpPost("bulk-roll-numbers")]
+        public async Task<IActionResult> BulkAllocateRollNumbers(
+            [FromBody]
+            BulkRollNumberAllocationRequest request)
+        {
+            try
+            {
+                var count =
+                    await _service
+                        .BulkAllocateRollNumbersAsync(
+                            request);
+
+                return Ok(new
+                {
+                    statusCode = 200,
+                    message =
+                        "Roll numbers allocated successfully.",
+                    allocatedCount = count
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new
+                {
+                    statusCode = 400,
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    statusCode = 500,
+                    message =
+                        "An unexpected server error occurred.",
+                    details = ex.Message
+                });
+            }
         }
     }
 }

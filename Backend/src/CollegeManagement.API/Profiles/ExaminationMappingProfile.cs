@@ -34,7 +34,8 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.AcademicYear, opt => opt.MapFrom(src => src.AcademicYear != null ? src.AcademicYear.AcademicYearName : string.Empty))
                 .ForMember(dest => dest.AcademicLevel, opt => opt.MapFrom(src => src.AcademicLevel != null ? src.AcademicLevel.LevelName : string.Empty))
                 .ForMember(dest => dest.ProgramName, opt => opt.MapFrom(src => src.Program != null ? src.Program.ProgramName : "All Programs"))
-                .ForMember(dest => dest.ExamType, opt => opt.MapFrom(src => src.AssessmentType != null ? src.AssessmentType.AssessmentTypeName : string.Empty))
+                .ForMember(dest => dest.ExamType, opt => opt.MapFrom(src => src.AssessmentType != null ? src.AssessmentType.AssessmentTypeName : (src.AssessmentTypeId == 1 ? "Unit Test" : (src.AssessmentTypeId == 2 ? "Quarterly Exam" : (src.AssessmentTypeId == 3 ? "Half-Yearly Exam" : (src.AssessmentTypeId == 4 ? "Pre-Final Exam" : "Annual Board Exam"))))))
+                .ForMember(dest => dest.ExamPattern, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.ExamPattern) ? src.ExamPattern : "REGULAR_ACADEMIC"))
                 .ForMember(dest => dest.Schedules, opt => opt.MapFrom(src => src.ExamSchedules));
 
             CreateMap<ExamSchedule, ExamScheduleResponse>()
