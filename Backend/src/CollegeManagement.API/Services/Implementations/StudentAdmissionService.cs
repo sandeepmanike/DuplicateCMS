@@ -1,4 +1,4 @@
-﻿using CollegeManagement.API.DTOs.StudentAdmission;
+using CollegeManagement.API.DTOs.StudentAdmission;
 using CollegeManagement.API.Repositories.Implementations;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
