@@ -53,7 +53,12 @@ namespace CollegeManagement.API.Repositories.Implementations
                 query = query.Where(f => f.DepartmentId == request.DepartmentId.Value);
             }
 
-            var facultyList = await query.OrderBy(f => f.FirstName).ThenBy(f => f.LastName).ToListAsync();
+            var facultyList = await query
+                .Include(f => f.DepartmentRef)
+                .Include(f => f.DesignationRef)
+                .OrderBy(f => f.FirstName)
+                .ThenBy(f => f.LastName)
+                .ToListAsync();
 
             // Find existing session for today if any
             var existingSession = await _context.StaffAttendanceSessions
@@ -76,8 +81,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                         : f.EmployeeId,
                     StaffName = $"{f.FirstName} {f.LastName}".Trim(),
                     DepartmentId = f.DepartmentId,
-                    DepartmentName = !string.IsNullOrEmpty(f.Department) ? f.Department : "General",
-                    DesignationName = !string.IsNullOrEmpty(f.Designation) ? f.Designation : "Staff",
+                    DepartmentName = f.DepartmentRef?.DepartmentName ?? (!string.IsNullOrEmpty(f.Department) ? f.Department : "General"),
+                    DesignationName = f.DesignationRef?.Name ?? (!string.IsNullOrEmpty(f.Designation) ? f.Designation : "Staff"),
                     Status = markedEntry?.Status ?? AttendanceStatus.Present,
                     InTime = markedEntry?.InTime,
                     OutTime = markedEntry?.OutTime,

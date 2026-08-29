@@ -203,15 +203,19 @@ public class CertificateRepository : ICertificateRepository
 
         var requestDate = request.RequestDate ?? DateTime.UtcNow;
 
-        // Fetch student details
+        // Fetch student details from Students (or fallback StudentAdmissions)
         var studentSql = @"
             SELECT 
-                s.StudentId, s.StudentName, COALESCE(g.GroupName, '') AS GroupName,
-                COALESCE(s.AcademicLevel, '1st Year') AS AcademicLevel, COALESCE(ay.AcademicYearName, '') AS AcademicYear
+                COALESCE(s.StudentId, sa.StudentId, 0) AS StudentId,
+                COALESCE(s.StudentName, sa.StudentName, '') AS StudentName,
+                COALESCE(g.GroupName, sa.GroupName, '') AS GroupName,
+                COALESCE(s.AcademicLevel, sa.AcademicLevel, '1st Year') AS AcademicLevel,
+                COALESCE(ay.AcademicYearName, sa.AcademicYear, '') AS AcademicYear
             FROM `Students` s
-            LEFT JOIN `Groups` g ON g.GroupId = s.GroupId
-            LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = s.AcademicYearId
-            WHERE TRIM(s.AdmissionNo) = TRIM(@admissionNo)
+            LEFT JOIN `StudentAdmissions` sa ON TRIM(sa.AdmissionNo) = TRIM(@admissionNo)
+            LEFT JOIN `Groups` g ON g.GroupId = COALESCE(s.GroupId, sa.GroupId)
+            LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = COALESCE(s.AcademicYearId, sa.AcademicYearId)
+            WHERE TRIM(s.AdmissionNo) = TRIM(@admissionNo) OR TRIM(sa.AdmissionNo) = TRIM(@admissionNo)
             LIMIT 1;";
 
         var student = await connection.QueryFirstOrDefaultAsync<dynamic>(

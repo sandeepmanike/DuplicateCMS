@@ -88,6 +88,9 @@ namespace CollegeManagement.API.Models.Staff
 
         public int? DepartmentId { get; set; }
 
+        [ForeignKey(nameof(DepartmentId))]
+        public Department? DepartmentRef { get; set; }
+
         [NotMapped]
         public string Department { get; set; } = string.Empty;
 
