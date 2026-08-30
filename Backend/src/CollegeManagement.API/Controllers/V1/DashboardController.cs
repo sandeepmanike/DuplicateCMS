@@ -203,11 +203,16 @@ public class DashboardController : ControllerBase
             new { targetDateStr });
 
         decimal todayAttendancePercentage = 0m;
-        if (attStats != null && attStats.TotalMarked > 0)
+        if (attStats != null)
         {
-            int totalMarked = Convert.ToInt32(attStats.TotalMarked);
-            int present = Convert.ToInt32(attStats.PresentCount);
-            todayAttendancePercentage = Math.Round((decimal)present * 100m / totalMarked, 1);
+            var dict = (IDictionary<string, object>)attStats;
+            if (dict.TryGetValue("TotalMarked", out var tm) && tm != null && Convert.ToInt32(tm) > 0)
+            {
+                int totalMarked = Convert.ToInt32(tm);
+                dict.TryGetValue("PresentCount", out var pc);
+                int present = pc != null ? Convert.ToInt32(pc) : 0;
+                todayAttendancePercentage = Math.Round((decimal)present * 100m / totalMarked, 1);
+            }
         }
 
         // Current Academic Year

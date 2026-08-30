@@ -367,7 +367,7 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Auto-derives assigned Subject & Faculty (or Class Teacher) for specified Date, Group, Section, Period, or SessionType.
+        /// Auto-derives assigned Subject and Faculty (or Class Teacher) for specified Date, Group, Section, Period, or SessionType.
         /// </summary>
         [HttpGet("faculty-subject")]
         [AllowAnonymous]

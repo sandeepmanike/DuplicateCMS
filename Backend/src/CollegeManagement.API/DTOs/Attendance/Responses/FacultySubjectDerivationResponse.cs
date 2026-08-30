@@ -1,7 +1,7 @@
 namespace CollegeManagement.API.DTOs.Attendance.Responses
 {
     /// <summary>
-    /// Response model for derived Subject & Faculty assigned for a specific period.
+    /// Response model for derived Subject and Faculty assigned for a specific period.
     /// </summary>
     public class FacultySubjectDerivationResponse
     {

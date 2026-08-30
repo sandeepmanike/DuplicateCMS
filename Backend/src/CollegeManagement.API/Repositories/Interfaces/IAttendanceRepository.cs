@@ -105,7 +105,7 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<AcademicContextResponse?> GetAcademicContextAsync(int groupId, int sectionId);
 
         /// <summary>
-        /// Auto-derives assigned Subject & Faculty for specified Date, Group, Section, and Period or Session from Timetable/Section.
+        /// Auto-derives assigned Subject and Faculty for specified Date, Group, Section, and Period or Session from Timetable/Section.
         /// </summary>
         Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int? periodId = null, string? sessionType = null);
 
