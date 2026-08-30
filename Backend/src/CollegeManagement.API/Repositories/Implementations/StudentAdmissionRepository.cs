@@ -1,109 +1,185 @@
 using System.Data;
 using Dapper;
+using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.StudentAdmission;
 using CollegeManagement.API.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace CollegeManagement.API.Repositories.Implementations
 {
-    public class StudentAdmissionRepository
-        : IStudentAdmissionRepository
+    public class StudentAdmissionRepository : IStudentAdmissionRepository
     {
-        private readonly IDbConnection _connection;
+        private readonly AppDbContext _context;
 
-        public StudentAdmissionRepository(IDbConnection connection)
+        public StudentAdmissionRepository(AppDbContext context)
         {
-            _connection = connection;
+            _context = context;
         }
 
 
-        // =====================================================
-        // CREATE ADMISSION
-        // =====================================================
+        // =========================================================
+        // GET ALL STUDENT ADMISSIONS
+        // =========================================================
+        public async Task<IEnumerable<StudentAdmissionResponseDto>> GetAllAsync()
+        {
+            var connection = _context.Database.GetDbConnection();
 
+            return await connection.QueryAsync<StudentAdmissionResponseDto>(
+                "sp_GetAllStudentAdmissions",
+                commandType: CommandType.StoredProcedure);
+        }
+
+
+        // =========================================================
+        // GET STUDENT ADMISSION BY ID
+        // =========================================================
+        public async Task<StudentAdmissionResponseDto?> GetByIdAsync(
+            int admissionId)
+        {
+            var connection = _context.Database.GetDbConnection();
+
+            return await connection.QueryFirstOrDefaultAsync<StudentAdmissionResponseDto>(
+                "sp_GetStudentAdmissionById",
+                new
+                {
+                    p_AdmissionId = admissionId
+                },
+                commandType: CommandType.StoredProcedure);
+        }
+
+
+        // =========================================================
+        // CREATE STUDENT ADMISSION
+        // =========================================================
         public async Task<StudentAdmissionResponseDto> CreateAsync(
             CreateStudentAdmissionRequest request,
             string? studentPhoto)
         {
+            var connection = _context.Database.GetDbConnection();
+
             var result =
-                await _connection.QueryFirstOrDefaultAsync<StudentAdmissionResponseDto>(
+                await connection.QueryFirstOrDefaultAsync<StudentAdmissionResponseDto>(
                     "sp_CreateStudentAdmission",
                     new
                     {
+                        // -------------------------------------------------
+                        // ADMISSION
+                        // -------------------------------------------------
                         p_AdmissionDate = request.AdmissionDate,
                         p_AdmissionType = request.AdmissionType,
                         p_AdmissionQuota = request.AdmissionQuota,
 
-                        // Academic
+
+                        // -------------------------------------------------
+                        // ACADEMIC
+                        // -------------------------------------------------
                         p_BoardId = request.BoardId,
                         p_AcademicYearId = request.AcademicYearId,
                         p_AcademicLevelId = request.AcademicLevelId,
                         p_GroupId = request.GroupId,
                         p_ProgramId = request.ProgramId,
 
-                        // Student
+
+                        // -------------------------------------------------
+                        // STUDENT
+                        // -------------------------------------------------
                         p_FirstName = request.FirstName,
                         p_LastName = request.LastName,
                         p_Gender = request.Gender,
                         p_DateOfBirth = request.DateOfBirth,
                         p_BloodGroup = request.BloodGroup,
+
                         p_StudentEmail = request.StudentEmail,
                         p_StudentMobileNumber =
                             request.StudentMobileNumber,
 
-                        // Photo
                         p_StudentPhoto = studentPhoto,
 
-                        // Personal
+
+                        // -------------------------------------------------
+                        // PERSONAL
+                        // -------------------------------------------------
                         p_AadhaarNumber = request.AadhaarNumber,
                         p_Nationality = request.Nationality,
                         p_Religion = request.Religion,
                         p_Category = request.Category,
 
-                        // Father
+
+                        // -------------------------------------------------
+                        // FATHER
+                        // -------------------------------------------------
                         p_FatherName = request.FatherName,
                         p_FatherOccupation =
                             request.FatherOccupation,
-                        p_FatherMobile = request.FatherMobile,
-                        p_FatherEmail = request.FatherEmail,
+                        p_FatherMobile =
+                            request.FatherMobile,
+                        p_FatherEmail =
+                            request.FatherEmail,
 
-                        // Mother
+
+                        // -------------------------------------------------
+                        // MOTHER
+                        // -------------------------------------------------
                         p_MotherName = request.MotherName,
                         p_MotherOccupation =
                             request.MotherOccupation,
-                        p_MotherMobile = request.MotherMobile,
-                        p_MotherEmail = request.MotherEmail,
+                        p_MotherMobile =
+                            request.MotherMobile,
+                        p_MotherEmail =
+                            request.MotherEmail,
 
-                        // Guardian
+
+                        // -------------------------------------------------
+                        // GUARDIAN
+                        // -------------------------------------------------
                         p_GuardianName = request.GuardianName,
                         p_GuardianMobile =
                             request.GuardianMobile,
                         p_GuardianEmail =
                             request.GuardianEmail,
 
-                        // Other
-                        p_AnnualIncome = request.AnnualIncome,
+
+                        // -------------------------------------------------
+                        // OTHER
+                        // -------------------------------------------------
+                        p_AnnualIncome =
+                            request.AnnualIncome,
+
                         p_ScholarshipStatus =
                             request.ScholarshipStatus,
 
-                        // Address
+
+                        // -------------------------------------------------
+                        // ADDRESS
+                        // -------------------------------------------------
                         p_Address = request.Address,
                         p_City = request.City,
                         p_District = request.District,
                         p_State = request.State,
                         p_Pincode = request.Pincode,
 
-                        // Previous Education
+
+                        // -------------------------------------------------
+                        // PREVIOUS EDUCATION
+                        // -------------------------------------------------
                         p_PreviousSchool =
                             request.PreviousSchool,
+
                         p_PreviousBoard =
                             request.PreviousBoard,
+
                         p_PreviousPercentage =
                             request.PreviousPercentage,
+
                         p_PreviousYearOfPassing =
                             request.PreviousYearOfPassing,
 
-                        // Academic
+
+                        // -------------------------------------------------
+                        // OTHER ACADEMIC DETAILS
+                        // -------------------------------------------------
                         p_Medium = request.Medium,
+
                         p_SecondLanguage =
                             request.SecondLanguage
                     },
@@ -119,55 +195,27 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
 
-        // =====================================================
-        // GET BY ID
-        // =====================================================
-
-        public async Task<StudentAdmissionResponseDto?>
-            GetByIdAsync(int admissionId)
+        // =========================================================
+        // UPDATE STUDENT ADMISSION
+        // =========================================================
+        public async Task<StudentAdmissionResponseDto?> UpdateAsync(
+            int admissionId,
+            UpdateStudentAdmissionRequest request,
+            string? studentPhoto)
         {
-            return await _connection
-                .QueryFirstOrDefaultAsync<StudentAdmissionResponseDto>(
-                    "sp_GetStudentAdmissionById",
-                    new
-                    {
-                        p_AdmissionId = admissionId
-                    },
-                    commandType: CommandType.StoredProcedure);
-        }
+            var connection = _context.Database.GetDbConnection();
 
-
-        // =====================================================
-        // GET ALL
-        // =====================================================
-
-        public async Task<IEnumerable<StudentAdmissionResponseDto>>
-            GetAllAsync()
-        {
-            return await _connection
-                .QueryAsync<StudentAdmissionResponseDto>(
-                    "sp_GetAllStudentAdmissions",
-                    commandType: CommandType.StoredProcedure);
-        }
-
-
-        // =====================================================
-        // UPDATE
-        // =====================================================
-
-        public async Task<StudentAdmissionResponseDto?>
-            UpdateAsync(
-                int admissionId,
-                UpdateStudentAdmissionRequest request,
-                string? studentPhoto)
-        {
-            return await _connection
+            return await connection
                 .QueryFirstOrDefaultAsync<StudentAdmissionResponseDto>(
                     "sp_UpdateStudentAdmission",
                     new
                     {
                         p_AdmissionId = admissionId,
 
+
+                        // -------------------------------------------------
+                        // ADMISSION
+                        // -------------------------------------------------
                         p_AdmissionDate =
                             request.AdmissionDate,
 
@@ -177,93 +225,166 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_AdmissionQuota =
                             request.AdmissionQuota,
 
-                        // Academic
-                        p_BoardId = request.BoardId,
+
+                        // -------------------------------------------------
+                        // ACADEMIC
+                        // -------------------------------------------------
+                        p_BoardId =
+                            request.BoardId,
+
                         p_AcademicYearId =
                             request.AcademicYearId,
+
                         p_AcademicLevelId =
                             request.AcademicLevelId,
-                        p_GroupId = request.GroupId,
-                        p_ProgramId = request.ProgramId,
 
-                        // Student
-                        p_FirstName = request.FirstName,
-                        p_LastName = request.LastName,
-                        p_Gender = request.Gender,
+                        p_GroupId =
+                            request.GroupId,
+
+                        p_ProgramId =
+                            request.ProgramId,
+
+
+                        // -------------------------------------------------
+                        // STUDENT
+                        // -------------------------------------------------
+                        p_FirstName =
+                            request.FirstName,
+
+                        p_LastName =
+                            request.LastName,
+
+                        p_Gender =
+                            request.Gender,
+
                         p_DateOfBirth =
                             request.DateOfBirth,
+
                         p_BloodGroup =
                             request.BloodGroup,
+
                         p_StudentEmail =
                             request.StudentEmail,
+
                         p_StudentMobileNumber =
                             request.StudentMobileNumber,
 
-                        // Photo
-                        p_StudentPhoto = studentPhoto,
+                        p_StudentPhoto =
+                            studentPhoto,
 
-                        // Personal
+
+                        // -------------------------------------------------
+                        // PERSONAL
+                        // -------------------------------------------------
                         p_AadhaarNumber =
                             request.AadhaarNumber,
+
                         p_Nationality =
                             request.Nationality,
+
                         p_Religion =
                             request.Religion,
+
                         p_Category =
                             request.Category,
 
-                        // Father
+
+                        // -------------------------------------------------
+                        // FATHER
+                        // -------------------------------------------------
                         p_FatherName =
                             request.FatherName,
+
                         p_FatherOccupation =
                             request.FatherOccupation,
+
                         p_FatherMobile =
                             request.FatherMobile,
+
                         p_FatherEmail =
                             request.FatherEmail,
 
-                        // Mother
+
+                        // -------------------------------------------------
+                        // MOTHER
+                        // -------------------------------------------------
                         p_MotherName =
                             request.MotherName,
+
                         p_MotherOccupation =
                             request.MotherOccupation,
+
                         p_MotherMobile =
                             request.MotherMobile,
+
                         p_MotherEmail =
                             request.MotherEmail,
 
-                        // Guardian
+
+                        // -------------------------------------------------
+                        // GUARDIAN
+                        // -------------------------------------------------
                         p_GuardianName =
                             request.GuardianName,
+
                         p_GuardianMobile =
                             request.GuardianMobile,
+
                         p_GuardianEmail =
                             request.GuardianEmail,
 
-                        // Other
+
+                        // -------------------------------------------------
+                        // OTHER
+                        // -------------------------------------------------
                         p_AnnualIncome =
                             request.AnnualIncome,
+
                         p_ScholarshipStatus =
                             request.ScholarshipStatus,
 
-                        // Address
-                        p_Address = request.Address,
-                        p_City = request.City,
-                        p_District = request.District,
-                        p_State = request.State,
-                        p_Pincode = request.Pincode,
 
-                        // Previous Education
+                        // -------------------------------------------------
+                        // ADDRESS
+                        // -------------------------------------------------
+                        p_Address =
+                            request.Address,
+
+                        p_City =
+                            request.City,
+
+                        p_District =
+                            request.District,
+
+                        p_State =
+                            request.State,
+
+                        p_Pincode =
+                            request.Pincode,
+
+
+                        // -------------------------------------------------
+                        // PREVIOUS EDUCATION
+                        // -------------------------------------------------
                         p_PreviousSchool =
                             request.PreviousSchool,
+
                         p_PreviousBoard =
                             request.PreviousBoard,
+
                         p_PreviousPercentage =
                             request.PreviousPercentage,
+
                         p_PreviousYearOfPassing =
                             request.PreviousYearOfPassing,
 
-                        p_Medium = request.Medium,
+
+                        // -------------------------------------------------
+                        // OTHER ACADEMIC
+                        // -------------------------------------------------
+                        p_Medium =
+                            request.Medium,
+
                         p_SecondLanguage =
                             request.SecondLanguage
                     },
@@ -271,15 +392,16 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
 
-        // =====================================================
-        // VERIFY
-        // =====================================================
-
+        // =========================================================
+        // VERIFY ADMISSION
+        // =========================================================
         public async Task<bool> VerifyAsync(
             VerifyStudentAdmissionRequest request)
         {
+            var connection = _context.Database.GetDbConnection();
+
             var result =
-                await _connection.QuerySingleOrDefaultAsync<int>(
+                await connection.QuerySingleOrDefaultAsync<int>(
                     "sp_VerifyStudentAdmission",
                     new
                     {
@@ -292,15 +414,16 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
 
-        // =====================================================
-        // APPROVE
-        // =====================================================
-
+        // =========================================================
+        // APPROVE ADMISSION
+        // =========================================================
         public async Task<bool> ApproveAsync(
             ApproveStudentAdmissionRequest request)
         {
+            var connection = _context.Database.GetDbConnection();
+
             var result =
-                await _connection.QuerySingleOrDefaultAsync<int>(
+                await connection.QuerySingleOrDefaultAsync<int>(
                     "sp_ApproveStudentAdmission",
                     new
                     {
@@ -313,15 +436,16 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
 
-        // =====================================================
-        // REJECT
-        // =====================================================
-
+        // =========================================================
+        // REJECT ADMISSION
+        // =========================================================
         public async Task<bool> RejectAsync(
             RejectStudentAdmissionRequest request)
         {
+            var connection = _context.Database.GetDbConnection();
+
             var result =
-                await _connection.QuerySingleOrDefaultAsync<int>(
+                await connection.QuerySingleOrDefaultAsync<int>(
                     "sp_RejectStudentAdmission",
                     new
                     {
@@ -340,15 +464,50 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
 
-        // =====================================================
-        // SINGLE SECTION ALLOCATION
-        // =====================================================
+        // =========================================================
+        // DELETE / SOFT DELETE
+        // =========================================================
+        public async Task<bool> DeleteAsync(
+            int admissionId)
+        {
+            var connection = _context.Database.GetDbConnection();
 
+            var result =
+                await connection.QuerySingleOrDefaultAsync<int>(
+                    "sp_DeleteStudentAdmission",
+                    new
+                    {
+                        p_AdmissionId = admissionId
+                    },
+                    commandType: CommandType.StoredProcedure);
+
+            return result > 0;
+        }
+
+
+        // =========================================================
+        // GENERATE ADMISSION NUMBER
+        // =========================================================
+        public async Task<string> GenerateAdmissionNumberAsync()
+        {
+            var connection = _context.Database.GetDbConnection();
+
+            return await connection.QuerySingleAsync<string>(
+                "sp_GenerateAdmissionNumber",
+                commandType: CommandType.StoredProcedure);
+        }
+
+
+        // =========================================================
+        // SINGLE SECTION ALLOCATION
+        // =========================================================
         public async Task<bool> AllocateSectionAsync(
             AllocateSectionRequest request)
         {
+            var connection = _context.Database.GetDbConnection();
+
             var result =
-                await _connection.QuerySingleOrDefaultAsync<int>(
+                await connection.QuerySingleOrDefaultAsync<int>(
                     "sp_AllocateStudentSection",
                     new
                     {
@@ -364,112 +523,81 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
 
-        // =====================================================
+        // =========================================================
         // BULK SECTION ALLOCATION
-        // =====================================================
-
+        // =========================================================
         public async Task<int> BulkAllocateSectionAsync(
             BulkSectionAllocationRequest request)
         {
-            var total = 0;
+            var connection = _context.Database.GetDbConnection();
+
+            var totalAllocated = 0;
 
             foreach (var admissionId in request.AdmissionIds)
             {
                 var result =
-                    await _connection
-                        .QuerySingleOrDefaultAsync<int>(
-                            "sp_AllocateStudentSection",
-                            new
-                            {
-                                p_AdmissionId = admissionId,
-                                p_SectionId =
-                                    request.SectionId
-                            },
-                            commandType:
-                                CommandType.StoredProcedure);
+                    await connection.QuerySingleOrDefaultAsync<int>(
+                        "sp_AllocateStudentSection",
+                        new
+                        {
+                            p_AdmissionId =
+                                admissionId,
 
-                total += result;
+                            p_SectionId =
+                                request.SectionId
+                        },
+                        commandType: CommandType.StoredProcedure);
+
+                if (result > 0)
+                {
+                    totalAllocated++;
+                }
             }
 
-            return total;
-        }
-        //generatenumber//
-        // =====================================================
-        // GENERATE ADMISSION NUMBER
-        // =====================================================
-
-        // =====================================================
-        // GENERATE ADMISSION NUMBER
-        // =====================================================
-
-        // =====================================================
-        // GENERATE ADMISSION NUMBER
-        // =====================================================
-
-        public async Task<string> GenerateAdmissionNumberAsync()
-        {
-            const string sql = @"
-        SELECT CONCAT(
-            'ADM-',
-            LPAD(
-                COALESCE(
-                    MAX(
-                        CAST(
-                            SUBSTRING(AdmissionNo, 5) AS UNSIGNED
-                        )
-                    ),
-                    0
-                ) + 1,
-                2,
-                '0'
-            )
-        )
-        FROM StudentAdmissions
-        WHERE AdmissionNo LIKE 'ADM-%';";
-
-            return await _connection.QuerySingleAsync<string>(sql);
+            return totalAllocated;
         }
 
-        // =====================================================
+
+        // =========================================================
         // BULK ROLL NUMBER ALLOCATION
-        // =====================================================
-
+        // =========================================================
         public async Task<int> BulkAllocateRollNumbersAsync(
             BulkRollNumberAllocationRequest request)
         {
-            var total = 0;
+            var connection = _context.Database.GetDbConnection();
+
+            var totalAllocated = 0;
 
             var rollNumber =
                 request.StartingRollNumber;
 
-            foreach (var admissionId
-                     in request.AdmissionIds)
+            foreach (var admissionId in request.AdmissionIds)
             {
                 var result =
-                    await _connection
-                        .QuerySingleOrDefaultAsync<int>(
-                            "sp_AllocateStudentRollNumber",
-                            new
-                            {
-                                p_AdmissionId =
-                                    admissionId,
+                    await connection.QuerySingleOrDefaultAsync<int>(
+                        "sp_AllocateStudentRollNumber",
+                        new
+                        {
+                            p_AdmissionId =
+                                admissionId,
 
-                                p_SectionId =
-                                    request.SectionId,
+                            p_SectionId =
+                                request.SectionId,
 
-                                p_RollNo =
-                                    rollNumber.ToString()
-                            },
-                            commandType:
-                                CommandType.StoredProcedure);
+                            p_RollNo =
+                                rollNumber.ToString()
+                        },
+                        commandType: CommandType.StoredProcedure);
 
                 if (result > 0)
-                    total++;
+                {
+                    totalAllocated++;
+                }
 
                 rollNumber++;
             }
 
-            return total;
+            return totalAllocated;
         }
     }
 }
