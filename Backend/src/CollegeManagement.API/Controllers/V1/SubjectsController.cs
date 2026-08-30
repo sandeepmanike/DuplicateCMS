@@ -12,7 +12,6 @@ namespace CollegeManagement.API.Controllers
     /// API controller for Subject management, handling creation, retrieval, updates, and deletion of subjects by academic context (Board + Group + Academic Level).
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
     [Route("api/v1/[controller]")]
     [Authorize]
     public class SubjectsController : ControllerBase

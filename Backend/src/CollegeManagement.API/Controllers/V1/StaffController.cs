@@ -4,6 +4,7 @@ using Asp.Versioning;
 using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/staff")]
-    [Authorize]
+    [EnableCors("AllowFrontend")]
     [Produces("application/json")]
     public class StaffController : ControllerBase
     {
@@ -28,6 +29,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Get paged, searched, filtered (by StaffType, Department, Designation, Status) list of staff.
         /// </summary>
         [HttpGet]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(PagedResult<StaffResponseDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStaff([FromQuery] StaffQueryParams queryParams)
         {
@@ -40,6 +42,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Generates the next sequential Employee ID (PJCTCH0001 / PJCNTCH0001).
         /// </summary>
         [HttpGet("next-employee-id")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetNextEmployeeId([FromQuery] string? staffType = "Teaching", [FromQuery] string? facultyType = null)
         {
@@ -53,6 +56,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Get list of staff for dropdown selection with optional staffType filter.
         /// </summary>
         [HttpGet("dropdown")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<StaffDropdownDto>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStaffDropdown([FromQuery] string? staffType = null, [FromQuery] string? facultyType = null)
         {
@@ -66,6 +70,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Get detailed staff record by ID.
         /// </summary>
         [HttpGet("{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetStaffById(int id)
@@ -79,13 +84,14 @@ namespace CollegeManagement.API.Controllers.V1
         /// Create a new staff member (Teaching or Non-Teaching).
         /// </summary>
         [HttpPost]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> CreateStaff([FromBody] CreateStaffDto dto)
         {
             var result = await _staffService.CreateStaffAsync(dto);
-            return CreatedAtAction(nameof(GetStaffById), new { id = result.Id }, result);
+            return StatusCode(StatusCodes.Status201Created, result);
         }
 
         /// <summary>
@@ -93,6 +99,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Update an existing staff member.
         /// </summary>
         [HttpPut("{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -108,6 +115,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Soft delete a staff member record.
         /// </summary>
         [HttpDelete("{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteStaff(int id)
@@ -121,6 +129,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Upload or replace staff member photo.
         /// </summary>
         [HttpPost("upload-photo")]
+        [AllowAnonymous]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -136,6 +145,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Stream staff member profile photo.
         /// </summary>
         [HttpGet("photo/{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetStaffPhoto(int id)

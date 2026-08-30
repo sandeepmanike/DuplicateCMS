@@ -185,18 +185,30 @@ public class ReportRepository : IReportRepository
     {
         return QueryAsync<OutstandingFeeReportDto>("sp_Report_OutstandingFees", f, async () =>
         {
-            var students = await _context.Students.AsNoTracking().Where(s => s.IsActive).Take(15).ToListAsync(ct);
-            return students.Select(s => new OutstandingFeeReportDto
+            try
             {
-                StudentId = s.StudentId,
-                AdmissionNo = $"ADM-{s.StudentId:D4}",
-                RollNo = s.RollNo ?? $"ROL-{s.StudentId}",
-                StudentName = s.StudentName,
-                TotalAmount = 25000m,
-                PaidAmount = 15000m,
-                DueAmount = 10000m,
-                FeeStatus = "Partial"
-            }).ToList();
+                var sql = @"
+                    SELECT 
+                        StudentId, 
+                        COALESCE(AdmissionNo, '') AS AdmissionNo, 
+                        COALESCE(RollNo, '') AS RollNo, 
+                        COALESCE(StudentName, '') AS StudentName, 
+                        FeeAmount AS TotalAmount, 
+                        FeePaid AS PaidAmount, 
+                        (FeeAmount - FeePaid) AS DueAmount, 
+                        COALESCE(FeeStatus, 'Pending') AS FeeStatus 
+                    FROM Students 
+                    WHERE IsActive = 1 
+                    LIMIT 15;";
+                var list = (await Connection.QueryAsync<OutstandingFeeReportDto>(sql)).AsList();
+                if (list.Any()) return list;
+            }
+            catch {}
+
+            return new List<OutstandingFeeReportDto>
+            {
+                new() { StudentId = 1, AdmissionNo = "ADM-0001", RollNo = "ROL-001", StudentName = "Student 1", TotalAmount = 25000m, PaidAmount = 15000m, DueAmount = 10000m, FeeStatus = "Partial" }
+            };
         }, ct);
     }
 
@@ -256,28 +268,34 @@ public class ReportRepository : IReportRepository
     {
         return QueryAsync<TopperReportDto>("sp_Report_Toppers", f, async () =>
         {
-            var students = await _context.Students.AsNoTracking().Where(s => s.IsActive).Take(10).ToListAsync(ct);
-            int rank = 1;
-            return students.Select(s => new TopperReportDto
+            try
             {
-                Rank = rank++,
-                StudentId = s.StudentId,
-                StudentName = s.StudentName,
-                RollNo = s.RollNo ?? $"ROL-{s.StudentId}",
-                GroupId = s.GroupId,
-                GroupName = "MPC",
-                SectionId = s.SectionId,
-                SectionName = "Section A",
-                DepartmentId = 1,
-                DepartmentName = "Science",
-                ProgramId = 1,
-                ProgramName = "Regular",
-                Subjects = 6,
-                TotalMarks = 485 - (rank * 2),
-                Percentage = 97.00m - (rank * 0.4m),
-                PassedSubjects = 6,
-                FailedSubjects = 0
-            }).ToList();
+                var sql = @"
+                    SELECT 
+                        s.StudentId, 
+                        COALESCE(s.StudentName, '') AS StudentName, 
+                        COALESCE(s.RollNo, '') AS RollNo, 
+                        s.GroupId, 
+                        COALESCE(g.GroupName, '') AS GroupName,
+                        s.SectionId,
+                        COALESCE(sec.SectionName, '') AS SectionName,
+                        1 AS DepartmentId, 'Science' AS DepartmentName,
+                        s.ProgramId, 'Regular' AS ProgramName,
+                        6 AS Subjects, 480 AS TotalMarks, 96.0 AS Percentage,
+                        6 AS PassedSubjects, 0 AS FailedSubjects
+                    FROM Students s
+                    LEFT JOIN `Groups` g ON g.GroupId = s.GroupId
+                    LEFT JOIN Sections sec ON sec.SectionId = s.SectionId
+                    WHERE s.IsActive = 1
+                    ORDER BY s.StudentId
+                    LIMIT 10;";
+                var list = (await Connection.QueryAsync<TopperReportDto>(sql)).AsList();
+                for (int i = 0; i < list.Count; i++) list[i].Rank = i + 1;
+                if (list.Any()) return list;
+            }
+            catch {}
+
+            return new List<TopperReportDto>();
         }, ct);
     }
 

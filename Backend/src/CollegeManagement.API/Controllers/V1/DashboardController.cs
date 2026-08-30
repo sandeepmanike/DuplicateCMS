@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 using Asp.Versioning;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Dashboard;
+using CollegeManagement.API.Repositories.Interfaces;
 using Dapper;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,14 +20,28 @@ namespace CollegeManagement.API.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/dashboard")]
+[EnableCors("AllowFrontend")]
 [Produces("application/json")]
 public class DashboardController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IExaminationRepository? _examinationRepository;
+    private readonly IStaffSubjectAllocationRepository? _allocationRepository;
+    private readonly IStaffRepository? _staffRepository;
+    private readonly ITimetableRepository? _timetableRepository;
 
-    public DashboardController(AppDbContext db)
+    public DashboardController(
+        AppDbContext db,
+        IExaminationRepository? examinationRepository = null,
+        IStaffSubjectAllocationRepository? allocationRepository = null,
+        IStaffRepository? staffRepository = null,
+        ITimetableRepository? timetableRepository = null)
     {
         _db = db;
+        _examinationRepository = examinationRepository;
+        _allocationRepository = allocationRepository;
+        _staffRepository = staffRepository;
+        _timetableRepository = timetableRepository;
     }
 
     private async Task<DbConnection> GetOpenConnectionAsync()
@@ -828,45 +844,60 @@ public class DashboardController : ControllerBase
     /// </summary>
     [HttpGet("faculty-workload")]
     [AllowAnonymous]
-    public async Task<IActionResult> FacultyWorkload(CancellationToken ct = default)
+    public async Task<IActionResult> FacultyWorkload(
+        [FromQuery] int? academicYearId = null,
+        [FromQuery] int? boardId = null,
+        CancellationToken ct = default)
     {
-        var conn = await GetOpenConnectionAsync();
+        var staffList = await _db.Staffs
+            .AsNoTracking()
+            .Include(s => s.DepartmentRef)
+            .Include(s => s.StaffSubjectAllocations)
+            .Where(s => !s.IsDeleted && (s.Status == "Active" || s.Status == null) && s.StaffType == "Teaching")
+            .OrderBy(s => s.FirstName)
+            .ToListAsync(ct);
 
-        var teachingStaff = (await conn.QueryAsync<dynamic>(@"
-            SELECT 
-                s.Id AS StaffId,
-                TRIM(CONCAT(s.FirstName, ' ', COALESCE(s.LastName, ''))) AS Name,
-                COALESCE(d.DepartmentName, s.Department, 'General') AS Department
-            FROM `Staffs` s
-            LEFT JOIN `Departments` d ON d.DepartmentId = s.DepartmentId
-            WHERE (s.IsDeleted = 0 OR s.IsDeleted IS NULL)
-              AND (s.Status = 'Active' OR s.Status IS NULL)
-              AND (s.StaffType = 'Teaching' OR s.FacultyType = 'Teaching')
-            ORDER BY s.FirstName ASC;")).ToList();
+        var staffIds = staffList.Select(s => s.Id).ToList();
 
-        var allocations = (await conn.QueryAsync<dynamic>(@"
-            SELECT StaffId, COUNT(*) AS AllocCount
-            FROM `StaffSubjectAllocations`
-            GROUP BY StaffId;")).ToDictionary(r => (int)r.StaffId, r => Convert.ToInt32(r.AllocCount));
+        // Query timetable slots if any
+        var timetableCounts = await _db.Timetables
+            .AsNoTracking()
+            .Where(t => staffIds.Contains(t.StaffId) && t.IsPublished)
+            .GroupBy(t => t.StaffId)
+            .Select(g => new { StaffId = g.Key, PeriodCount = g.Count() })
+            .ToDictionaryAsync(x => x.StaffId, x => x.PeriodCount, ct);
 
-        var result = teachingStaff.Select(s =>
+        var result = staffList.Select(s =>
         {
-            int sid = (int)s.StaffId;
-            int allocCount = allocations.ContainsKey(sid) ? allocations[sid] : 0;
-            int hours = allocCount > 0 ? allocCount * 4 : 4; // default 4 hrs/period baseline
+            int allocCount = s.StaffSubjectAllocations?.Count ?? 0;
+            int ttPeriods = timetableCounts.TryGetValue(s.Id, out var tp) ? tp : 0;
 
-            return new
+            decimal hours = 0;
+            if (ttPeriods > 0)
             {
-                facultyId = sid,
-                staffId = sid,
-                facultyName = (string)(s.Name ?? "Faculty"),
-                name = (string)(s.Name ?? "Faculty"),
-                department = (string)(s.Department ?? "General"),
-                hoursPerWeek = hours,
-                weeklyClasses = hours,
-                periodCount = hours
+                hours = ttPeriods;
+            }
+            else if (allocCount > 0)
+            {
+                hours = allocCount * 4m;
+            }
+            else
+            {
+                hours = 4m;
+            }
+
+            var deptName = s.DepartmentRef?.DepartmentName ?? s.Department ?? "General";
+            var fullName = $"{s.FirstName} {s.LastName}".Trim();
+
+            return new FacultyWorkloadItemDto
+            {
+                FacultyId = s.Id,
+                FacultyName = fullName,
+                Department = deptName,
+                HoursPerWeek = hours,
+                AssignedSubjects = allocCount > 0 ? allocCount : 1
             };
-        }).ToList();
+        }).OrderByDescending(x => x.HoursPerWeek).ToList();
 
         return Ok(result);
     }
@@ -879,50 +910,103 @@ public class DashboardController : ControllerBase
     /// </summary>
     [HttpGet("upcoming-examinations")]
     [AllowAnonymous]
-    public async Task<IActionResult> UpcomingExaminations(CancellationToken ct = default)
+    public async Task<IActionResult> UpcomingExaminations(
+        [FromQuery] int? academicYearId = null,
+        [FromQuery] int? boardId = null,
+        CancellationToken ct = default)
     {
-        var conn = await GetOpenConnectionAsync();
-        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var examQuery = _db.Examinations
+            .AsNoTracking()
+            .Include(e => e.ExamSchedules.Where(s => s.IsActive))
+                .ThenInclude(s => s.Subject)
+            .Where(e => e.IsActive)
+            .AsQueryable();
 
-        var exams = (await conn.QueryAsync<dynamic>(@"
-            SELECT 
-                e.ExaminationId AS ExamId,
-                e.ExamName,
-                COALESCE(e.ExamCode, 'EXAM') AS ExamCode,
-                COALESCE(sub.SubjectName, e.ExamName) AS SubjectName,
-                COALESCE(sub.SubjectCode, '') AS SubjectCode,
-                COALESCE(DATE_FORMAT(es.ExamDate, '%d %b %Y'), DATE_FORMAT(e.StartDate, '%d %b %Y')) AS Date,
-                COALESCE(DATE_FORMAT(es.ExamDate, '%Y-%m-%d'), DATE_FORMAT(e.StartDate, '%Y-%m-%d')) AS ExamDate,
-                COALESCE(CONCAT(es.StartTime, ' - ', es.EndTime), '10:00 AM - 01:00 PM') AS Time,
-                COALESCE(es.Hall, 'Main Hall') AS Hall,
-                COALESCE(TRIM(CONCAT(st.FirstName, ' ', COALESCE(st.LastName, ''))), 'Staff In-Charge') AS InvigilatorName,
-                COALESCE(e.Status, 'Scheduled') AS Status
-            FROM `Examinations` e
-            LEFT JOIN `ExamSchedules` es ON es.ExaminationId = e.ExaminationId
-            LEFT JOIN `Subjects` sub ON sub.SubjectId = es.SubjectId
-            LEFT JOIN `Staffs` st ON st.Id = es.InvigilatorId
-            WHERE e.StartDate >= @today OR e.Status = 'Scheduled' OR e.Status = 'Draft'
-            ORDER BY e.StartDate ASC
-            LIMIT 10;", new { today })).ToList();
+        if (academicYearId.HasValue && academicYearId.Value > 0)
+            examQuery = examQuery.Where(e => e.AcademicYearId == academicYearId.Value);
 
-        var result = exams.Select(e => new
+        if (boardId.HasValue && boardId.Value > 0)
+            examQuery = examQuery.Where(e => e.BoardId == boardId.Value);
+
+        var exams = await examQuery
+            .OrderBy(e => e.StartDate)
+            .Take(15)
+            .ToListAsync(ct);
+
+        var list = new List<UpcomingExaminationItemDto>();
+
+        foreach (var e in exams)
         {
-            scheduleId = (int)e.ExamId,
-            examId = (int)e.ExamId,
-            examName = (string)(e.ExamName ?? "Assessment Exam"),
-            subject = (string)(e.SubjectName ?? "Subject"),
-            subjectName = (string)(e.SubjectName ?? "Subject"),
-            subjectCode = (string)(e.SubjectCode ?? ""),
-            date = (string)(e.Date ?? ""),
-            examDate = (string)(e.ExamDate ?? ""),
-            time = (string)(e.Time ?? "10:00 AM - 01:00 PM"),
-            hall = (string)(e.Hall ?? "Main Hall"),
-            hallName = (string)(e.Hall ?? "Main Hall"),
-            invigilator = (string)(e.InvigilatorName ?? "Staff In-Charge"),
-            invigilatorName = (string)(e.InvigilatorName ?? "Staff In-Charge"),
-            status = (string)(e.Status ?? "Scheduled")
-        }).ToList();
+            if (e.ExamSchedules != null && e.ExamSchedules.Any())
+            {
+                foreach (var s in e.ExamSchedules)
+                {
+                    var timeStr = s.StartTime != default && s.EndTime != default
+                        ? $"{s.StartTime:hh\\:mm\\ tt} - {s.EndTime:hh\\:mm\\ tt}"
+                        : "10:00 AM - 01:00 PM";
 
-        return Ok(result);
+                    list.Add(new UpcomingExaminationItemDto
+                    {
+                        ExamId = e.ExaminationId,
+                        ScheduleId = s.ExamScheduleId,
+                        ExamName = e.ExamName,
+                        ExamCode = e.ExamCode ?? $"EXAM-{e.ExaminationId}",
+                        Subject = s.Subject?.SubjectName ?? e.ExamName,
+                        SubjectCode = s.Subject?.SubjectCode ?? "",
+                        Date = s.ExamDate.ToString("dd MMM yyyy"),
+                        Time = timeStr,
+                        Hall = !string.IsNullOrWhiteSpace(s.Hall) ? s.Hall : "Main Hall",
+                        Invigilator = !string.IsNullOrWhiteSpace(s.Invigilator) ? s.Invigilator : "Staff In-Charge",
+                        Status = !string.IsNullOrWhiteSpace(e.Status) ? e.Status : "Scheduled",
+                        PatternName = e.ExamPattern ?? "Regular Academic",
+                        TotalMarks = s.MaxMarks > 0 ? (int)s.MaxMarks : (e.TotalMarks ?? 100)
+                    });
+                }
+            }
+            else
+            {
+                list.Add(new UpcomingExaminationItemDto
+                {
+                    ExamId = e.ExaminationId,
+                    ScheduleId = 0,
+                    ExamName = e.ExamName,
+                    ExamCode = e.ExamCode ?? $"EXAM-{e.ExaminationId}",
+                    Subject = e.ExamName,
+                    SubjectCode = e.ExamCode ?? "",
+                    Date = e.StartDate.ToString("dd MMM yyyy"),
+                    Time = "10:00 AM - 01:00 PM",
+                    Hall = "Main Hall",
+                    Invigilator = "Staff In-Charge",
+                    Status = !string.IsNullOrWhiteSpace(e.Status) ? e.Status : "Scheduled",
+                    PatternName = e.ExamPattern ?? "Regular Academic",
+                    TotalMarks = e.TotalMarks ?? 100
+                });
+            }
+        }
+
+        // Resilient fallback if table empty or no active query
+        if (!list.Any())
+        {
+            var fallbackExams = await _db.Examinations.AsNoTracking().Take(5).ToListAsync(ct);
+            foreach (var e in fallbackExams)
+            {
+                list.Add(new UpcomingExaminationItemDto
+                {
+                    ExamId = e.ExaminationId,
+                    ScheduleId = 0,
+                    ExamName = e.ExamName,
+                    ExamCode = e.ExamCode ?? $"EXAM-{e.ExaminationId}",
+                    Subject = e.ExamName,
+                    SubjectCode = e.ExamCode ?? "",
+                    Date = e.StartDate.ToString("dd MMM yyyy"),
+                    Time = "10:00 AM - 01:00 PM",
+                    Hall = "Main Hall",
+                    Invigilator = "Staff In-Charge",
+                    Status = !string.IsNullOrWhiteSpace(e.Status) ? e.Status : "Scheduled"
+                });
+            }
+        }
+
+        return Ok(list);
     }
 }

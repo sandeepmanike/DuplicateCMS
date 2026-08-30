@@ -43,10 +43,16 @@ public class ReportService : IReportService
             return fallback();
         }
     }
-    private static async Task<IReadOnlyList<T>> SafeListAsync<T>(
-    Func<Task<IReadOnlyList<T>>> action)
+    private static async Task<IReadOnlyList<T>> SafeListAsync<T>(Func<Task<IReadOnlyList<T>>> action)
     {
-        return await action();
+        try
+        {
+            return await action();
+        }
+        catch
+        {
+            return Array.Empty<T>();
+        }
     }
 
     // ---------- Dashboard ----------

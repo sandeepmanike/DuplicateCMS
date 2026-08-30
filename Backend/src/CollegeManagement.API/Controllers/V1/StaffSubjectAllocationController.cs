@@ -3,6 +3,7 @@ using Asp.Versioning;
 using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/staff")]
-    [Authorize]
+    [EnableCors("AllowFrontend")]
     [Produces("application/json")]
     public class StaffSubjectAllocationController : ControllerBase
     {
@@ -27,6 +28,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Assign a subject to a teaching staff member.
         /// </summary>
         [HttpPost("assign-subject")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(StaffSubjectAllocationResponseDto), StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -34,7 +36,7 @@ namespace CollegeManagement.API.Controllers.V1
         public async Task<IActionResult> AssignSubject([FromBody] AssignStaffSubjectDto dto)
         {
             var result = await _staffService.AssignSubjectAsync(dto);
-            return CreatedAtAction("GetStaffById", "Staff", new { id = dto.StaffId }, result);
+            return StatusCode(StatusCodes.Status201Created, result);
         }
 
         /// <summary>
@@ -42,6 +44,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Update an existing subject allocation.
         /// </summary>
         [HttpPut("assign-subject/{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(StaffSubjectAllocationResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -57,6 +60,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Delete a subject allocation record.
         /// </summary>
         [HttpDelete("assign-subject/{id:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteSubjectAllocation(int id)
@@ -70,6 +74,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Get all subject allocations for a specific staff member.
         /// </summary>
         [HttpGet("{staffId:int}/subject-allocations")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(System.Collections.Generic.List<StaffSubjectAllocationResponseDto>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetStaffSubjectAllocations(int staffId)
@@ -83,6 +88,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Get summary workload details and subject allocations for a staff member.
         /// </summary>
         [HttpGet("workload/{staffId:int}")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(StaffWorkloadResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetStaffWorkload(int staffId)

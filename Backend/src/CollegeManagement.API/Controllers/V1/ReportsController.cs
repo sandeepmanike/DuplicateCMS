@@ -9,14 +9,17 @@ using CollegeManagement.API.DTOs.Reports;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace CollegeManagement.API.Controllers.V1;
 
 [ApiController]
-[Authorize]
-[Route("api/reports")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/reports")]
+[EnableCors("AllowFrontend")]
+[AllowAnonymous]
 [Produces("application/json")]
 public class ReportsController : ControllerBase
 {
@@ -190,7 +193,6 @@ public class ReportsController : ControllerBase
     // =========================================================================
 
     [HttpGet("dashboard")]
-    [HttpGet("overview")]
     public async Task<IActionResult> Dashboard([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.DashboardAsync(filter, ct);
@@ -226,9 +228,8 @@ public class ReportsController : ControllerBase
         });
     }
 
-    // 3. Staff / Faculty Attendance Details
+    // 3. Staff Attendance Details
     [HttpGet("details/staff-attendance")]
-    [HttpGet("details/faculty-attendance")]
     public async Task<IActionResult> FacultyAttendanceDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.FacultyAttendanceAsync(filter, ct);
@@ -291,9 +292,8 @@ public class ReportsController : ControllerBase
         });
     }
 
-    // 8. Staff / Faculty Workload Details
+    // 8. Staff Workload Details
     [HttpGet("details/staff-workload")]
-    [HttpGet("details/faculty-workload")]
     public async Task<IActionResult> FacultyWorkloadDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.FacultyWorkloadAsync(filter, ct);
