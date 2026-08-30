@@ -369,6 +369,19 @@ namespace CollegeManagement.API.Repositories.Implementations
                 .Where(t => t.SectionId == dto.SourceSectionId && t.AcademicYearId == dto.SourceAcademicYearId)
                 .ToListAsync();
 
+            if (!sourceSlots.Any())
+                return;
+
+            // Remove existing slots in the target section for the target academic year before copying
+            var existingTargetSlots = await _context.Timetables
+                .Where(t => t.SectionId == dto.TargetSectionId && t.AcademicYearId == dto.TargetAcademicYearId)
+                .ToListAsync();
+
+            if (existingTargetSlots.Any())
+            {
+                _context.Timetables.RemoveRange(existingTargetSlots);
+            }
+
             var targetSlots = sourceSlots.Select(s => new Timetable
             {
                 BoardId = s.BoardId,
@@ -381,18 +394,16 @@ namespace CollegeManagement.API.Repositories.Implementations
                 PeriodId = s.PeriodId,
                 SubjectId = s.SubjectId,
                 StaffId = s.StaffId,
-                // FacultyId is mapped via StaffId
                 RoomId = s.RoomId,
                 IsPublished = false,
                 ApprovalStatus = TimetableApprovalStatus.Draft,
-                Remarks = s.Remarks,
+                Remarks = $"Copied from Section {dto.SourceSectionId}",
                 CreatedAt = DateTime.UtcNow
             }).ToList();
 
             await _context.Timetables.AddRangeAsync(targetSlots);
             await _context.SaveChangesAsync();
         }
-
         private async Task<List<TimetableResponseDto>> GetInMemoryTimetableDtosAsync(System.Linq.Expressions.Expression<Func<Timetable, bool>> predicate)
         {
             var entities = await _context.Timetables.Where(predicate).ToListAsync();

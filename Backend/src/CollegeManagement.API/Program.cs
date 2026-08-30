@@ -9,7 +9,8 @@ using CollegeManagement.API.Models;
 using CollegeManagement.API.Profiles;
 using CollegeManagement.API.Repositories;
 
-
+using System.Data;
+using MySqlConnector;
 
 
 using CollegeManagement.API.Services;
@@ -61,6 +62,15 @@ if (args.Contains("--test-certificates-module"))
 {
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
     var tester = new CertificateModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
+if (args.Contains("--test-dashboard-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new DashboardModuleBackendTester(connStr!);
     var success = await tester.RunAllTestsAsync();
     Environment.Exit(success ? 0 : 1);
     return;
@@ -183,6 +193,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Dapper
 builder.Services.AddSingleton<DatabaseContext>();
 
+
+// IDbConnection
+builder.Services.AddScoped<IDbConnection>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+
+    return new MySqlConnection(
+        config.GetConnectionString("DefaultConnection"));
+});
 // Caching
 builder.Services.AddMemoryCache();
 

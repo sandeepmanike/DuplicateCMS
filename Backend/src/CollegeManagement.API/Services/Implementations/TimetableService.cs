@@ -512,7 +512,7 @@ namespace CollegeManagement.API.Services.Implementations
                 foreach (var targetSecId in dto.SectionIds)
                 {
                     var existingCurrentDrafts = await _context.Timetables
-                        .Where(t => t.SectionId == targetSecId && t.AcademicYearId == dto.AcademicYearId && t.ApprovalStatus == TimetableApprovalStatus.Draft && !t.IsPublished)
+                        .Where(t => t.SectionId == targetSecId && t.AcademicYearId == dto.AcademicYearId)
                         .ToListAsync();
 
                     if (existingCurrentDrafts.Count > 0)

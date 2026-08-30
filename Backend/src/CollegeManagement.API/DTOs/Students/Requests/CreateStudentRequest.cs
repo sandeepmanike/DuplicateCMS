@@ -1,13 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace CollegeManagement.API.DTOs.Students
 {
     public class CreateStudentRequest
     {
-        // =========================================================
-        // ADMISSION
-        // =========================================================
-
         [Required]
         [MaxLength(50)]
         public string AdmissionNo { get; set; } = string.Empty;
@@ -19,11 +18,19 @@ namespace CollegeManagement.API.DTOs.Students
         [Required]
         public DateTime AdmissionDate { get; set; }
 
+        [MaxLength(50)]
+        public string? AdmissionType { get; set; }
 
-        // =========================================================
-        // STUDENT BASIC DETAILS
-        // =========================================================
+        [MaxLength(50)]
+        public string? AdmissionQuota { get; set; }
 
+        [MaxLength(50)]
+        public string? Medium { get; set; }
+
+        [MaxLength(100)]
+        public string? SecondLanguage { get; set; }
+
+        // Student Details
         [Required]
         [MaxLength(150)]
         public string StudentName { get; set; } = string.Empty;
@@ -48,9 +55,7 @@ namespace CollegeManagement.API.DTOs.Students
         [MaxLength(20)]
         public string? MobileNumber { get; set; }
 
-        [RegularExpression(
-            @"^[0-9]{12}$",
-            ErrorMessage = "Aadhaar number must be exactly 12 digits.")]
+        [MaxLength(20)]
         public string? AadhaarNumber { get; set; }
 
         [MaxLength(50)]
@@ -62,11 +67,7 @@ namespace CollegeManagement.API.DTOs.Students
         [MaxLength(50)]
         public string? Category { get; set; }
 
-
-        // =========================================================
-        // ADDRESS
-        // =========================================================
-
+        // Address
         [MaxLength(500)]
         public string? Address { get; set; }
 
@@ -79,16 +80,10 @@ namespace CollegeManagement.API.DTOs.Students
         [MaxLength(100)]
         public string? State { get; set; }
 
-        [RegularExpression(
-            @"^[1-9][0-9]{5}$",
-            ErrorMessage = "Pincode must be exactly 6 digits.")]
+        [MaxLength(20)]
         public string? Pincode { get; set; }
 
-
-        // =========================================================
-        // ACADEMIC REFERENCES
-        // =========================================================
-
+        // Academic
         [Required]
         public int BoardId { get; set; }
 
@@ -102,30 +97,12 @@ namespace CollegeManagement.API.DTOs.Students
         public int GroupId { get; set; }
 
         [Required]
+        public int ProgramId { get; set; }
+
+        [Required]
         public int SectionId { get; set; }
 
-
-        // =========================================================
-        // ADMISSION / COURSE
-        // =========================================================
-
-        [MaxLength(50)]
-        public string? AdmissionType { get; set; }
-
-        [MaxLength(50)]
-        public string? AdmissionQuota { get; set; }
-
-        [MaxLength(50)]
-        public string? Medium { get; set; }
-
-        [MaxLength(50)]
-        public string? SecondLanguage { get; set; }
-
-
-        // =========================================================
-        // PREVIOUS EDUCATION
-        // =========================================================
-
+        // Previous Education
         [MaxLength(200)]
         public string? PreviousSchool { get; set; }
 
@@ -137,17 +114,9 @@ namespace CollegeManagement.API.DTOs.Students
 
         public int? PreviousYearOfPassing { get; set; }
 
-        [Range(
-            0,
-            100,
-            ErrorMessage = "Previous percentage must be between 0 and 100.")]
         public decimal? PreviousPercentage { get; set; }
 
-
-        // =========================================================
-        // SCHOLARSHIP
-        // =========================================================
-
+        // Student Category
         [MaxLength(50)]
         public string? StudentCategory { get; set; }
 
@@ -156,11 +125,7 @@ namespace CollegeManagement.API.DTOs.Students
 
         public decimal? ScholarshipAmount { get; set; }
 
-
-        // =========================================================
-        // PARENT DETAILS
-        // =========================================================
-
+        // Father
         [MaxLength(150)]
         public string? FatherName { get; set; }
 
@@ -174,7 +139,7 @@ namespace CollegeManagement.API.DTOs.Students
         [MaxLength(150)]
         public string? FatherEmail { get; set; }
 
-
+        // Mother
         [MaxLength(150)]
         public string? MotherName { get; set; }
 
@@ -188,7 +153,7 @@ namespace CollegeManagement.API.DTOs.Students
         [MaxLength(150)]
         public string? MotherEmail { get; set; }
 
-
+        // Guardian
         [MaxLength(150)]
         public string? GuardianName { get; set; }
 
@@ -201,11 +166,7 @@ namespace CollegeManagement.API.DTOs.Students
 
         public decimal? AnnualIncome { get; set; }
 
-
-        // =========================================================
-        // FEES
-        // =========================================================
-
+        // Fees
         public decimal FeeAmount { get; set; }
 
         public decimal FeePaid { get; set; }
@@ -213,11 +174,7 @@ namespace CollegeManagement.API.DTOs.Students
         [MaxLength(30)]
         public string? FeeStatus { get; set; }
 
-
-        // =========================================================
-        // PERFORMANCE
-        // =========================================================
-
+        // Performance
         public decimal AttendancePercentage { get; set; }
 
         [MaxLength(20)]
@@ -227,43 +184,10 @@ namespace CollegeManagement.API.DTOs.Students
 
         public int? Rank { get; set; }
 
+        [MaxLength(1000)]
+        public string? Remarks { get; set; }
 
-        // =========================================================
-        // DOCUMENTS
-        // =========================================================
-
-        [MaxLength(500)]
-        public string? BirthCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? TransferCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? StudyCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? AadhaarDocument { get; set; }
-
-        [MaxLength(500)]
-        public string? CommunityCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? IncomeCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? CasteCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? TenthCertificate { get; set; }
-
-        [MaxLength(500)]
-        public string? MarksMemo { get; set; }
-
-
-        // =========================================================
-        // LOGIN
-        // =========================================================
-
+        // Login
         [Required]
         [MaxLength(255)]
         public string PasswordHash { get; set; } = string.Empty;
@@ -271,13 +195,5 @@ namespace CollegeManagement.API.DTOs.Students
         public bool IsFirstLogin { get; set; } = true;
 
         public bool IsActive { get; set; } = true;
-
-
-        // =========================================================
-        // REMARKS
-        // =========================================================
-
-        [MaxLength(1000)]
-        public string? Remarks { get; set; }
     }
 }
