@@ -67,6 +67,15 @@ if (args.Contains("--test-certificates-module"))
     return;
 }
 
+if (args.Contains("--test-dashboard-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    var tester = new DashboardModuleBackendTester(connStr!);
+    var success = await tester.RunAllTestsAsync();
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
 if (args.Contains("--test-reports-module"))
 {
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
