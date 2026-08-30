@@ -24,6 +24,24 @@ namespace CollegeManagement.API.Controllers
         // 1. EVALUATION SEARCH & DASHBOARD TABLE
         // =========================================================================
         /// <summary>
+        /// Retrieves marks evaluation readiness status for an examination and section before results processing.
+        /// </summary>
+        [HttpGet("api/v1/evaluations/readiness")]
+        public async Task<IActionResult> GetEvaluationReadiness(
+            [FromQuery] int? boardId,
+            [FromQuery] int? academicYearId,
+            [FromQuery] int? academicLevelId,
+            [FromQuery] int? groupId,
+            [FromQuery] string? programId,
+            [FromQuery] int? sectionId,
+            [FromQuery] int? examinationId)
+        {
+            var readiness = await _evaluationService.GetEvaluationReadinessAsync(
+                boardId, academicYearId, academicLevelId, groupId, programId, sectionId, examinationId);
+            return Ok(readiness);
+        }
+
+        /// <summary>
         /// Search evaluations by academic context (Board, AcademicYear, AcademicLevel, Group, Section, Examination).
         /// </summary>
         [HttpPost("api/v1/evaluations/search")]

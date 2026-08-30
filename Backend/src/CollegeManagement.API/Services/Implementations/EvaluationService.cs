@@ -10,16 +10,24 @@ using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
+using CollegeManagement.API.Data;
+using Microsoft.EntityFrameworkCore;
+
 namespace CollegeManagement.API.Services.Implementations
 {
     public class EvaluationService : IEvaluationService
     {
         private readonly IMarksRepository _marksRepository;
+        private readonly AppDbContext _context;
         private readonly ILogger<EvaluationService> _logger;
 
-        public EvaluationService(IMarksRepository marksRepository, ILogger<EvaluationService> logger)
+        public EvaluationService(
+            IMarksRepository marksRepository,
+            AppDbContext context,
+            ILogger<EvaluationService> logger)
         {
             _marksRepository = marksRepository;
+            _context = context;
             _logger = logger;
         }
 
@@ -641,6 +649,328 @@ namespace CollegeManagement.API.Services.Implementations
             return await _marksRepository.ExecuteGlobalApprovalAsync(dto, userId);
         }
 
+        // --- 8. Readiness & Complete Faculty Workflow ---
+        public async Task<CollegeManagement.API.DTOs.Marks.EvaluationReadinessDto> GetEvaluationReadinessAsync(
+            int? boardId,
+            int? academicYearId,
+            int? academicLevelId,
+            int? groupId,
+            string? programId,
+            int? sectionId,
+            int? examinationId)
+        {
+            if (!examinationId.HasValue || examinationId.Value <= 0)
+            {
+                return new CollegeManagement.API.DTOs.Marks.EvaluationReadinessDto
+                {
+                    ExaminationId = 0,
+                    SectionId = sectionId,
+                    AllRequiredEvaluationsApproved = false,
+                    ReadyForResults = false
+                };
+            }
+
+            var exam = await _context.Examinations
+                .Include(e => e.ExamSchedules.Where(s => s.IsActive))
+                .FirstOrDefaultAsync(e => e.ExaminationId == examinationId.Value);
+
+            if (exam == null)
+            {
+                return new CollegeManagement.API.DTOs.Marks.EvaluationReadinessDto
+                {
+                    ExaminationId = examinationId.Value,
+                    SectionId = sectionId,
+                    AllRequiredEvaluationsApproved = false,
+                    ReadyForResults = false
+                };
+            }
+
+            var scheduleSubjectIds = exam.ExamSchedules
+                .Where(s => s.IsActive)
+                .Select(s => s.SubjectId)
+                .Distinct()
+                .ToList();
+
+            List<Subject> requiredSubjectsList;
+            if (scheduleSubjectIds.Any())
+            {
+                requiredSubjectsList = await _context.Subjects
+                    .Where(s => s.IsActive && scheduleSubjectIds.Contains(s.SubjectId))
+                    .ToListAsync();
+            }
+            else
+            {
+                requiredSubjectsList = await _context.Subjects
+                    .Where(s => s.IsActive && s.GroupId == exam.GroupId)
+                    .ToListAsync();
+            }
+
+            var marksQuery = _context.Marks
+                .Include(m => m.Faculty)
+                .Where(m => m.IsActive && m.ExaminationId == examinationId.Value);
+
+            if (sectionId.HasValue && sectionId.Value > 0)
+            {
+                marksQuery = marksQuery.Where(m => m.SectionId == sectionId.Value);
+            }
+
+            var allMarks = await marksQuery.ToListAsync();
+
+            int draft = 0, submitted = 0, verified = 0, approved = 0, rejected = 0, missing = 0;
+            var subjectStatuses = new List<CollegeManagement.API.DTOs.Marks.RequiredSubjectEvaluationStatusDto>();
+
+            foreach (var sub in requiredSubjectsList)
+            {
+                var subMarks = allMarks.Where(m => m.SubjectId == sub.SubjectId).ToList();
+                if (!subMarks.Any())
+                {
+                    missing++;
+                    subjectStatuses.Add(new CollegeManagement.API.DTOs.Marks.RequiredSubjectEvaluationStatusDto
+                    {
+                        SubjectId = sub.SubjectId,
+                        SubjectName = sub.SubjectName,
+                        Status = "MISSING"
+                    });
+                    continue;
+                }
+
+                var first = subMarks.First();
+                int? facId = first.FacultyId;
+                string statusStr;
+
+                if (subMarks.All(m => m.Status == EvaluationStatus.APPROVED))
+                {
+                    approved++;
+                    statusStr = "APPROVED";
+                }
+                else if (subMarks.Any(m => m.Status == EvaluationStatus.REJECTED))
+                {
+                    rejected++;
+                    statusStr = "REJECTED";
+                }
+                else if (subMarks.Any(m => m.Status == EvaluationStatus.SUBMITTED))
+                {
+                    submitted++;
+                    statusStr = "SUBMITTED";
+                }
+                else if (subMarks.Any(m => m.Status == EvaluationStatus.VERIFIED))
+                {
+                    verified++;
+                    statusStr = "VERIFIED";
+                }
+                else
+                {
+                    draft++;
+                    statusStr = "DRAFT";
+                }
+
+                subjectStatuses.Add(new CollegeManagement.API.DTOs.Marks.RequiredSubjectEvaluationStatusDto
+                {
+                    SubjectId = sub.SubjectId,
+                    SubjectName = sub.SubjectName,
+                    FacultyId = facId,
+                    EvaluationId = first.MarkId,
+                    Status = statusStr
+                });
+            }
+
+            int reqCount = requiredSubjectsList.Count;
+            bool allApproved = reqCount > 0 && approved == reqCount && draft == 0 && submitted == 0 && verified == 0 && rejected == 0 && missing == 0;
+
+            return new CollegeManagement.API.DTOs.Marks.EvaluationReadinessDto
+            {
+                ExaminationId = examinationId.Value,
+                SectionId = sectionId,
+                RequiredEvaluationCount = reqCount,
+                DraftCount = draft,
+                SubmittedCount = submitted,
+                VerifiedCount = verified,
+                ApprovedCount = approved,
+                RejectedCount = rejected,
+                MissingCount = missing,
+                AllRequiredEvaluationsApproved = allApproved,
+                ReadyForResults = allApproved,
+                RequiredSubjects = subjectStatuses
+            };
+        }
+
+        public async Task<IEnumerable<CollegeManagement.API.DTOs.Marks.FacultyAssignedEvaluationDto>> GetFacultyEvaluationsAsync(int? facultyId, string? status, string? examinationStatus)
+        {
+            var query = _context.Marks
+                .Include(m => m.Examination)
+                .Include(m => m.SectionNavigation)
+                .Include(m => m.Subject)
+                .Where(m => m.IsActive);
+
+            if (facultyId.HasValue && facultyId.Value > 0)
+            {
+                query = query.Where(m => m.FacultyId == facultyId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (Enum.TryParse<EvaluationStatus>(status, true, out var parsedStatus))
+                {
+                    query = query.Where(m => m.Status == parsedStatus);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(examinationStatus))
+            {
+                query = query.Where(m => m.Examination != null && m.Examination.Status.ToUpper() == examinationStatus.ToUpper());
+            }
+
+            var marks = await query.ToListAsync();
+
+            return marks
+                .GroupBy(m => new { m.SubjectId, m.SectionId, m.ExaminationId })
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return new CollegeManagement.API.DTOs.Marks.FacultyAssignedEvaluationDto
+                    {
+                        EvaluationId = first.MarkId,
+                        ExaminationId = first.ExaminationId,
+                        ExaminationName = first.Examination?.ExamName ?? $"Exam #{first.ExaminationId}",
+                        SectionId = first.SectionId,
+                        SectionName = first.SectionNavigation?.SectionName ?? $"Section #{first.SectionId}",
+                        SubjectId = first.SubjectId,
+                        SubjectName = first.Subject?.SubjectName ?? $"Subject #{first.SubjectId}",
+                        FacultyId = first.FacultyId,
+                        Status = first.Status.ToString(),
+                        RejectionReason = first.RejectionReason,
+                        ResubmissionCount = first.ResubmissionCount,
+                        RowVersion = 1
+                    };
+                })
+                .ToList();
+        }
+
+        public async Task<CollegeManagement.API.DTOs.Marks.FacultyEvaluationStudentsResponseDto?> GetFacultyEvaluationStudentsAsync(string evaluationId, int? facultyId)
+        {
+            var (subjectId, sectionId, examinationId) = ParseEvaluationId(evaluationId);
+
+            var marks = await _context.Marks
+                .Include(m => m.Student)
+                .Include(m => m.Subject)
+                .Include(m => m.SectionNavigation)
+                .Include(m => m.Examination)
+                .Where(m => m.IsActive && m.SubjectId == subjectId && m.SectionId == sectionId && m.ExaminationId == examinationId)
+                .OrderBy(m => m.RollNo)
+                .ToListAsync();
+
+            if (!marks.Any()) return null;
+
+            var first = marks.First();
+
+            return new CollegeManagement.API.DTOs.Marks.FacultyEvaluationStudentsResponseDto
+            {
+                EvaluationId = first.MarkId,
+                ExaminationId = first.ExaminationId,
+                ExaminationName = first.Examination?.ExamName ?? string.Empty,
+                SectionId = first.SectionId,
+                SectionName = first.SectionNavigation?.SectionName ?? string.Empty,
+                SubjectId = first.SubjectId,
+                SubjectName = first.Subject?.SubjectName ?? string.Empty,
+                MaxMarks = first.Subject?.TotalMarks > 0 ? first.Subject.TotalMarks : 100,
+                TheoryMax = 70,
+                PracticalMax = 20,
+                InternalMax = 10,
+                IsPracticalApplicable = first.Subject?.Practical == true,
+                Status = first.Status.ToString(),
+                RejectionReason = first.RejectionReason,
+                RowVersion = 1,
+                Students = marks.Select(m => new CollegeManagement.API.DTOs.Marks.FacultyStudentMarkRowDto
+                {
+                    StudentId = m.StudentId,
+                    RollNo = !string.IsNullOrWhiteSpace(m.RollNo) ? m.RollNo : (m.Student?.RollNo ?? m.Student?.AdmissionNo ?? $"STU-{m.StudentId:D4}"),
+                    StudentName = !string.IsNullOrWhiteSpace(m.StudentName) ? m.StudentName : (m.Student?.StudentName ?? $"Student #{m.StudentId}"),
+                    InternalMarks = (int)m.InternalMarks,
+                    PracticalMarks = (int)m.PracticalMarks,
+                    TheoryMarks = (int)m.TheoryMarks,
+                    TotalMarks = (int)m.TotalMarks,
+                    IsAbsent = m.IsAbsent,
+                    Remarks = m.Remarks
+                }).ToList()
+            };
+        }
+
+        public async Task<bool> SaveFacultyDraftMarksAsync(string evaluationId, CollegeManagement.API.DTOs.Marks.SaveFacultyMarksRequestDto request, int? facultyId)
+        {
+            var (subjectId, sectionId, examinationId) = ParseEvaluationId(evaluationId);
+
+            var marks = await _context.Marks
+                .Where(m => m.IsActive && m.SubjectId == subjectId && m.SectionId == sectionId && m.ExaminationId == examinationId)
+                .ToListAsync();
+
+            if (!marks.Any()) return false;
+
+            var now = DateTime.UtcNow;
+            foreach (var studentInput in request.Students)
+            {
+                var mark = marks.FirstOrDefault(m => m.StudentId == studentInput.StudentId);
+                if (mark != null)
+                {
+                    mark.InternalMarks = studentInput.InternalMarks;
+                    mark.PracticalMarks = studentInput.PracticalMarks;
+                    mark.TheoryMarks = studentInput.TheoryMarks;
+                    mark.TotalMarks = studentInput.InternalMarks + studentInput.PracticalMarks + studentInput.TheoryMarks;
+                    mark.IsAbsent = studentInput.IsAbsent;
+                    mark.Remarks = studentInput.Remarks;
+                    mark.UpdatedAt = now;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> SubmitFacultyEvaluationAsync(string evaluationId, int? facultyId)
+        {
+            var (subjectId, sectionId, examinationId) = ParseEvaluationId(evaluationId);
+
+            var marks = await _context.Marks
+                .Where(m => m.IsActive && m.SubjectId == subjectId && m.SectionId == sectionId && m.ExaminationId == examinationId)
+                .ToListAsync();
+
+            if (!marks.Any()) return false;
+
+            var now = DateTime.UtcNow;
+            foreach (var mark in marks)
+            {
+                mark.Status = EvaluationStatus.SUBMITTED;
+                mark.SubmittedAt = now;
+                mark.UpdatedAt = now;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ResubmitFacultyEvaluationAsync(string evaluationId, CollegeManagement.API.DTOs.Marks.ResubmitEvaluationRequestDto request, int? facultyId)
+        {
+            var (subjectId, sectionId, examinationId) = ParseEvaluationId(evaluationId);
+
+            var marks = await _context.Marks
+                .Where(m => m.IsActive && m.SubjectId == subjectId && m.SectionId == sectionId && m.ExaminationId == examinationId)
+                .ToListAsync();
+
+            if (!marks.Any()) return false;
+
+            var now = DateTime.UtcNow;
+            foreach (var mark in marks)
+            {
+                mark.Status = EvaluationStatus.SUBMITTED;
+                mark.SubmittedAt = now;
+                mark.ResubmissionCount++;
+                mark.Remarks = !string.IsNullOrWhiteSpace(request.ResubmissionMessage) ? request.ResubmissionMessage : mark.Remarks;
+                mark.UpdatedAt = now;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         // --- Private Helpers ---
         private (int subjectId, int sectionId, int examinationId) ParseEvaluationId(string evaluationId)
         {
@@ -657,6 +987,11 @@ namespace CollegeManagement.API.Services.Implementations
 
             if (int.TryParse(evaluationId, out int singleId))
             {
+                var mark = _context.Marks.FirstOrDefault(m => m.MarkId == singleId);
+                if (mark != null)
+                {
+                    return (mark.SubjectId, mark.SectionId, mark.ExaminationId);
+                }
                 return (singleId, 0, 0);
             }
 

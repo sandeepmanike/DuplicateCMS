@@ -39,5 +39,13 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<bool> ToggleEvaluationLockAsync(LockEvaluationDto dto);
         Task<bool> OverrideEvaluationStatusAsync(OverrideEvaluationStatusDto dto, int userId);
         Task<bool> ExecuteGlobalApprovalAsync(CollegeManagement.API.DTOs.Marks.GlobalApprovalRequestDto dto, int userId);
+
+        // --- 8. Readiness & Complete Faculty Workflow ---
+        Task<CollegeManagement.API.DTOs.Marks.EvaluationReadinessDto> GetEvaluationReadinessAsync(int? boardId, int? academicYearId, int? academicLevelId, int? groupId, string? programId, int? sectionId, int? examinationId);
+        Task<IEnumerable<CollegeManagement.API.DTOs.Marks.FacultyAssignedEvaluationDto>> GetFacultyEvaluationsAsync(int? facultyId, string? status, string? examinationStatus);
+        Task<CollegeManagement.API.DTOs.Marks.FacultyEvaluationStudentsResponseDto?> GetFacultyEvaluationStudentsAsync(string evaluationId, int? facultyId);
+        Task<bool> SaveFacultyDraftMarksAsync(string evaluationId, CollegeManagement.API.DTOs.Marks.SaveFacultyMarksRequestDto request, int? facultyId);
+        Task<bool> SubmitFacultyEvaluationAsync(string evaluationId, int? facultyId);
+        Task<bool> ResubmitFacultyEvaluationAsync(string evaluationId, CollegeManagement.API.DTOs.Marks.ResubmitEvaluationRequestDto request, int? facultyId);
     }
 }

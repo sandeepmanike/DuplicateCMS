@@ -28,6 +28,12 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<IEnumerable<Models.Timetable.Room>> GetAvailableHallsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null);
         Task<IEnumerable<Models.Faculty.Faculty>> GetAvailableInvigilatorsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null);
 
+        Task<DTOs.Examination.Responses.SchedulingContextResponseDto> GetSchedulingContextAsync(int examinationId);
+        Task<string> GenerateUniqueExamCodeAsync(int boardId, int academicYearId, int groupId, int? programId);
+        Task<IEnumerable<DTOs.Examination.Responses.AvailableHallDto>> GetAvailableHallsFilteredAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? requiredCapacity = null, IEnumerable<int>? sectionIds = null, int? excludeScheduleId = null);
+        Task<IEnumerable<DTOs.Examination.Responses.AvailableInvigilatorDto>> GetAvailableInvigilatorsFilteredAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, IEnumerable<int>? subjectIds = null, int? excludeScheduleId = null);
+        Task<IEnumerable<Examination>> GetScheduledExamsReadyForCompletionAsync();
+
         Task<IEnumerable<HallTicket>> GenerateHallTicketsAsync(int examinationId, int batchId);
         Task<Stream?> GetHallTicketPdfStreamAsync(int studentId, int examinationId);
 

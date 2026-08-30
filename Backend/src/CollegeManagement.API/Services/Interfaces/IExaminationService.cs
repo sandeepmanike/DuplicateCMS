@@ -28,8 +28,9 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<FinalizeScheduleResponse> FinalizeScheduleAsync(int examinationId);
 
         // Availability & Batch Schedule Methods
-        Task<IEnumerable<AvailableHallDto>> GetAvailableHallsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null);
-        Task<IEnumerable<AvailableInvigilatorDto>> GetAvailableInvigilatorsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null);
+        Task<SchedulingContextResponseDto> GetSchedulingContextAsync(int examinationId);
+        Task<IEnumerable<AvailableHallDto>> GetAvailableHallsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? requiredCapacity = null, IEnumerable<int>? sectionIds = null, int? excludeScheduleId = null);
+        Task<IEnumerable<AvailableInvigilatorDto>> GetAvailableInvigilatorsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, IEnumerable<int>? subjectIds = null, int? excludeScheduleId = null);
         Task<IEnumerable<ExamScheduleResponse>> CreateBatchExamSchedulesAsync(CreateBatchExamScheduleRequest request);
 
         // Hall Ticket Methods

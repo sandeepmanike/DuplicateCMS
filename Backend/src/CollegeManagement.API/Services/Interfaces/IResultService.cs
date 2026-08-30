@@ -8,6 +8,7 @@ namespace CollegeManagement.API.Services.Interfaces
     public interface IResultService
     {
         // --- Core Generation & Preconditions ---
+        Task<ResultReadinessDto> GetResultReadinessAsync(int? boardId, int? academicYearId, int? academicLevelId, int? groupId, string? programId, int examinationId);
         Task<List<SectionResultSummaryDto>> GenerateResultsAsync(ProcessResultRequestDto request);
         Task<ProcessResultResponseDto> ProcessResultsAsync(ProcessResultRequestDto request);
         
@@ -16,6 +17,10 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<bool> PublishSectionResultsAsync(int sectionId, int examId, DateTime? publishDate = null);
         Task<bool> PublishGroupResultsAsync(int groupId, int examId, DateTime? publishDate = null);
         Task<bool> PublishResultsAsync(PublishResultRequestDto request);
+
+        // --- Student Self-Service Portal ---
+        Task<IEnumerable<StudentSelfResultDto>> GetStudentSelfResultsAsync(int studentId);
+        Task<StudentSelfResultMemoDto?> GetStudentSelfResultMemoAsync(int studentId, int examinationId);
 
         // --- Student Memo & Detail ---
         Task<StudentResultDto?> GetStudentMemoAsync(int studentId, int? examId = null);

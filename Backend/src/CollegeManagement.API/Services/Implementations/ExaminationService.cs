@@ -53,7 +53,8 @@ namespace CollegeManagement.API.Services.Implementations
 
             if (string.IsNullOrWhiteSpace(exam.ExamCode))
             {
-                exam.ExamCode = $"EXM-{request.StartDate.Year}-{Random.Shared.Next(100, 999)}";
+                exam.ExamCode = await _examinationRepository.GenerateUniqueExamCodeAsync(
+                    request.BoardId, request.AcademicYearId, request.GroupId, request.ProgramId);
             }
 
             var createdExam = await _examinationRepository.CreateExaminationAsync(exam);
@@ -431,34 +432,32 @@ namespace CollegeManagement.API.Services.Implementations
             };
         }
 
-        public async Task<IEnumerable<AvailableHallDto>> GetAvailableHallsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null)
+        public async Task<SchedulingContextResponseDto> GetSchedulingContextAsync(int examinationId)
         {
-            var rooms = await _examinationRepository.GetAvailableHallsAsync(examDate, startTime, endTime, excludeScheduleId);
-            return rooms.Select(r => new AvailableHallDto
-            {
-                RoomId = r.RoomId,
-                RoomNumber = r.RoomNumber,
-                RoomName = r.RoomName ?? r.RoomNumber,
-                BlockName = r.BlockName,
-                Floor = r.Floor,
-                Capacity = r.Capacity,
-                RoomType = r.RoomType,
-                IsAvailable = true
-            });
+            return await _examinationRepository.GetSchedulingContextAsync(examinationId);
         }
 
-        public async Task<IEnumerable<AvailableInvigilatorDto>> GetAvailableInvigilatorsAsync(DateOnly examDate, TimeOnly startTime, TimeOnly endTime, int? excludeScheduleId = null)
+        public async Task<IEnumerable<AvailableHallDto>> GetAvailableHallsAsync(
+            DateOnly examDate,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            int? requiredCapacity = null,
+            IEnumerable<int>? sectionIds = null,
+            int? excludeScheduleId = null)
         {
-            var faculty = await _examinationRepository.GetAvailableInvigilatorsAsync(examDate, startTime, endTime, excludeScheduleId);
-            return faculty.Select(f => new AvailableInvigilatorDto
-            {
-                FacultyId = f.Id,
-                EmployeeId = f.EmployeeId ?? string.Empty,
-                FullName = $"{f.FirstName} {f.LastName}".Trim(),
-                Designation = f.DesignationRef?.Name ?? f.Designation ?? string.Empty,
-                FacultyType = f.FacultyType ?? "Teaching",
-                IsAvailable = true
-            });
+            return await _examinationRepository.GetAvailableHallsFilteredAsync(
+                examDate, startTime, endTime, requiredCapacity, sectionIds, excludeScheduleId);
+        }
+
+        public async Task<IEnumerable<AvailableInvigilatorDto>> GetAvailableInvigilatorsAsync(
+            DateOnly examDate,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            IEnumerable<int>? subjectIds = null,
+            int? excludeScheduleId = null)
+        {
+            return await _examinationRepository.GetAvailableInvigilatorsFilteredAsync(
+                examDate, startTime, endTime, subjectIds, excludeScheduleId);
         }
 
         public async Task<IEnumerable<ExamScheduleResponse>> CreateBatchExamSchedulesAsync(CreateBatchExamScheduleRequest request)

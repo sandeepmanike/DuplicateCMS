@@ -112,5 +112,18 @@ namespace CollegeManagement.API.Models
         public DateTime? ApprovedAt { get; set; }
 
         public DateTime? PublishedAt { get; set; }
+
+        [NotMapped]
+        public DateTime? SubmittedAt { get; set; }
+
+        [NotMapped]
+        public int ResubmissionCount { get; set; } = 0;
+
+        [NotMapped]
+        public string? RejectionReason
+        {
+            get => Remarks;
+            set => Remarks = value;
+        }
     }
 }

@@ -350,6 +350,252 @@ namespace CollegeManagement.API.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<DTOs.Examination.Responses.SchedulingContextResponseDto> GetSchedulingContextAsync(int examinationId)
+        {
+            var exam = await _context.Examinations
+                .FirstOrDefaultAsync(e => e.ExaminationId == examinationId && e.IsActive);
+
+            if (exam == null)
+            {
+                throw new KeyNotFoundException($"Examination with ID {examinationId} was not found.");
+            }
+
+            var sections = await _context.Sections
+                .Where(s => s.IsActive && s.GroupId == exam.GroupId)
+                .ToListAsync();
+
+            if (exam.BoardId > 0)
+            {
+                var boardSections = sections.Where(s => s.BoardId == exam.BoardId).ToList();
+                if (boardSections.Any()) sections = boardSections;
+            }
+
+            var sectionIds = sections.Select(s => s.SectionId).ToList();
+
+            var sectionDtos = new List<DTOs.Examination.Responses.SchedulingSectionContextDto>();
+            int totalEligible = 0;
+
+            foreach (var sec in sections)
+            {
+                int studentCount = await _context.Students
+                    .CountAsync(st => st.IsActive && st.SectionId == sec.SectionId);
+                totalEligible += studentCount;
+                sectionDtos.Add(new DTOs.Examination.Responses.SchedulingSectionContextDto
+                {
+                    SectionId = sec.SectionId,
+                    SectionName = sec.SectionName,
+                    EligibleStudentCount = studentCount
+                });
+            }
+
+            // Fallback if sections had 0 mapped students
+            if (totalEligible == 0)
+            {
+                totalEligible = await _context.Students.CountAsync(st => st.IsActive && st.GroupId == exam.GroupId);
+            }
+
+            return new DTOs.Examination.Responses.SchedulingContextResponseDto
+            {
+                ExaminationId = examinationId,
+                SectionIds = sectionIds,
+                Sections = sectionDtos,
+                TotalEligibleStudents = totalEligible,
+                RequiredCapacity = totalEligible
+            };
+        }
+
+        public async Task<string> GenerateUniqueExamCodeAsync(int boardId, int academicYearId, int groupId, int? programId)
+        {
+            string boardCode = "BIEAP";
+            try
+            {
+                var b = await _context.Boards.FirstOrDefaultAsync(x => x.BoardId == boardId);
+                if (b != null && !string.IsNullOrWhiteSpace(b.BoardCode)) boardCode = b.BoardCode.Trim().ToUpper();
+            }
+            catch { }
+
+            int year = DateTime.UtcNow.Year;
+            try
+            {
+                var y = await _context.AcademicYears.FirstOrDefaultAsync(x => x.AcademicYearId == academicYearId);
+                if (y != null && !string.IsNullOrWhiteSpace(y.AcademicYearName))
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(y.AcademicYearName, @"\d{4}");
+                    if (match.Success) int.TryParse(match.Value, out year);
+                }
+            }
+            catch { }
+
+            string groupCode = "GEN";
+            try
+            {
+                var g = await _context.Groups.FirstOrDefaultAsync(x => x.GroupId == groupId);
+                if (g != null && !string.IsNullOrWhiteSpace(g.GroupCode)) groupCode = g.GroupCode.Trim().ToUpper();
+            }
+            catch { }
+
+            string prefix = $"{boardCode}-{year}-{groupCode}";
+            var existingCodes = await _context.Examinations
+                .Where(e => e.ExamCode != null && e.ExamCode.StartsWith(prefix))
+                .Select(e => e.ExamCode!)
+                .ToListAsync();
+
+            int seq = 1;
+            string candidate = $"{prefix}-{seq:D4}";
+            while (existingCodes.Contains(candidate))
+            {
+                seq++;
+                candidate = $"{prefix}-{seq:D4}";
+            }
+
+            return candidate;
+        }
+
+        public async Task<IEnumerable<DTOs.Examination.Responses.AvailableHallDto>> GetAvailableHallsFilteredAsync(
+            DateOnly examDate,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            int? requiredCapacity = null,
+            IEnumerable<int>? sectionIds = null,
+            int? excludeScheduleId = null)
+        {
+            var bookedHalls = await _context.ExamSchedules
+                .Where(s => s.IsActive
+                    && s.ExamDate == examDate
+                    && (!excludeScheduleId.HasValue || s.ExamScheduleId != excludeScheduleId.Value)
+                    && !(endTime <= s.StartTime || startTime >= s.EndTime))
+                .Select(s => s.Hall.Trim().ToLower())
+                .Distinct()
+                .ToListAsync();
+
+            var bookedRoomIds = await _context.ExamSchedules
+                .Where(s => s.IsActive
+                    && s.ExamDate == examDate
+                    && s.RoomId.HasValue
+                    && (!excludeScheduleId.HasValue || s.ExamScheduleId != excludeScheduleId.Value)
+                    && !(endTime <= s.StartTime || startTime >= s.EndTime))
+                .Select(s => s.RoomId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var allRooms = await _context.Rooms
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
+
+            var result = new List<DTOs.Examination.Responses.AvailableHallDto>();
+
+            foreach (var r in allRooms)
+            {
+                bool isBooked = bookedRoomIds.Contains(r.RoomId) ||
+                                bookedHalls.Contains(r.RoomNumber.Trim().ToLower()) ||
+                                (!string.IsNullOrWhiteSpace(r.RoomName) && bookedHalls.Contains(r.RoomName.Trim().ToLower()));
+
+                bool capacityOk = !requiredCapacity.HasValue || requiredCapacity.Value <= 0 || r.Capacity >= requiredCapacity.Value;
+
+                if (!isBooked && capacityOk)
+                {
+                    result.Add(new DTOs.Examination.Responses.AvailableHallDto
+                    {
+                        RoomId = r.RoomId,
+                        RoomCode = r.RoomNumber,
+                        RoomName = !string.IsNullOrWhiteSpace(r.RoomName) ? r.RoomName : $"Room {r.RoomNumber}",
+                        BlockName = r.BlockName,
+                        Floor = r.Floor,
+                        Capacity = r.Capacity,
+                        RoomType = !string.IsNullOrWhiteSpace(r.RoomType) ? r.RoomType : "Classroom",
+                        IsActive = r.IsActive,
+                        IsAvailable = true
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<IEnumerable<DTOs.Examination.Responses.AvailableInvigilatorDto>> GetAvailableInvigilatorsFilteredAsync(
+            DateOnly examDate,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            IEnumerable<int>? subjectIds = null,
+            int? excludeScheduleId = null)
+        {
+            var bookedInvigilatorNames = await _context.ExamSchedules
+                .Where(s => s.IsActive
+                    && s.ExamDate == examDate
+                    && (!excludeScheduleId.HasValue || s.ExamScheduleId != excludeScheduleId.Value)
+                    && !(endTime <= s.StartTime || startTime >= s.EndTime))
+                .Select(s => s.Invigilator.Trim().ToLower())
+                .Distinct()
+                .ToListAsync();
+
+            var bookedInvigilatorIds = await _context.ExamSchedules
+                .Where(s => s.IsActive
+                    && s.ExamDate == examDate
+                    && s.InvigilatorId.HasValue
+                    && (!excludeScheduleId.HasValue || s.ExamScheduleId != excludeScheduleId.Value)
+                    && !(endTime <= s.StartTime || startTime >= s.EndTime))
+                .Select(s => s.InvigilatorId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var subjectIdList = subjectIds?.ToList() ?? new List<int>();
+
+            // Find Subject Faculty (teachers of the scheduled subjects)
+            var subjectFacultyIds = new HashSet<int>();
+            if (subjectIdList.Any())
+            {
+                var allocations = await _context.StaffSubjectAllocations
+                    .Where(a => subjectIdList.Contains(a.SubjectId))
+                    .Select(a => a.StaffId)
+                    .ToListAsync();
+                foreach (var id in allocations) subjectFacultyIds.Add(id);
+            }
+
+            var allFaculty = await _context.Faculties
+                .Include(f => f.DesignationRef)
+                .Where(f => !f.IsDeleted && f.Status == "Active")
+                .OrderBy(f => f.FirstName)
+                .ThenBy(f => f.LastName)
+                .ToListAsync();
+
+            var result = new List<DTOs.Examination.Responses.AvailableInvigilatorDto>();
+
+            foreach (var f in allFaculty)
+            {
+                string fullName = $"{f.FirstName} {f.LastName}".Trim();
+                bool isBooked = bookedInvigilatorIds.Contains(f.Id) ||
+                                bookedInvigilatorNames.Contains(fullName.ToLower()) ||
+                                bookedInvigilatorNames.Contains(f.FirstName.Trim().ToLower());
+
+                bool isSubjectFaculty = subjectFacultyIds.Contains(f.Id);
+
+                if (!isBooked && !isSubjectFaculty)
+                {
+                    result.Add(new DTOs.Examination.Responses.AvailableInvigilatorDto
+                    {
+                        FacultyId = f.Id,
+                        EmployeeId = !string.IsNullOrWhiteSpace(f.EmployeeId) ? f.EmployeeId : $"EMP-{f.Id:D3}",
+                        FacultyName = fullName,
+                        Designation = f.DesignationRef?.DesignationName ?? "Lecturer",
+                        FacultyType = "TEACHING",
+                        IsActive = true,
+                        IsAvailable = true
+                    });
+                }
+            }
+
+            return result;
+        }
+
+        public async Task<IEnumerable<Examination>> GetScheduledExamsReadyForCompletionAsync()
+        {
+            return await _context.Examinations
+                .Include(e => e.ExamSchedules.Where(s => s.IsActive))
+                .Where(e => e.IsActive && e.Status.ToUpper() == "SCHEDULED" && e.ExamSchedules.Any(s => s.IsActive))
+                .ToListAsync();
+        }
+
         #endregion
     }
 }

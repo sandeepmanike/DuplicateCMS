@@ -1184,6 +1184,214 @@ namespace CollegeManagement.API.Services.Implementations
             return await _resultRepository.GetResultDashboardAsync();
         }
 
+        public async Task<ResultReadinessDto> GetResultReadinessAsync(
+            int? boardId,
+            int? academicYearId,
+            int? academicLevelId,
+            int? groupId,
+            string? programId,
+            int examinationId)
+        {
+            var blockers = new List<string>();
+
+            var exam = await _context.Examinations
+                .Include(e => e.ExamSchedules.Where(s => s.IsActive))
+                .FirstOrDefaultAsync(e => e.ExaminationId == examinationId && e.IsActive);
+
+            if (exam == null)
+            {
+                return new ResultReadinessDto
+                {
+                    ExaminationId = examinationId,
+                    ExaminationName = "Unknown",
+                    ExaminationStatus = "NOT_FOUND",
+                    CanGenerateResults = false,
+                    ValidationBlockers = new List<string> { "Examination was not found." }
+                };
+            }
+
+            bool isCompleted = exam.Status.Equals("COMPLETED", StringComparison.OrdinalIgnoreCase);
+            if (!isCompleted)
+            {
+                blockers.Add($"Examination status is '{exam.Status}'. Results can only be generated for 'COMPLETED' examinations.");
+            }
+
+            var sections = await _context.Sections
+                .Where(s => s.IsActive && s.GroupId == exam.GroupId)
+                .ToListAsync();
+
+            int studentCount = await _context.Students
+                .CountAsync(st => st.IsActive && st.GroupId == exam.GroupId);
+
+            if (studentCount == 0)
+            {
+                blockers.Add("No active students found matching the examination group.");
+            }
+
+            var scheduleSubjectIds = exam.ExamSchedules
+                .Where(s => s.IsActive)
+                .Select(s => s.SubjectId)
+                .Distinct()
+                .ToList();
+
+            int reqSubjectCount = scheduleSubjectIds.Count;
+            if (reqSubjectCount == 0)
+            {
+                reqSubjectCount = await _context.Subjects
+                    .CountAsync(s => s.IsActive && s.GroupId == exam.GroupId);
+            }
+
+            var marks = await _context.Marks
+                .Where(m => m.IsActive && m.ExaminationId == examinationId)
+                .ToListAsync();
+
+            var approvedSubjectGroups = marks
+                .GroupBy(m => new { m.SubjectId, m.SectionId })
+                .Where(g => g.All(m => m.Status == CollegeManagement.API.Models.Enums.EvaluationStatus.APPROVED))
+                .ToList();
+
+            int approvedCount = approvedSubjectGroups.Count;
+            int totalExpectedEvaluations = reqSubjectCount * (sections.Any() ? sections.Count : 1);
+
+            bool allApproved = marks.Any() && marks.All(m => m.Status == CollegeManagement.API.Models.Enums.EvaluationStatus.APPROVED);
+
+            if (!allApproved)
+            {
+                int pendingCount = marks.Count(m => m.Status != CollegeManagement.API.Models.Enums.EvaluationStatus.APPROVED);
+                if (pendingCount > 0)
+                {
+                    blockers.Add($"{pendingCount} student marks entries are not yet in 'APPROVED' status.");
+                }
+                else if (!marks.Any())
+                {
+                    blockers.Add("No marks evaluations have been recorded for this examination.");
+                }
+            }
+
+            bool canGenerate = isCompleted && allApproved && studentCount > 0;
+
+            return new ResultReadinessDto
+            {
+                ExaminationId = examinationId,
+                ExaminationName = exam.ExamName,
+                ExaminationStatus = exam.Status,
+                IsExamCompleted = isCompleted,
+                ExpectedSectionCount = sections.Count,
+                TotalEligibleStudents = studentCount,
+                RequiredEvaluationCount = totalExpectedEvaluations,
+                ApprovedEvaluationCount = approvedCount,
+                AllEvaluationsApproved = allApproved,
+                CanGenerateResults = canGenerate,
+                ValidationBlockers = blockers
+            };
+        }
+
+        public async Task<IEnumerable<StudentSelfResultDto>> GetStudentSelfResultsAsync(int studentId)
+        {
+            var marks = await _context.Marks
+                .Include(m => m.Examination)
+                .Include(m => m.SectionNavigation)
+                .Include(m => m.GroupNavigation)
+                .Include(m => m.AcademicYear)
+                .Include(m => m.Subject)
+                .Where(m => m.StudentId == studentId && m.IsActive && m.IsPublished)
+                .ToListAsync();
+
+            if (!marks.Any()) return new List<StudentSelfResultDto>();
+
+            var groupedByExam = marks.GroupBy(m => m.ExaminationId);
+            var results = new List<StudentSelfResultDto>();
+
+            foreach (var g in groupedByExam)
+            {
+                var examMarks = g.ToList();
+                var first = examMarks.First();
+                var exam = first.Examination;
+
+                decimal total = examMarks.Sum(m => (decimal)m.TotalMarks);
+                decimal max = exam?.TotalMarks > 0 ? (decimal)exam.TotalMarks : (examMarks.Count * 100m);
+                decimal pct = max > 0 ? Math.Round((total / max) * 100m, 2) : 0m;
+                decimal passPct = exam?.PassPercentage > 0 ? (decimal)exam.PassPercentage : 35m;
+                string status = pct >= passPct ? "PASS" : "FAIL";
+
+                results.Add(new StudentSelfResultDto
+                {
+                    ResultId = first.MarkId,
+                    ExaminationId = first.ExaminationId,
+                    ExaminationName = exam?.ExamName ?? $"Exam #{first.ExaminationId}",
+                    ExamCode = exam?.ExamCode ?? string.Empty,
+                    AcademicYear = first.AcademicYear?.AcademicYearName ?? string.Empty,
+                    GroupName = first.GroupNavigation?.GroupName ?? string.Empty,
+                    SectionName = first.SectionNavigation?.SectionName ?? string.Empty,
+                    TotalMarks = total,
+                    MaxTotalMarks = max,
+                    Percentage = pct,
+                    Grade = GradeFor(pct),
+                    ResultStatus = status,
+                    IsPublished = true,
+                    PublishedAt = first.PublishedAt
+                });
+            }
+
+            return results;
+        }
+
+        public async Task<StudentSelfResultMemoDto?> GetStudentSelfResultMemoAsync(int studentId, int examinationId)
+        {
+            var marks = await _context.Marks
+                .Include(m => m.Examination)
+                .Include(m => m.SectionNavigation)
+                .Include(m => m.GroupNavigation)
+                .Include(m => m.AcademicYear)
+                .Include(m => m.Subject)
+                .Where(m => m.StudentId == studentId && m.ExaminationId == examinationId && m.IsActive && m.IsPublished)
+                .ToListAsync();
+
+            if (!marks.Any()) return null;
+
+            var first = marks.First();
+            var exam = first.Examination;
+
+            decimal total = marks.Sum(m => (decimal)m.TotalMarks);
+            decimal max = exam?.TotalMarks > 0 ? (decimal)exam.TotalMarks : (marks.Count * 100m);
+            decimal pct = max > 0 ? Math.Round((total / max) * 100m, 2) : 0m;
+            decimal passPct = exam?.PassPercentage > 0 ? (decimal)exam.PassPercentage : 35m;
+            string status = pct >= passPct ? "PASS" : "FAIL";
+
+            var subjectMemos = marks.Select(m => new StudentSubjectMarkMemoDto
+            {
+                SubjectId = m.SubjectId,
+                SubjectCode = m.Subject?.SubjectCode ?? $"SUB{m.SubjectId:000}",
+                SubjectName = m.Subject?.SubjectName ?? $"Subject #{m.SubjectId}",
+                MaxMarks = m.Subject?.TotalMarks > 0 ? (decimal)m.Subject.TotalMarks : 100m,
+                PassingMarks = m.Subject?.PassingMarks > 0 ? (decimal)m.Subject.PassingMarks : 35m,
+                InternalMarks = m.InternalMarks,
+                PracticalMarks = m.PracticalMarks,
+                TheoryMarks = m.TheoryMarks,
+                TotalMarks = m.TotalMarks,
+                ResultStatus = m.TotalMarks >= (m.Subject?.PassingMarks > 0 ? (decimal)m.Subject.PassingMarks : 35m) ? "PASS" : "FAIL"
+            }).ToList();
+
+            return new StudentSelfResultMemoDto
+            {
+                StudentId = studentId,
+                RollNo = !string.IsNullOrWhiteSpace(first.RollNo) ? first.RollNo : $"STU-{studentId:D4}",
+                StudentName = !string.IsNullOrWhiteSpace(first.StudentName) ? first.StudentName : $"Student #{studentId}",
+                FatherName = string.Empty,
+                ExaminationName = exam?.ExamName ?? string.Empty,
+                ExamCode = exam?.ExamCode ?? string.Empty,
+                AcademicYear = first.AcademicYear?.AcademicYearName ?? string.Empty,
+                CourseName = first.GroupNavigation?.GroupName ?? string.Empty,
+                SectionName = first.SectionNavigation?.SectionName ?? string.Empty,
+                TotalMarks = total,
+                MaxTotalMarks = max,
+                Percentage = pct,
+                Grade = GradeFor(pct),
+                ResultStatus = status,
+                Subjects = subjectMemos
+            };
+        }
+
         #endregion
     }
 }

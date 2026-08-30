@@ -45,6 +45,26 @@ namespace CollegeManagement.API.Controllers.V1
         // =========================================================================
 
         /// <summary>
+        /// Retrieves results generation readiness status (checks if exam is COMPLETED and all subject evaluations are APPROVED).
+        /// </summary>
+        [HttpGet("readiness")]
+        [ProducesResponseType(typeof(ResultReadinessDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetResultReadiness(
+            [FromQuery] int? boardId,
+            [FromQuery] int? academicYearId,
+            [FromQuery] int? academicLevelId,
+            [FromQuery] int? groupId,
+            [FromQuery] string? programId,
+            [FromQuery] int examId,
+            [FromQuery] int? examinationId)
+        {
+            int targetExamId = examId > 0 ? examId : (examinationId ?? 0);
+            var readiness = await _resultService.GetResultReadinessAsync(
+                boardId, academicYearId, academicLevelId, groupId, programId, targetExamId);
+            return Ok(readiness);
+        }
+
+        /// <summary>
         /// Generates and returns section-wise result summaries for an exam after verifying all evaluations are APPROVED.
         /// </summary>
         /// <param name="request">Academic context filters including ExaminationId, BoardId, AcademicYearId, AcademicLevelId, GroupId.</param>

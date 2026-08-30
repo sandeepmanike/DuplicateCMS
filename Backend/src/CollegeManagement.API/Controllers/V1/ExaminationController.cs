@@ -146,6 +146,20 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
+        /// Retrieves the scheduling context (eligible sections, active students, and required room capacity) for an examination.
+        /// </summary>
+        [HttpGet("{examinationId:int}/scheduling-context")]
+        [ProducesResponseType(typeof(SchedulingContextResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult<SchedulingContextResponseDto>> GetSchedulingContext(int examinationId)
+        {
+            _logger.LogInformation("Fetching scheduling context for examination ID: {Id}", examinationId);
+            var result = await _examinationService.GetSchedulingContextAsync(examinationId);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Finalizes and publishes the examination schedule (transitions status to SCHEDULED).
         /// </summary>
         [HttpPost("{examinationId:int}/finalize-schedule")]
@@ -342,13 +356,18 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<AvailableHallDto>>> GetAvailableHalls(
-            [FromQuery] DateOnly date,
+            [FromQuery] DateOnly? date,
+            [FromQuery] DateOnly? examDate,
             [FromQuery] TimeOnly startTime,
             [FromQuery] TimeOnly endTime,
-            [FromQuery] int? excludeScheduleId)
+            [FromQuery] int? requiredCapacity,
+            [FromQuery] List<int>? sectionIds,
+            [FromQuery] int? excludeScheduleId,
+            [FromQuery] int? examinationId)
         {
-            _logger.LogInformation("Fetching available halls for Date: {Date}, Time: {StartTime} - {EndTime}", date, startTime, endTime);
-            var result = await _examinationService.GetAvailableHallsAsync(date, startTime, endTime, excludeScheduleId);
+            var targetDate = date ?? examDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            _logger.LogInformation("Fetching available halls for Date: {Date}, Time: {StartTime} - {EndTime}, Capacity: {Cap}", targetDate, startTime, endTime, requiredCapacity);
+            var result = await _examinationService.GetAvailableHallsAsync(targetDate, startTime, endTime, requiredCapacity, sectionIds, excludeScheduleId);
             return Ok(result);
         }
 
@@ -360,13 +379,21 @@ namespace CollegeManagement.API.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<IEnumerable<AvailableInvigilatorDto>>> GetAvailableInvigilators(
-            [FromQuery] DateOnly date,
+            [FromQuery] DateOnly? date,
+            [FromQuery] DateOnly? examDate,
             [FromQuery] TimeOnly startTime,
             [FromQuery] TimeOnly endTime,
-            [FromQuery] int? excludeScheduleId)
+            [FromQuery] int? subjectId,
+            [FromQuery] List<int>? subjectIds,
+            [FromQuery] int? excludeScheduleId,
+            [FromQuery] int? examinationId)
         {
-            _logger.LogInformation("Fetching available invigilators for Date: {Date}, Time: {StartTime} - {EndTime}", date, startTime, endTime);
-            var result = await _examinationService.GetAvailableInvigilatorsAsync(date, startTime, endTime, excludeScheduleId);
+            var targetDate = date ?? examDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var targetSubjectIds = subjectIds ?? new List<int>();
+            if (subjectId.HasValue && !targetSubjectIds.Contains(subjectId.Value)) targetSubjectIds.Add(subjectId.Value);
+
+            _logger.LogInformation("Fetching available invigilators for Date: {Date}, Time: {StartTime} - {EndTime}", targetDate, startTime, endTime);
+            var result = await _examinationService.GetAvailableInvigilatorsAsync(targetDate, startTime, endTime, targetSubjectIds, excludeScheduleId);
             return Ok(result);
         }
 
