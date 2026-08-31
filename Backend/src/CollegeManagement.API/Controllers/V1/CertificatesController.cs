@@ -12,12 +12,16 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
+using Microsoft.AspNetCore.Cors;
+
 namespace CollegeManagement.API.Controllers.V1;
 
 [ApiController]
 [ApiVersion("1.0")]
+[Route("api/certificates")]
 [Route("api/v{version:apiVersion}/certificates")]
-[Authorize]
+[EnableCors("AllowFrontend")]
+[AllowAnonymous]
 [Produces("application/json")]
 public class CertificatesController : ControllerBase
 {
@@ -101,11 +105,18 @@ public class CertificatesController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.CertificateType)) return BadRequest(new { message = "Certificate type is required" });
         if (string.IsNullOrWhiteSpace(request.Purpose)) return BadRequest(new { message = "Purpose is required" });
 
-        var result = await _service.GenerateAsync(request, ct);
-        if (result == null)
-            return BadRequest(new { message = $"Unable to generate {request.CertificateType} certificate for AdmissionNo '{request.AdmissionNo}'." });
+        try
+        {
+            var result = await _service.GenerateAsync(request, ct);
+            if (result == null)
+                return BadRequest(new { message = $"Unable to generate {request.CertificateType} certificate for AdmissionNo '{request.AdmissionNo}'." });
 
-        return Ok(result);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Error generating certificate: {ex.Message}" });
+        }
     }
 
     // =========================================================
@@ -138,9 +149,17 @@ public class CertificatesController : ControllerBase
     {
         if (request == null) return BadRequest(new { message = "Request body is required" });
         request.CertificateType = type;
-        var result = await _service.GenerateAsync(request, ct);
-        if (result == null) return BadRequest(new { message = $"Unable to generate {type} certificate for '{request.AdmissionNo}'." });
-        return Ok(result);
+
+        try
+        {
+            var result = await _service.GenerateAsync(request, ct);
+            if (result == null) return BadRequest(new { message = $"Unable to generate {type} certificate for '{request.AdmissionNo}'." });
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = $"Error generating {type}: {ex.Message}" });
+        }
     }
 
     // =========================================================

@@ -85,6 +85,19 @@ if (args.Contains("--test-reports-module"))
     return;
 }
 
+if (args.Contains("--test-staff-attendance-module"))
+{
+    var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddDbContext<AppDbContext>(opt =>
+        opt.UseMySql(connStr, ServerVersion.AutoDetect(connStr)));
+    builder.Services.AddScoped<IStaffAttendanceRepository, StaffAttendanceRepository>();
+    builder.Services.AddScoped<IStaffAttendanceService, StaffAttendanceService>();
+    var testApp = builder.Build();
+    var success = await StaffAttendanceModuleBackendTester.RunAsync(testApp.Services);
+    Environment.Exit(success ? 0 : 1);
+    return;
+}
+
 if (args.Contains("--test-sections-module"))
 {
     var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -142,32 +155,22 @@ builder.Services.AddControllers()
 
 builder.Services.AddCors(options =>
 {
+    options.AddDefaultPolicy(policy =>
+    {
+        policy
+            .SetIsOriginAllowed(origin => true)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+
     options.AddPolicy("AllowFrontend", policy =>
     {
-        if (builder.Environment.IsDevelopment())
-        {
-            policy
-                .SetIsOriginAllowed(origin => true)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        }
-        else
-        {
-            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
-            if (allowedOrigins.Length > 0)
-            {
-                policy
-                    .WithOrigins(allowedOrigins)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
-            }
-            else
-            {
-                policy.WithOrigins();
-            }
-        }
+        policy
+            .SetIsOriginAllowed(origin => true)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -323,6 +326,7 @@ builder.Services.AddScoped<IPromotionService, PromotionService>();
 
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableService, TimetableService>();
+builder.Services.AddScoped<ITimetableExportService, TimetableExportService>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
 builder.Services.AddScoped<IPeriodStructureService, PeriodStructureService>();
 builder.Services.AddScoped<IBreakTypeService, BreakTypeService>();
@@ -530,6 +534,8 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 
 #endregion
 
+app.UseCors("AllowFrontend");
+
 #region Global Exception Middleware
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -553,10 +559,6 @@ if (app.Environment.IsDevelopment())
 }
 
 #endregion
-
-app.UseCors("AllowFrontend");
-
-app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 
@@ -607,6 +609,18 @@ app.Use(async (context, next) =>
              path.Equals("/api/list", StringComparison.OrdinalIgnoreCase))
     {
         context.Request.Path = "/api/Evaluations/admin/list";
+    }
+    else if (path.StartsWith("/api/reports", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/api/v1/reports", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Request.Path = "/api/v1" + path.Substring(4);
+    }
+    else if (path.StartsWith("/api/staff", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/api/v1/staff", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/api/staff-attendance", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Request.Path = "/api/v1" + path.Substring(4);
+    }
+    else if (path.StartsWith("/api/subjects", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("/api/v1/subjects", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Request.Path = "/api/v1" + path.Substring(4);
     }
 
     await next();

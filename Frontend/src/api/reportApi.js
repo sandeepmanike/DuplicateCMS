@@ -24,12 +24,12 @@ export const getReportSections = (params) => {
 };
 
 // --- 2. Overview / Dashboard Metrics (10 Cards) ---
-export const getReportsOverview = (params) => {
-  return api.get("/api/reports/overview", { params });
-};
-
 export const getReportsDashboard = (params) => {
   return api.get("/api/reports/dashboard", { params });
+};
+
+export const getReportsOverview = (params) => {
+  return getReportsDashboard(params);
 };
 
 // --- 3. Report Detail Endpoints ---
@@ -75,18 +75,6 @@ export const getToppersDetails = (params) => {
 
 export const getStaffWorkloadDetails = (params) => {
   return api.get("/api/reports/details/staff-workload", { params });
-};
-
-export const getSubjectsDetails = (params) => {
-  return api.get("/api/reports/details/subjects", { params });
-};
-
-export const getGroupsDetails = (params) => {
-  return api.get("/api/reports/details/groups", { params });
-};
-
-export const getSectionsDetails = (params) => {
-  return api.get("/api/reports/details/sections", { params });
 };
 
 // --- 4. Audit Logs ---

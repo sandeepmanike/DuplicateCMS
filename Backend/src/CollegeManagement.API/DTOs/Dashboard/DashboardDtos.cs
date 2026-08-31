@@ -188,3 +188,53 @@ public class RecentActivityItemDto
     public string CreatedAt { get; set; } = string.Empty;
     public string BadgeType { get; set; } = "info";
 }
+
+public class FacultyWorkloadItemDto
+{
+    public int FacultyId { get; set; }
+    public int StaffId => FacultyId;
+    public int Id => FacultyId;
+    public string FacultyName { get; set; } = string.Empty;
+    public string Name => FacultyName;
+    public string StaffName => FacultyName;
+    public string Department { get; set; } = "General";
+    public string DepartmentName => Department;
+    public decimal HoursPerWeek { get; set; }
+    public decimal Hours => HoursPerWeek;
+    public decimal WeeklyClasses => HoursPerWeek;
+    public decimal PeriodCount => HoursPerWeek;
+    public decimal Workload => HoursPerWeek;
+    public decimal WorkloadHours => HoursPerWeek;
+    public decimal TotalHours => HoursPerWeek;
+    public int AssignedSubjects { get; set; }
+    public int SubjectCount => AssignedSubjects;
+    public decimal Count => HoursPerWeek;
+    public decimal Value => HoursPerWeek;
+}
+
+public class UpcomingExaminationItemDto
+{
+    public int ExamId { get; set; }
+    public int ExaminationId => ExamId;
+    public int ScheduleId { get; set; }
+    public int Id => ScheduleId > 0 ? ScheduleId : ExamId;
+    public string ExamName { get; set; } = string.Empty;
+    public string ExamCode { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public string SubjectName => Subject;
+    public string SubjectCode { get; set; } = string.Empty;
+    public string Date { get; set; } = string.Empty;
+    public string ExamDate => Date;
+    public string StartDate => Date;
+    public string FormattedDate => Date;
+    public string Time { get; set; } = "10:00 AM - 01:00 PM";
+    public string ExamTime => Time;
+    public string Hall { get; set; } = "Main Hall";
+    public string HallName => Hall;
+    public string Invigilator { get; set; } = "Staff In-Charge";
+    public string InvigilatorName => Invigilator;
+    public string Status { get; set; } = "Scheduled";
+    public string PatternName { get; set; } = string.Empty;
+    public int? TotalMarks { get; set; }
+}
+

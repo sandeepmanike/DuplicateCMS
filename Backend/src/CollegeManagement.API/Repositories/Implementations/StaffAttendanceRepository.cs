@@ -41,11 +41,11 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             if (request.StaffType == StaffType.Teaching)
             {
-                query = query.Where(f => f.FacultyType == null || f.FacultyType.ToLower() == "teaching" || (f.StaffType != null && f.StaffType.ToLower() == "teaching"));
+                query = query.Where(f => f.StaffType == null || f.StaffType.ToLower() == "teaching");
             }
             else
             {
-                query = query.Where(f => (f.FacultyType != null && f.FacultyType.ToLower() != "teaching") || (f.StaffType != null && f.StaffType.ToLower() != "teaching"));
+                query = query.Where(f => f.StaffType != null && f.StaffType.ToLower() != "teaching");
             }
 
             if (request.DepartmentId.HasValue && request.DepartmentId.Value > 0)
@@ -198,7 +198,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                 StaffName = $"{faculty.FirstName} {faculty.LastName}".Trim(),
                 DepartmentName = !string.IsNullOrEmpty(faculty.Department) ? faculty.Department : "General",
                 DesignationName = !string.IsNullOrEmpty(faculty.Designation) ? faculty.Designation : "Staff",
-                StaffType = (faculty.FacultyType == null || faculty.FacultyType.ToLower() == "teaching") ? StaffType.Teaching : StaffType.NonTeaching,
+                StaffType = (faculty.StaffType == null || faculty.StaffType.ToLower() == "teaching") ? StaffType.Teaching : StaffType.NonTeaching,
                 TodayStatus = status,
                 InTime = attendance?.InTime,
                 OutTime = attendance?.OutTime,
@@ -235,11 +235,11 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             if (request.StaffType == StaffType.Teaching)
             {
-                facultyQuery = facultyQuery.Where(f => f.FacultyType == null || f.FacultyType.ToLower() == "teaching" || (f.StaffType != null && f.StaffType.ToLower() == "teaching"));
+                facultyQuery = facultyQuery.Where(f => f.StaffType == null || f.StaffType.ToLower() == "teaching");
             }
             else
             {
-                facultyQuery = facultyQuery.Where(f => (f.FacultyType != null && f.FacultyType.ToLower() != "teaching") || (f.StaffType != null && f.StaffType.ToLower() != "teaching"));
+                facultyQuery = facultyQuery.Where(f => f.StaffType != null && f.StaffType.ToLower() != "teaching");
             }
 
             if (request.DepartmentId.HasValue && request.DepartmentId.Value > 0)

@@ -71,6 +71,9 @@ SELECT
     s.GroupId,
     g.GroupName,
 
+    s.ProgramId,
+    p.ProgramName,
+
     s.Section,
     s.Medium,
 
@@ -81,6 +84,9 @@ SELECT
 
     @TargetGroupId AS TargetGroupId,
     tg.GroupName AS TargetGroupName,
+
+    @TargetProgramId AS TargetProgramId,
+    tp.ProgramName AS TargetProgramName,
 
     @TargetSection AS TargetSection,
     @TargetMedium AS TargetMedium,
@@ -106,11 +112,17 @@ LEFT JOIN Boards b
 LEFT JOIN `Groups` g
     ON g.GroupId = s.GroupId
 
+LEFT JOIN Programs p
+    ON p.ProgramId = s.ProgramId
+
 LEFT JOIN AcademicYears tay
     ON tay.AcademicYearId = @TargetAcademicYearId
 
 LEFT JOIN `Groups` tg
     ON tg.GroupId = @TargetGroupId
+
+LEFT JOIN Programs tp
+    ON tp.ProgramId = @TargetProgramId
 
 WHERE s.IsActive = 1
 
@@ -133,6 +145,12 @@ AND (
 AND (
     @GroupId IS NULL
     OR s.GroupId = @GroupId
+)
+
+AND (
+    @ProgramId IS NULL
+    OR @ProgramId = 0
+    OR s.ProgramId = @ProgramId
 )
 
 AND (

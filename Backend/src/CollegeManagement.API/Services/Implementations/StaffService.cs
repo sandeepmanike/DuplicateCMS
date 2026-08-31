@@ -420,7 +420,8 @@ namespace CollegeManagement.API.Services.Implementations
             if (string.Equals(staff.StaffType, "Non-Teaching", StringComparison.OrdinalIgnoreCase))
                 throw new ValidationException("Non-Teaching staff cannot be assigned subject allocations.");
 
-            var subject = await _subjectRepository.GetByIdAsync(dto.SubjectId);
+            var subject = await _subjectRepository.GetByIdAsync(dto.SubjectId) 
+                ?? await _allocationRepository.GetSubjectByIdAsync(dto.SubjectId);
             if (subject == null)
                 throw new NotFoundException($"Subject with ID {dto.SubjectId} not found in Subjects module.");
 

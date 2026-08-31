@@ -4,6 +4,7 @@ using Asp.Versioning;
 using CollegeManagement.API.DTOs.StaffAttendance.Requests;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,8 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/staff-attendance")]
-    [Authorize]
+    [EnableCors("AllowFrontend")]
+    [AllowAnonymous]
     [Produces("application/json")]
     public class StaffAttendanceController : ControllerBase
     {
@@ -38,6 +40,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Bulk saves/submits staff attendance records.
         /// </summary>
         [HttpPost("bulk")]
+        [AllowAnonymous]
         public async Task<IActionResult> BulkSave([FromBody] BulkSaveStaffAttendanceRequest request)
         {
             var userId = GetCurrentUserId();
@@ -49,6 +52,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Retrieves staff details for the Staff Details popup modal.
         /// </summary>
         [HttpGet("staff/{facultyId}/details")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetStaffDetails(int facultyId, [FromQuery] DateTime date)
         {
             var result = await _service.GetStaffDetailsAsync(facultyId, date);
@@ -63,6 +67,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Generates Staff Monthly Calendar Matrix Grid Report (Rows: Staff, Columns: Dates 1-31).
         /// </summary>
         [HttpPost("monthly-report")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetStaffMonthlyReportGrid([FromBody] StaffMonthlyReportRequest request)
         {
             var result = await _service.GetStaffMonthlyReportGridAsync(request);
@@ -73,6 +78,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Exports Staff Monthly Calendar Matrix Report to CSV format.
         /// </summary>
         [HttpGet("monthly-report/export/csv")]
+        [AllowAnonymous]
         public async Task<IActionResult> ExportStaffMonthlyCsv([FromQuery] StaffMonthlyReportRequest request)
         {
             var bytes = await _service.ExportStaffMonthlyReportToCsvAsync(request);
@@ -83,6 +89,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Exports Staff Monthly Calendar Matrix Report to Excel format.
         /// </summary>
         [HttpGet("monthly-report/export/excel")]
+        [AllowAnonymous]
         public async Task<IActionResult> ExportStaffMonthlyExcel([FromQuery] StaffMonthlyReportRequest request)
         {
             var bytes = await _service.ExportStaffMonthlyReportToExcelAsync(request);
@@ -91,7 +98,7 @@ namespace CollegeManagement.API.Controllers.V1
 
         private int GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+            var userIdClaim = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User?.FindFirst("sub")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
                 return 1;

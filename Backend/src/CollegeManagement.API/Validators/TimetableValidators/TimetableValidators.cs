@@ -60,6 +60,11 @@ namespace CollegeManagement.API.Validators.TimetableValidators
             RuleFor(x => x.AcademicYearId).GreaterThan(0).WithMessage("Academic Year ID is required.");
             RuleFor(x => x.GroupId).GreaterThan(0).WithMessage("Group ID is required.");
 
+            RuleFor(x => x.PeriodStructureId)
+                .GreaterThan(0)
+                .When(x => x.PeriodStructureId.HasValue)
+                .WithMessage("PeriodStructureId must be a valid positive integer when specified.");
+
             RuleFor(x => x.SectionIds)
                 .NotEmpty().WithMessage("At least one Section ID is required.")
                 .Must(ids => ids == null || ids.All(id => id > 0)).WithMessage("All Section IDs must be valid positive integers.")
@@ -70,12 +75,14 @@ namespace CollegeManagement.API.Validators.TimetableValidators
                 .Must(days => days == null || days.All(d => d >= 1 && d <= 6)).WithMessage("Working days must be between 1 (Monday) and 6 (Saturday).")
                 .Must(days => days == null || days.Count == days.Distinct().Count()).WithMessage("Duplicate working days are not allowed.");
 
-            RuleFor(x => x.SubjectRequirements)
-                .NotEmpty().WithMessage("Subject weekly period requirements are required.")
-                .Must(reqs => reqs == null || reqs.All(r => r.SubjectId > 0 && r.WeeklyPeriods > 0))
-                .WithMessage("Every subject requirement must have a valid Subject ID (>0) and WeeklyPeriods (>0).")
-                .Must(reqs => reqs == null || reqs.Select(r => r.SubjectId).Distinct().Count() == reqs.Count)
-                .WithMessage("Duplicate Subject IDs in requirements are not allowed.");
+            When(x => x.SubjectRequirements != null && x.SubjectRequirements.Any(), () =>
+            {
+                RuleFor(x => x.SubjectRequirements!)
+                    .Must(reqs => reqs.All(r => r.SubjectId > 0 && r.WeeklyPeriods > 0))
+                    .WithMessage("Every subject requirement must have a valid Subject ID (>0) and WeeklyPeriods (>0).")
+                    .Must(reqs => reqs.Select(r => r.SubjectId).Distinct().Count() == reqs.Count)
+                    .WithMessage("Duplicate Subject IDs in requirements are not allowed.");
+            });
         }
     }
 }

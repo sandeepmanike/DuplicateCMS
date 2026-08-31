@@ -383,11 +383,12 @@ namespace CollegeManagement.API.Services.Implementations
         /// <summary>
         /// Retrieves active academic levels, using memory cache.
         /// </summary>
-        public async Task<IEnumerable<AcademicLevelResponse>> GetAcademicLevelsAsync()
+        public async Task<IEnumerable<AcademicLevelResponse>> GetAcademicLevelsAsync(int? boardId = null)
         {
-            return await _cacheService.GetOrCreateAsync("lookup:academic-levels", async () =>
+            var cacheKey = boardId.HasValue && boardId.Value > 0 ? $"lookup:academic-levels:{boardId.Value}" : "lookup:academic-levels";
+            return await _cacheService.GetOrCreateAsync(cacheKey, async () =>
             {
-                var levels = await _boardRepository.GetAcademicLevelsAsync();
+                var levels = await _boardRepository.GetAcademicLevelsAsync(boardId);
                 return _mapper.Map<IEnumerable<AcademicLevelResponse>>(levels);
             });
         }

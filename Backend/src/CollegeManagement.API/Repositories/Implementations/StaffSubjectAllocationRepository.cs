@@ -308,6 +308,31 @@ namespace CollegeManagement.API.Repositories.Implementations
             return first?.SubjectId;
         }
 
+        public async Task<Subject?> GetSubjectByIdAsync(int subjectId)
+        {
+            try
+            {
+                var sql = @"
+                    SELECT 
+                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
+                        sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
+                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(g.GroupName, '') AS `Group`,
+                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
+                    FROM Subjects sub
+                    LEFT JOIN Boards b ON b.BoardId = sub.BoardId
+                    LEFT JOIN `Groups` g ON g.GroupId = sub.GroupId
+                    LEFT JOIN AcademicLevels al ON al.AcademicLevelId = sub.AcademicLevelId
+                    WHERE sub.SubjectId = @subjectId;";
+
+                var item = await Connection.QueryFirstOrDefaultAsync<Subject>(sql, new { subjectId });
+                if (item != null) return item;
+            }
+            catch {}
+
+            return await _context.Subjects.AsNoTracking().FirstOrDefaultAsync(s => s.SubjectId == subjectId);
+        }
+
         public async Task<StaffSubjectAllocation> AddAsync(StaffSubjectAllocation allocation)
         {
             int sid = allocation.StaffId;

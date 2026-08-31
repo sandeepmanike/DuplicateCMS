@@ -18,23 +18,49 @@ namespace CollegeManagement.API.Repositories
 
         private static string Clean(string value) => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
 
+        private async Task PopulateNavigationsAsync(List<Subject> subjects)
+        {
+            if (subjects == null || subjects.Count == 0) return;
+
+            var boardIds = subjects.Where(s => s.BoardId > 0).Select(s => s.BoardId).Distinct().ToList();
+            var groupIds = subjects.Where(s => s.GroupId > 0).Select(s => s.GroupId).Distinct().ToList();
+            var levelIds = subjects.Where(s => s.AcademicLevelId > 0).Select(s => s.AcademicLevelId).Distinct().ToList();
+
+            var boards = await _context.Boards.AsNoTracking().Where(b => boardIds.Contains(b.BoardId)).ToDictionaryAsync(b => b.BoardId);
+            var groups = await _context.Groups.AsNoTracking().Where(g => groupIds.Contains(g.GroupId)).ToDictionaryAsync(g => g.GroupId);
+            var levels = await _context.AcademicLevels.AsNoTracking().Where(l => levelIds.Contains(l.AcademicLevelId)).ToDictionaryAsync(l => l.AcademicLevelId);
+
+            foreach (var s in subjects)
+            {
+                if (s.BoardId > 0 && boards.TryGetValue(s.BoardId, out var b)) s.BoardNavigation = b;
+                if (s.GroupId > 0 && groups.TryGetValue(s.GroupId, out var g)) s.GroupNavigation = g;
+                if (s.AcademicLevelId > 0 && levels.TryGetValue(s.AcademicLevelId, out var l)) s.AcademicLevelNavigation = l;
+            }
+        }
+
         public async Task<IEnumerable<Subject>> GetAllAsync()
         {
-            return await _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
+            var subjects = await _context.Subjects
+                .AsNoTracking()
                 .OrderBy(s => s.SubjectId)
                 .ToListAsync();
+
+            await PopulateNavigationsAsync(subjects);
+            return subjects;
         }
 
         public async Task<Subject?> GetByIdAsync(int subjectId)
         {
-            return await _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
+            var subject = await _context.Subjects
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.SubjectId == subjectId);
+
+            if (subject != null)
+            {
+                await PopulateNavigationsAsync(new List<Subject> { subject });
+            }
+
+            return subject;
         }
 
         public async Task<Subject> CreateAsync(Subject subject)
@@ -90,32 +116,32 @@ namespace CollegeManagement.API.Repositories
 
         public async Task<IEnumerable<Subject>> GetByGroupIdAsync(int groupId)
         {
-            return await _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
+            var subjects = await _context.Subjects
+                .AsNoTracking()
                 .Where(s => s.GroupId == groupId)
                 .OrderBy(s => s.SubjectId)
                 .ToListAsync();
+
+            await PopulateNavigationsAsync(subjects);
+            return subjects;
         }
 
         public async Task<IEnumerable<Subject>> GetByContextAsync(int boardId, int groupId, int academicLevelId)
         {
-            return await _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
-                .Where(s => s.BoardId == boardId && s.GroupId == groupId && s.AcademicLevelId == academicLevelId)
+            var subjects = await _context.Subjects
+                .AsNoTracking()
+                .Where(s => (boardId == 0 || s.BoardId == boardId) && (groupId == 0 || s.GroupId == groupId) && (academicLevelId == 0 || s.AcademicLevelId == academicLevelId))
                 .OrderBy(s => s.SubjectId)
                 .ToListAsync();
+
+            await PopulateNavigationsAsync(subjects);
+            return subjects;
         }
 
         public async Task<IEnumerable<Subject>> SearchAsync(string? search, int? boardId, int? groupId, int? academicLevelId, bool? isActive)
         {
             var query = _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
+                .AsNoTracking()
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -124,41 +150,45 @@ namespace CollegeManagement.API.Repositories
                 query = query.Where(s => s.SubjectName.ToLower().Contains(cleanSearch) || s.SubjectCode.ToLower().Contains(cleanSearch));
             }
 
-            if (boardId.HasValue)
+            if (boardId.HasValue && boardId.Value > 0)
                 query = query.Where(s => s.BoardId == boardId.Value);
 
-            if (groupId.HasValue)
+            if (groupId.HasValue && groupId.Value > 0)
                 query = query.Where(s => s.GroupId == groupId.Value);
 
-            if (academicLevelId.HasValue)
+            if (academicLevelId.HasValue && academicLevelId.Value > 0)
                 query = query.Where(s => s.AcademicLevelId == academicLevelId.Value);
 
             if (isActive.HasValue)
                 query = query.Where(s => s.IsActive == isActive.Value);
 
-            return await query.OrderBy(s => s.SubjectId).ToListAsync();
+            var subjects = await query.OrderBy(s => s.SubjectId).ToListAsync();
+            await PopulateNavigationsAsync(subjects);
+            return subjects;
         }
 
         public async Task<IEnumerable<Subject>> GetActiveAsync()
         {
-            return await _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
+            var subjects = await _context.Subjects
+                .AsNoTracking()
                 .Where(s => s.IsActive)
                 .OrderBy(s => s.SubjectId)
                 .ToListAsync();
+
+            await PopulateNavigationsAsync(subjects);
+            return subjects;
         }
 
         public async Task<IEnumerable<Subject>> GetByBoardIdAsync(int boardId)
         {
-            return await _context.Subjects
-                .Include(s => s.BoardNavigation)
-                .Include(s => s.GroupNavigation)
-                .Include(s => s.AcademicLevelNavigation)
+            var subjects = await _context.Subjects
+                .AsNoTracking()
                 .Where(s => s.BoardId == boardId)
                 .OrderBy(s => s.SubjectId)
                 .ToListAsync();
+
+            await PopulateNavigationsAsync(subjects);
+            return subjects;
         }
 
         public async Task<bool> SubjectCodeExistsAsync(string subjectCode, int boardId, int groupId, int academicLevelId, int? excludeSubjectId = null)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Staff;
 
 namespace CollegeManagement.API.Repositories.Interfaces
@@ -10,6 +11,7 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<List<StaffSubjectAllocation>> GetByStaffIdAsync(int staffId);
         Task<bool> ExistsAllocationAsync(int staffId, int subjectId, int? excludeId = null);
         Task<int?> ResolveSubjectIdAsync(int? subjectId, string board, string academicYear, string group, string academicLevel, string section, string subjectName);
+        Task<Subject?> GetSubjectByIdAsync(int subjectId);
 
         Task<StaffSubjectAllocation> AddAsync(StaffSubjectAllocation allocation);
         Task UpdateAsync(StaffSubjectAllocation allocation);

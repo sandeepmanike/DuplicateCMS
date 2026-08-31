@@ -319,40 +319,59 @@ public class DashboardModuleBackendTester
             failed++;
         }
 
-        // 10. Test Filter Permutations (AcademicYear & Board parameters)
-        Console.WriteLine("\n[10/10] Testing Filter Permutations (AcademicYearId & BoardId filtering)...");
+        // 10. Test Faculty Workload & Upcoming Examinations APIs
+        Console.WriteLine("\n[10/10] Testing Faculty Workload & Upcoming Examinations Cards...");
         try
         {
-            var year = await dbContext.AcademicYears.FirstOrDefaultAsync();
-            var board = await dbContext.Boards.FirstOrDefaultAsync();
+            var workloadResult = await controller.FacultyWorkload();
+            var examsResult = await controller.UpcomingExaminations();
 
-            int? yearId = year?.AcademicYearId;
-            int? boardId = board?.BoardId;
+            var okWorkload = workloadResult as OkObjectResult;
+            var okExams = examsResult as OkObjectResult;
 
-            Console.WriteLine($"  Applying Filters: AcademicYearId = {yearId}, BoardId = {boardId}...");
+            bool workloadOk = false;
+            bool examsOk = false;
 
-            var filteredSummary = await controller.Summary(yearId, boardId, DateTime.UtcNow);
-            var filteredGroupDist = await controller.GroupDistribution(yearId, boardId);
-            var filteredWeeklyAtt = await controller.WeeklyAttendance(yearId, boardId, DateTime.UtcNow);
-            var filteredStudentsOverview = await controller.StudentsOverview(yearId, boardId, DateTime.UtcNow);
-
-            if (filteredSummary is OkObjectResult &&
-                filteredGroupDist is OkObjectResult &&
-                filteredWeeklyAtt is OkObjectResult &&
-                filteredStudentsOverview is OkObjectResult)
+            if (okWorkload?.Value is IReadOnlyList<FacultyWorkloadItemDto> workloads)
             {
-                Console.WriteLine("  [PASS] All filtered endpoints executed successfully with 200 OK.");
+                Console.WriteLine($"  [PASS] Faculty Workload Retrieved ({workloads.Count} faculty entries):");
+                foreach (var w in workloads.Take(5))
+                {
+                    Console.WriteLine($"         * {w.FacultyName,-25} | Dept: {w.Department,-15} | Hours/Wk: {w.HoursPerWeek,2} hrs | Subjects: {w.AssignedSubjects}");
+                }
+                workloadOk = true;
+            }
+            else
+            {
+                Console.WriteLine("  [FAIL] Unexpected faculty workload response format.");
+            }
+
+            if (okExams?.Value is IReadOnlyList<UpcomingExaminationItemDto> exams)
+            {
+                Console.WriteLine($"  [PASS] Upcoming Examinations Retrieved ({exams.Count} entries):");
+                foreach (var e in exams.Take(5))
+                {
+                    Console.WriteLine($"         * {e.Subject,-20} | Date: {e.Date,-12} | Time: {e.Time,-20} | Hall: {e.Hall,-10} | Status: {e.Status}");
+                }
+                examsOk = true;
+            }
+            else
+            {
+                Console.WriteLine("  [FAIL] Unexpected upcoming examinations response format.");
+            }
+
+            if (workloadOk && examsOk)
+            {
                 passed++;
             }
             else
             {
-                Console.WriteLine("  [FAIL] One or more filtered endpoints returned non-OK status.");
                 failed++;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"  [FAIL] Filter Permutation Error: {ex.Message}");
+            Console.WriteLine($"  [FAIL] Faculty Workload / Upcoming Exams Error: {ex.Message}");
             failed++;
         }
 

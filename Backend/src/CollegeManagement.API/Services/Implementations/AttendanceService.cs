@@ -84,8 +84,8 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ValidationException($"Student with ID {request.StudentId} does not belong to Section ID {request.SectionId}.");
             }
 
-            // 2. Validate other master IDs
-            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.SectionId, request.SubjectId);
+            // 2. Validate other master IDs and Academic Year date range
+            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.SectionId, request.SubjectId, request.AttendanceDate);
 
             // 3. Timetable/Period Checks
             if (request.TimetableId.HasValue)
@@ -182,8 +182,8 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ValidationException("Students list cannot be null or empty.");
             }
 
-            // 1. Validate master IDs
-            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.SectionId, request.SubjectId);
+            // 1. Validate master IDs and Academic Year date range
+            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.SectionId, request.SubjectId, request.AttendanceDate);
 
             // 2. Timetable/Period Checks
             if (request.TimetableId.HasValue)
@@ -790,7 +790,7 @@ namespace CollegeManagement.API.Services.Implementations
 
         #region Helper Methods
 
-        private async Task ValidateMasterDataAsync(int facultyId, int boardId, int academicYearId, int academicLevelId, int groupId, int sectionId, int subjectId)
+        private async Task ValidateMasterDataAsync(int facultyId, int boardId, int academicYearId, int academicLevelId, int groupId, int sectionId, int subjectId, DateTime? attendanceDate = null)
         {
             var facultyExists = await _context.Faculties.AnyAsync(f => f.Id == facultyId && !f.IsDeleted && f.Status == "Active");
             if (!facultyExists)
@@ -804,10 +804,23 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new NotFoundException($"Active Board with ID {boardId} was not found.");
             }
 
-            var academicYearExists = await _context.AcademicYears.AnyAsync(ay => ay.AcademicYearId == academicYearId && ay.IsActive);
-            if (!academicYearExists)
+            var academicYear = await _context.AcademicYears.FirstOrDefaultAsync(ay => ay.AcademicYearId == academicYearId && ay.IsActive);
+            if (academicYear == null)
             {
                 throw new NotFoundException($"Active Academic Year with ID {academicYearId} was not found.");
+            }
+
+            if (attendanceDate.HasValue)
+            {
+                var targetDate = DateOnly.FromDateTime(attendanceDate.Value.Date);
+                if (targetDate < academicYear.StartDate)
+                {
+                    throw new ValidationException($"Attendance date ({targetDate:yyyy-MM-dd}) cannot be earlier than Academic Year start date ({academicYear.StartDate:yyyy-MM-dd}).");
+                }
+                if (targetDate > academicYear.EndDate)
+                {
+                    throw new ValidationException($"Attendance date ({targetDate:yyyy-MM-dd}) cannot be later than Academic Year end date ({academicYear.EndDate:yyyy-MM-dd}).");
+                }
             }
 
             var academicLevelExists = await _context.AcademicLevels.AnyAsync(al => al.AcademicLevelId == academicLevelId && al.IsActive);
@@ -890,7 +903,7 @@ namespace CollegeManagement.API.Services.Implementations
             return await _repository.GetAcademicContextAsync(groupId, sectionId);
         }
 
-        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int? periodId = null, string? sessionType = null)
+        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int? groupId = null, int? sectionId = null, int? periodId = null, string? sessionType = null)
         {
             return await _repository.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId, sessionType);
         }

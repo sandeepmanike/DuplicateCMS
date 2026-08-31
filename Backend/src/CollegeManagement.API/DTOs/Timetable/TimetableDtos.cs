@@ -211,12 +211,13 @@ namespace CollegeManagement.API.DTOs.Timetable
         public int AcademicYearId { get; set; }
         public int GroupId { get; set; }
         public int? ProgramId { get; set; }
+        public int? PeriodStructureId { get; set; }
 
         public List<int> SectionIds { get; set; } = new List<int>();
 
         public List<int> WorkingDays { get; set; } = new List<int> { 1, 2, 3, 4, 5, 6 };
 
-        public List<SubjectWeeklyPeriodRequirementDto> SubjectRequirements { get; set; }
+        public List<SubjectWeeklyPeriodRequirementDto>? SubjectRequirements { get; set; }
             = new List<SubjectWeeklyPeriodRequirementDto>();
     }
 

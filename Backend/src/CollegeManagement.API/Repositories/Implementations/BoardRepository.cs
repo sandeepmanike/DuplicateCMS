@@ -226,13 +226,28 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
         /// <summary>
-        /// Retrieves active academic levels with zero duplicates guaranteed.
+        /// Retrieves active academic levels with zero duplicates guaranteed, optionally filtered by boardId.
         /// </summary>
-        public async Task<List<AcademicLevel>> GetAcademicLevelsAsync()
+        public async Task<List<AcademicLevel>> GetAcademicLevelsAsync(int? boardId = null)
         {
-            var levels = await _context.AcademicLevels
+            var query = _context.AcademicLevels
                 .AsNoTracking()
-                .Where(x => x.IsActive)
+                .Where(x => x.IsActive);
+
+            if (boardId.HasValue && boardId.Value > 0)
+            {
+                var mappedLevelIds = await _context.BoardAcademicLevels
+                    .Where(b => b.BoardId == boardId.Value)
+                    .Select(b => b.AcademicLevelId)
+                    .ToListAsync();
+
+                if (mappedLevelIds.Any())
+                {
+                    query = query.Where(x => mappedLevelIds.Contains(x.AcademicLevelId));
+                }
+            }
+
+            var levels = await query
                 .OrderBy(x => x.DisplayOrder)
                 .ThenBy(x => x.LevelName)
                 .ToListAsync();

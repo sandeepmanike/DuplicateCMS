@@ -327,17 +327,22 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Retrieves active academic levels.
+        /// <summary>
+        /// Retrieves active academic levels, optionally filtered by boardId.
         /// </summary>
+        /// <param name="boardId">Optional BoardId filter.</param>
         /// <returns>A list of academic levels.</returns>
         /// <response code="200">Academic levels retrieved successfully.</response>
         /// <response code="500">Internal server error.</response>
         [HttpGet("academic-levels")]
+        [HttpGet("{boardId}/academic-levels")]
+        [AllowAnonymous]
         [ProducesResponseType(typeof(IEnumerable<AcademicLevelResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<AcademicLevelResponse>>> GetAcademicLevels()
+        public async Task<ActionResult<IEnumerable<AcademicLevelResponse>>> GetAcademicLevels([FromQuery] int? boardId = null, [FromRoute] int? boardIdRoute = null)
         {
-            var levels = await _boardService.GetAcademicLevelsAsync();
+            int? filterBoardId = boardIdRoute ?? boardId;
+            var levels = await _boardService.GetAcademicLevelsAsync(filterBoardId);
             return Ok(levels);
         }
 

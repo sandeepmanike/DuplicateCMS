@@ -28,142 +28,65 @@ namespace CollegeManagement.API.Repositories
             int? academicLevelId,
             bool? isActive)
         {
-            try
+            var query = _context.Groups
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                var connection = _context.Database.GetDbConnection();
+                var term = search.Trim().ToLower();
 
-                var result = await connection.QueryAsync<GroupListItemDto>(
-                    "sp_GetAllGroups",
-                    new
-                    {
-                        p_Search = string.IsNullOrWhiteSpace(search)
-                            ? null
-                            : search.Trim(),
-
-                        p_BoardId = boardId,
-                        p_AcademicYearId = academicYearId,
-                        p_AcademicLevelId = academicLevelId,
-                        p_IsActive = isActive
-                    },
-                    commandType: CommandType.StoredProcedure);
-
-                var groups = result.ToList();
-
-                await LoadProgramsForGroupsAsync(groups);
-
-                return groups;
+                query = query.Where(g =>
+                    g.GroupName.ToLower().Contains(term) ||
+                    g.GroupCode.ToLower().Contains(term));
             }
-            catch
+
+            if (boardId.HasValue && boardId.Value > 0)
+                query = query.Where(g => g.BoardId == 0 || g.BoardId == boardId.Value);
+
+            if (academicYearId.HasValue && academicYearId.Value > 0)
+                query = query.Where(g => g.AcademicYearId == 0 || g.AcademicYearId == academicYearId.Value);
+
+            if (academicLevelId.HasValue && academicLevelId.Value > 0)
+                query = query.Where(g => g.AcademicLevelId == 0 || g.AcademicLevelId == academicLevelId.Value);
+
+            if (isActive.HasValue)
+                query = query.Where(g => g.IsActive == isActive.Value);
+
+            var groups = await query
+                .OrderByDescending(g => g.GroupId)
+                .ToListAsync();
+
+            var groupIds = groups
+                .Select(g => g.GroupId)
+                .ToList();
+
+            var subjectCounts = await _context.Subjects
+                .Where(s => groupIds.Contains(s.GroupId))
+                .GroupBy(s => s.GroupId)
+                .Select(g => new { GroupId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.GroupId, x => x.Count);
+
+            var list = groups.Select(g => new GroupListItemDto
             {
-                var query = _context.Groups
-                    .AsNoTracking()
-                    .AsQueryable();
+                GroupId = g.GroupId,
+                GroupName = g.GroupName,
+                GroupCode = g.GroupCode,
+                BoardId = g.BoardId,
+                BoardName = g.BoardNavigation?.BoardName ?? "",
+                AcademicYearId = g.AcademicYearId,
+                AcademicYearName = g.AcademicYear?.AcademicYearName ?? "",
+                AcademicLevelId = g.AcademicLevelId,
+                AcademicLevelName = g.AcademicLevelNavigation?.LevelName ?? "",
+                Description = g.Description,
+                TotalSubjects = subjectCounts.ContainsKey(g.GroupId) ? subjectCounts[g.GroupId] : 0,
+                IsActive = g.IsActive,
+                CreatedAt = g.CreatedAt
+            }).ToList();
 
-                if (!string.IsNullOrWhiteSpace(search))
-                {
-                    var term = search.Trim().ToLower();
-
-                    query = query.Where(g =>
-                        g.GroupName.ToLower().Contains(term) ||
-                        g.GroupCode.ToLower().Contains(term));
-                }
-
-                if (boardId.HasValue)
-                    query = query.Where(g =>
-                        g.BoardId == boardId.Value);
-
-                if (academicYearId.HasValue)
-                    query = query.Where(g =>
-                        g.AcademicYearId == academicYearId.Value);
-
-                if (academicLevelId.HasValue)
-                    query = query.Where(g =>
-                        g.AcademicLevelId == academicLevelId.Value);
-
-                if (isActive.HasValue)
-                    query = query.Where(g =>
-                        g.IsActive == isActive.Value);
-
-                var groups = await query
-                    .Include(g => g.BoardNavigation)
-                    .Include(g => g.AcademicYear)
-                    .Include(g => g.AcademicLevelNavigation)
-                    .OrderByDescending(g => g.GroupId)
-                    .ToListAsync();
-
-                var groupIds = groups
-                    .Select(g => g.GroupId)
-                    .ToList();
-
-                var subjectCounts = await _context.Subjects
-     .Where(s =>
-         groupIds.Contains(s.GroupId) &&
-         s.IsActive)
-                     .GroupBy(s => s.GroupId)
-                    .Select(g => new
-                    {
-                        GroupId = g.Key,
-                        Count = g.Count()
-                    })
-                    .ToDictionaryAsync(
-                        x => x.GroupId,
-                        x => x.Count);
-
-                var result = groups.Select(g => new GroupListItemDto
-                {
-                    GroupId = g.GroupId,
-
-                    BoardId = g.BoardId,
-
-                    BoardName = g.BoardNavigation != null
-                        ? g.BoardNavigation.BoardName
-                        : string.Empty,
-
-                    AcademicYearId = g.AcademicYearId,
-
-                    AcademicYearName = g.AcademicYear != null
-                        ? g.AcademicYear.AcademicYearName
-                        : string.Empty,
-
-                    AcademicLevelId = g.AcademicLevelId,
-
-                    AcademicLevelName =
-                        g.AcademicLevelNavigation != null
-                            ? g.AcademicLevelNavigation.LevelName
-                            : string.Empty,
-
-                    GroupName = g.GroupName,
-
-                    GroupCode = g.GroupCode,
-
-                    Description = g.Description,
-
-                    TotalSubjects =
-                        subjectCounts.TryGetValue(
-                            g.GroupId,
-                            out var cnt)
-                            ? cnt
-                            : 0,
-
-                    IsActive = g.IsActive,
-
-                    Status = g.IsActive
-                        ? "Active"
-                        : "Inactive",
-
-                    CreatedAt = g.CreatedAt,
-
-                    UpdatedAt = g.UpdatedAt,
-
-                    Programs = new List<GroupProgramDto>()
-                }).ToList();
-
-                await LoadProgramsForGroupsAsync(result);
-
-                return result;
-            }
+            await LoadProgramsForGroupsAsync(list);
+            return list;
         }
-
 
         // =========================================================
         // GET GROUP BY ID

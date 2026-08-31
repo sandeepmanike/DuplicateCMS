@@ -85,10 +85,10 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<IEnumerable<AcademicPatternResponse>> GetAcademicPatternsAsync();
 
         /// <summary>
-        /// Retrieves all active academic levels.
+        /// Retrieves all active academic levels, optionally filtered by boardId.
         /// </summary>
         /// <returns>A list of active academic levels.</returns>
-        Task<IEnumerable<AcademicLevelResponse>> GetAcademicLevelsAsync();
+        Task<IEnumerable<AcademicLevelResponse>> GetAcademicLevelsAsync(int? boardId = null);
 
         /// <summary>
         /// Retrieves all active grading systems.
