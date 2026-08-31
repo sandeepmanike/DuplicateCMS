@@ -54,9 +54,9 @@ namespace CollegeManagement.API.Repositories.Implementations
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
                         sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
-                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(b.BoardName, '') AS Board,
                         COALESCE(g.GroupName, '') AS `Group`,
-                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
+                        COALESCE(al.LevelName, '') AS AcademicLevel
                     FROM StaffSubjectAllocations a
                     INNER JOIN Staffs s ON s.Id = a.StaffId
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
@@ -123,9 +123,9 @@ namespace CollegeManagement.API.Repositories.Implementations
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
                         sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
-                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(b.BoardName, '') AS Board,
                         COALESCE(g.GroupName, '') AS `Group`,
-                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
+                        COALESCE(al.LevelName, '') AS AcademicLevel
                     FROM StaffSubjectAllocations a
                     INNER JOIN Staffs s ON s.Id = a.StaffId
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
@@ -195,9 +195,9 @@ namespace CollegeManagement.API.Repositories.Implementations
                         s.Id AS StaffRecordId, s.Id, s.EmployeeId, s.FirstName, s.LastName, s.Email, s.Mobile, s.Designation, s.StaffType,
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
                         sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
-                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(b.BoardName, '') AS Board,
                         COALESCE(g.GroupName, '') AS `Group`,
-                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
+                        COALESCE(al.LevelName, '') AS AcademicLevel
                     FROM StaffSubjectAllocations a
                     INNER JOIN Staffs s ON s.Id = a.StaffId
                     INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
@@ -316,9 +316,9 @@ namespace CollegeManagement.API.Repositories.Implementations
                     SELECT 
                         sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType,
                         sub.BoardId, sub.GroupId, sub.AcademicLevelId, sub.TotalMarks, sub.PassingMarks, sub.IsActive,
-                        COALESCE(b.BoardName, sub.Board, '') AS Board,
+                        COALESCE(b.BoardName, '') AS Board,
                         COALESCE(g.GroupName, '') AS `Group`,
-                        COALESCE(al.LevelName, sub.AcademicLevel, '') AS AcademicLevel
+                        COALESCE(al.LevelName, '') AS AcademicLevel
                     FROM Subjects sub
                     LEFT JOIN Boards b ON b.BoardId = sub.BoardId
                     LEFT JOIN `Groups` g ON g.GroupId = sub.GroupId

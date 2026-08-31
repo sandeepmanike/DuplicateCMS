@@ -246,6 +246,7 @@ builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
 // Group, Section & Subject
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<CollegeManagement.API.Repositories.IProgramRepository, CollegeManagement.API.Repositories.ProgramRepository>();
 builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 
@@ -302,6 +303,7 @@ builder.Services.AddScoped<IFeeService, FeeService>();
 
 // Group, Section & Subject
 builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<CollegeManagement.API.Services.IProgramService, CollegeManagement.API.Services.ProgramService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 

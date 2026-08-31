@@ -38,7 +38,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(c.AdmissionNo, sa.AdmissionNo, s.AdmissionNo, '') AS S_AdmissionNo,
                 COALESCE(c.StudentName, NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS S_StudentName,
                 COALESCE(c.GroupName, g.GroupName, '') AS S_GroupName,
-                COALESCE(c.AcademicLevel, al.LevelName, s.AcademicLevel, '1st Year') AS S_AcademicLevel,
+                COALESCE(c.AcademicLevel, al.LevelName, '1st Year') AS S_AcademicLevel,
                 COALESCE(c.AcademicYear, ay.AcademicYearName, '') AS S_AcademicYear
             FROM `certificates` c
             LEFT JOIN `StudentAdmissions` sa ON (TRIM(sa.AdmissionNo) = TRIM(c.AdmissionNo) OR sa.AdmissionId = c.StudentId)
@@ -110,7 +110,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(c.AdmissionNo, sa.AdmissionNo, s.AdmissionNo, '') AS S_AdmissionNo,
                 COALESCE(c.StudentName, NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS S_StudentName,
                 COALESCE(c.GroupName, g.GroupName, '') AS S_GroupName,
-                COALESCE(c.AcademicLevel, al.LevelName, s.AcademicLevel, '1st Year') AS S_AcademicLevel,
+                COALESCE(c.AcademicLevel, al.LevelName, '1st Year') AS S_AcademicLevel,
                 COALESCE(c.AcademicYear, ay.AcademicYearName, '') AS S_AcademicYear
             FROM `certificates` c
             LEFT JOIN `StudentAdmissions` sa ON (TRIM(sa.AdmissionNo) = TRIM(c.AdmissionNo) OR sa.AdmissionId = c.StudentId)
@@ -170,7 +170,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS StudentName,
                 COALESCE(g.GroupName, '') AS GroupName,
                 COALESCE(ay.AcademicYearName, '') AS AcademicYear,
-                COALESCE(al.LevelName, s.AcademicLevel, '1st Year') AS AcademicLevel,
+                COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
                 COALESCE(sec.SectionName, '') AS Section
             FROM `StudentAdmissions` sa
             LEFT JOIN `Students` s ON TRIM(s.AdmissionNo) = TRIM(sa.AdmissionNo)
@@ -195,11 +195,12 @@ public class CertificateRepository : ICertificateRepository
                         s.StudentId, s.AdmissionNo, s.RollNo, s.StudentName,
                         COALESCE(g.GroupName, '') AS GroupName,
                         COALESCE(ay.AcademicYearName, '') AS AcademicYear,
-                        COALESCE(s.AcademicLevel, '1st Year') AS AcademicLevel,
+                        COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
                         COALESCE(sec.SectionName, '') AS Section
                     FROM `Students` s
                     LEFT JOIN `Groups` g ON g.GroupId = s.GroupId
                     LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = s.AcademicYearId
+                    LEFT JOIN `AcademicLevels` al ON al.AcademicLevelId = s.AcademicLevelId
                     LEFT JOIN `Sections` sec ON sec.SectionId = s.SectionId
                     WHERE (s.IsActive = 1 OR s.IsActive IS NULL)
                       AND (s.AdmissionNo IS NOT NULL AND s.AdmissionNo <> '')
@@ -237,7 +238,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(s.StudentId, sa.AdmissionId, 0) AS StudentId,
                 COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, @admissionNo) AS StudentName,
                 COALESCE(g.GroupName, '') AS GroupName,
-                COALESCE(al.LevelName, s.AcademicLevel, '1st Year') AS AcademicLevel,
+                COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
                 COALESCE(ay.AcademicYearName, '') AS AcademicYear
             FROM `Students` s
             LEFT JOIN `StudentAdmissions` sa ON (TRIM(sa.AdmissionNo) = TRIM(s.AdmissionNo) OR sa.AdmissionId = s.StudentId)

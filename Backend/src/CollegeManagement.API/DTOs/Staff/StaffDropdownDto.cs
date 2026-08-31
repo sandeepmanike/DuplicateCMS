@@ -9,6 +9,9 @@ namespace CollegeManagement.API.DTOs.Staff
         public string FullName { get; set; } = string.Empty;
         public string Designation { get; set; } = string.Empty;
         public int? DesignationId { get; set; }
+        public int? BoardId { get; set; }
+        public string? BoardName { get; set; }
+        public string? Board => BoardName;
         public string StaffType { get; set; } = "Teaching";
         public string FacultyType => StaffType;
     }

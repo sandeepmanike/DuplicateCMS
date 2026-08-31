@@ -72,10 +72,10 @@ namespace CollegeManagement.API.Models
         [Column("PassingMarks")]
         public int PassingMarks { get; set; } = 35;
 
-        [Column("AcademicLevel")]
+        [NotMapped]
         public string? AcademicLevel { get; set; }
 
-        [Column("Board")]
+        [NotMapped]
         public string? Board { get; set; }
 
         [NotMapped]
