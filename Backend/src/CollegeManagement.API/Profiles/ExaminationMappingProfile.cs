@@ -12,16 +12,34 @@ namespace CollegeManagement.API.Profiles
             #region Request -> Model Mappings
 
             CreateMap<CreateExaminationRequest, Examination>()
-                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Status) ? src.Status.ToUpper() : "DRAFT"));
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Status) ? src.Status.ToUpper() : "DRAFT"))
+                .ForMember(dest => dest.Board, opt => opt.Ignore())
+                .ForMember(dest => dest.AcademicYear, opt => opt.Ignore())
+                .ForMember(dest => dest.AcademicLevel, opt => opt.Ignore())
+                .ForMember(dest => dest.Group, opt => opt.Ignore())
+                .ForMember(dest => dest.Program, opt => opt.Ignore())
+                .ForMember(dest => dest.AssessmentType, opt => opt.Ignore())
+                .ForMember(dest => dest.ExamSchedules, opt => opt.Ignore());
 
             CreateMap<UpdateExaminationRequest, Examination>()
+                .ForMember(dest => dest.Board, opt => opt.Ignore())
+                .ForMember(dest => dest.AcademicYear, opt => opt.Ignore())
+                .ForMember(dest => dest.AcademicLevel, opt => opt.Ignore())
+                .ForMember(dest => dest.Group, opt => opt.Ignore())
+                .ForMember(dest => dest.Program, opt => opt.Ignore())
+                .ForMember(dest => dest.AssessmentType, opt => opt.Ignore())
+                .ForMember(dest => dest.ExamSchedules, opt => opt.Ignore())
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             CreateMap<CreateExamScheduleRequest, ExamSchedule>()
+                .ForMember(dest => dest.Examination, opt => opt.Ignore())
+                .ForMember(dest => dest.Subject, opt => opt.Ignore())
                 .ForMember(dest => dest.Hall, opt => opt.MapFrom(src => src.Hall ?? src.RoomNumber ?? string.Empty))
                 .ForMember(dest => dest.Invigilator, opt => opt.MapFrom(src => src.Invigilator ?? src.InvigilatorName ?? string.Empty));
 
             CreateMap<UpdateExamScheduleRequest, ExamSchedule>()
+                .ForMember(dest => dest.Examination, opt => opt.Ignore())
+                .ForMember(dest => dest.Subject, opt => opt.Ignore())
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
 
             #endregion

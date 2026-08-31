@@ -50,13 +50,6 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             var exam = _mapper.Map<Examination>(request);
-
-            if (string.IsNullOrWhiteSpace(exam.ExamCode))
-            {
-                exam.ExamCode = await _examinationRepository.GenerateUniqueExamCodeAsync(
-                    request.BoardId, request.AcademicYearId, request.GroupId, request.ProgramId);
-            }
-
             var createdExam = await _examinationRepository.CreateExaminationAsync(exam);
 
             var fullyLoadedExam = await _examinationRepository.GetExaminationByIdAsync(createdExam.ExaminationId);
