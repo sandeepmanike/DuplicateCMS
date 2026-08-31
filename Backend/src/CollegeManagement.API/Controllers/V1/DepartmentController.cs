@@ -4,6 +4,7 @@ using Asp.Versioning;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,7 +12,10 @@ namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
     [ApiVersion("1.0")]
+    [Route("api/departments")]
     [Route("api/v{version:apiVersion}/departments")]
+    [EnableCors("AllowFrontend")]
+    [AllowAnonymous]
     [Produces("application/json")]
     public class DepartmentController : ControllerBase
     {

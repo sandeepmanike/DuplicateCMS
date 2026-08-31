@@ -132,20 +132,22 @@ namespace CollegeManagement.API.Data
             #region Subject
 
             modelBuilder.Entity<Subject>()
-                .HasIndex(s => s.SubjectCode)
-                .IsUnique();
+                .HasIndex(s => s.SubjectCode);
 
             modelBuilder.Entity<Subject>()
                 .HasIndex(s => s.BoardId);
 
-           
-
-            modelBuilder.Entity<Subject>()
-                .Ignore(s => s.AcademicLevelId)
-                .Ignore(s => s.AcademicLevelNavigation);
-
             modelBuilder.Entity<Subject>()
                 .HasIndex(s => s.GroupId);
+
+            modelBuilder.Entity<Subject>()
+                .HasIndex(s => s.AcademicLevelId);
+
+            modelBuilder.Entity<Subject>()
+                .HasOne(s => s.AcademicLevelNavigation)
+                .WithMany()
+                .HasForeignKey(s => s.AcademicLevelId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Subject>()
                 .HasOne(s => s.BoardNavigation)
@@ -325,24 +327,6 @@ namespace CollegeManagement.API.Data
                 .HasOne(s => s.SectionNavigation)
                 .WithMany()
                 .HasForeignKey(s => s.SectionId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Subject>()
-                .HasOne(s => s.AcademicLevelNavigation)
-                .WithMany()
-                .HasForeignKey(s => s.AcademicLevelId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Subject>()
-                .HasOne(s => s.BoardNavigation)
-                .WithMany()
-                .HasForeignKey(s => s.BoardId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Subject>()
-                .HasOne(s => s.GroupNavigation)
-                .WithMany()
-                .HasForeignKey(s => s.GroupId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Examination>(entity =>

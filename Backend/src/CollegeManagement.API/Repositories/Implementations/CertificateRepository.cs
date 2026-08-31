@@ -38,7 +38,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(c.AdmissionNo, sa.AdmissionNo, s.AdmissionNo, '') AS S_AdmissionNo,
                 COALESCE(c.StudentName, NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS S_StudentName,
                 COALESCE(c.GroupName, g.GroupName, '') AS S_GroupName,
-                COALESCE(c.AcademicLevel, al.AcademicLevelName, s.AcademicLevel, '1st Year') AS S_AcademicLevel,
+                COALESCE(c.AcademicLevel, al.LevelName, s.AcademicLevel, '1st Year') AS S_AcademicLevel,
                 COALESCE(c.AcademicYear, ay.AcademicYearName, '') AS S_AcademicYear
             FROM `certificates` c
             LEFT JOIN `StudentAdmissions` sa ON (TRIM(sa.AdmissionNo) = TRIM(c.AdmissionNo) OR sa.AdmissionId = c.StudentId)
@@ -110,7 +110,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(c.AdmissionNo, sa.AdmissionNo, s.AdmissionNo, '') AS S_AdmissionNo,
                 COALESCE(c.StudentName, NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS S_StudentName,
                 COALESCE(c.GroupName, g.GroupName, '') AS S_GroupName,
-                COALESCE(c.AcademicLevel, al.AcademicLevelName, s.AcademicLevel, '1st Year') AS S_AcademicLevel,
+                COALESCE(c.AcademicLevel, al.LevelName, s.AcademicLevel, '1st Year') AS S_AcademicLevel,
                 COALESCE(c.AcademicYear, ay.AcademicYearName, '') AS S_AcademicYear
             FROM `certificates` c
             LEFT JOIN `StudentAdmissions` sa ON (TRIM(sa.AdmissionNo) = TRIM(c.AdmissionNo) OR sa.AdmissionId = c.StudentId)
@@ -170,7 +170,7 @@ public class CertificateRepository : ICertificateRepository
                 COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS StudentName,
                 COALESCE(g.GroupName, '') AS GroupName,
                 COALESCE(ay.AcademicYearName, '') AS AcademicYear,
-                COALESCE(al.AcademicLevelName, s.AcademicLevel, '1st Year') AS AcademicLevel,
+                COALESCE(al.LevelName, s.AcademicLevel, '1st Year') AS AcademicLevel,
                 COALESCE(sec.SectionName, '') AS Section
             FROM `StudentAdmissions` sa
             LEFT JOIN `Students` s ON TRIM(s.AdmissionNo) = TRIM(sa.AdmissionNo)
@@ -231,26 +231,53 @@ public class CertificateRepository : ICertificateRepository
 
         var requestDate = request.RequestDate ?? DateTime.UtcNow;
 
-        // Fetch student details from StudentAdmissions (with fallback to Students)
+        // Fetch student details from Students / StudentAdmissions
         var studentSql = @"
             SELECT 
-                COALESCE(sa.AdmissionId, s.StudentId, 0) AS StudentId,
-                COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS StudentName,
+                COALESCE(s.StudentId, sa.AdmissionId, 0) AS StudentId,
+                COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, @admissionNo) AS StudentName,
                 COALESCE(g.GroupName, '') AS GroupName,
-                COALESCE(al.AcademicLevelName, s.AcademicLevel, '1st Year') AS AcademicLevel,
+                COALESCE(al.LevelName, s.AcademicLevel, '1st Year') AS AcademicLevel,
                 COALESCE(ay.AcademicYearName, '') AS AcademicYear
-            FROM `StudentAdmissions` sa
-            LEFT JOIN `Students` s ON TRIM(s.AdmissionNo) = TRIM(sa.AdmissionNo)
+            FROM `Students` s
+            LEFT JOIN `StudentAdmissions` sa ON (TRIM(sa.AdmissionNo) = TRIM(s.AdmissionNo) OR sa.AdmissionId = s.StudentId)
             LEFT JOIN `Groups` g ON g.GroupId = COALESCE(sa.GroupId, s.GroupId)
             LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = COALESCE(sa.AcademicYearId, s.AcademicYearId)
             LEFT JOIN `AcademicLevels` al ON al.AcademicLevelId = COALESCE(sa.AcademicLevelId, s.AcademicLevelId)
-            WHERE TRIM(sa.AdmissionNo) = TRIM(@admissionNo) OR TRIM(s.AdmissionNo) = TRIM(@admissionNo)
+            WHERE TRIM(s.AdmissionNo) = TRIM(@admissionNo) OR TRIM(sa.AdmissionNo) = TRIM(@admissionNo)
             LIMIT 1;";
 
         var student = await connection.QueryFirstOrDefaultAsync<dynamic>(
             new CommandDefinition(studentSql, new { admissionNo = request.AdmissionNo.Trim() }, cancellationToken: ct));
 
-        if (student == null) return null;
+        // If not found in Students, try StudentAdmissions directly
+        if (student == null)
+        {
+            var saSql = @"
+                SELECT 
+                    sa.AdmissionId AS StudentId,
+                    COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), @admissionNo) AS StudentName,
+                    COALESCE(g.GroupName, '') AS GroupName,
+                    COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
+                    COALESCE(ay.AcademicYearName, '') AS AcademicYear
+                FROM `StudentAdmissions` sa
+                LEFT JOIN `Groups` g ON g.GroupId = sa.GroupId
+                LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = sa.AcademicYearId
+                LEFT JOIN `AcademicLevels` al ON al.AcademicLevelId = sa.AcademicLevelId
+                WHERE TRIM(sa.AdmissionNo) = TRIM(@admissionNo)
+                LIMIT 1;";
+
+            student = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                new CommandDefinition(saSql, new { admissionNo = request.AdmissionNo.Trim() }, cancellationToken: ct));
+        }
+
+        string studentName = student != null && !string.IsNullOrWhiteSpace((string?)student.StudentName) 
+            ? (string)student.StudentName 
+            : request.AdmissionNo.Trim();
+        string groupName = student != null && !string.IsNullOrWhiteSpace((string?)student.GroupName) ? (string)student.GroupName : "";
+        string academicLevel = student != null && !string.IsNullOrWhiteSpace((string?)student.AcademicLevel) ? (string)student.AcademicLevel : "1st Year";
+        string academicYear = student != null && !string.IsNullOrWhiteSpace((string?)student.AcademicYear) ? (string)student.AcademicYear : $"{DateTime.UtcNow.Year}-{DateTime.UtcNow.Year + 1}";
+        int studentId = student != null && (int)student.StudentId > 0 ? (int)student.StudentId : 1;
 
         var yearNum = DateTime.UtcNow.Year.ToString();
         var certPrefix = request.CertificateType switch
@@ -290,12 +317,12 @@ public class CertificateRepository : ICertificateRepository
                 new CommandDefinition(insertSql, new
                 {
                     certNumber,
-                    studentId = (int)student.StudentId,
+                    studentId,
                     admissionNo = request.AdmissionNo.Trim(),
-                    studentName = (string)student.StudentName,
-                    groupName = (string)student.GroupName,
-                    academicLevel = (string)student.AcademicLevel,
-                    academicYear = (string)student.AcademicYear,
+                    studentName,
+                    groupName,
+                    academicLevel,
+                    academicYear,
                     certificateType = request.CertificateType.Trim(),
                     purpose = request.Purpose.Trim(),
                     requestDate,

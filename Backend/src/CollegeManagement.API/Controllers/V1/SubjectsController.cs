@@ -1,10 +1,14 @@
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Subject;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CollegeManagement.API.Controllers
 {
@@ -13,7 +17,8 @@ namespace CollegeManagement.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/v1/[controller]")]
-    [Authorize]
+    [EnableCors("AllowFrontend")]
+    [AllowAnonymous]
     public class SubjectsController : ControllerBase
     {
         private readonly ISubjectService _service;
@@ -139,12 +144,36 @@ namespace CollegeManagement.API.Controllers
         public async Task<IActionResult> CreateSubject([FromBody] CreateSubjectDto dto)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
-            var subject = await _service.CreateAsync(dto);
 
-            return CreatedAtAction(
-                nameof(GetSubjectById),
-                new { id = subject.SubjectId },
-                subject);
+            try
+            {
+                var subject = await _service.CreateAsync(dto);
+                return CreatedAtAction(
+                    nameof(GetSubjectById),
+                    new { id = subject.SubjectId },
+                    new { status = true, message = "Subject created successfully.", data = subject });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = false, message = ex.Message });
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMsg = ex.InnerException?.Message ?? ex.Message;
+                if (innerMsg.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase) || innerMsg.Contains("1062"))
+                {
+                    return Conflict(new { status = false, message = $"Subject code '{dto.SubjectCode}' already exists in this academic context." });
+                }
+                if (innerMsg.Contains("foreign key", StringComparison.OrdinalIgnoreCase) || innerMsg.Contains("1452"))
+                {
+                    return BadRequest(new { status = false, message = "Invalid Board, Group, or Academic Level specified. Please verify the IDs." });
+                }
+                return BadRequest(new { status = false, message = $"Database constraint error: {innerMsg}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -154,12 +183,36 @@ namespace CollegeManagement.API.Controllers
         public async Task<IActionResult> UpdateSubject(int id, [FromBody] UpdateSubjectDto dto)
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
-            var subject = await _service.UpdateAsync(id, dto);
 
-            if (subject == null)
-                return NotFound(new { message = "Subject not found." });
+            try
+            {
+                var subject = await _service.UpdateAsync(id, dto);
+                if (subject == null)
+                    return NotFound(new { status = false, message = "Subject not found." });
 
-            return Ok(subject);
+                return Ok(new { status = true, message = "Subject updated successfully.", data = subject });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { status = false, message = ex.Message });
+            }
+            catch (DbUpdateException ex)
+            {
+                var innerMsg = ex.InnerException?.Message ?? ex.Message;
+                if (innerMsg.Contains("Duplicate entry", StringComparison.OrdinalIgnoreCase) || innerMsg.Contains("1062"))
+                {
+                    return Conflict(new { status = false, message = $"Subject code '{dto.SubjectCode}' already exists in this academic context." });
+                }
+                if (innerMsg.Contains("foreign key", StringComparison.OrdinalIgnoreCase) || innerMsg.Contains("1452"))
+                {
+                    return BadRequest(new { status = false, message = "Invalid Board, Group, or Academic Level specified. Please verify the IDs." });
+                }
+                return BadRequest(new { status = false, message = $"Database constraint error: {innerMsg}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = false, message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -168,11 +221,18 @@ namespace CollegeManagement.API.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteSubject(int id)
         {
-            var deleted = await _service.DeleteAsync(id);
-            if (!deleted)
-                return NotFound(new { message = "Subject not found." });
+            try
+            {
+                var deleted = await _service.DeleteAsync(id);
+                if (!deleted)
+                    return NotFound(new { status = false, message = "Subject not found." });
 
-            return Ok(new { message = "Subject deleted successfully." });
+                return Ok(new { status = true, message = "Subject deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { status = false, message = ex.Message });
+            }
         }
     }
 }
