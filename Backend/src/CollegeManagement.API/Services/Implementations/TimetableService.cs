@@ -307,6 +307,26 @@ namespace CollegeManagement.API.Services.Implementations
             if (dto.SectionIds == null || !dto.SectionIds.Any())
                 throw new ArgumentException("At least one SectionId must be provided.");
 
+            // 1. Hierarchy Verification
+            var board = await _context.Boards.FirstOrDefaultAsync(b => b.BoardId == dto.BoardId && b.IsActive);
+            if (board == null)
+                throw new ArgumentException($"Invalid or inactive BoardId {dto.BoardId}.");
+
+            var level = await _context.AcademicLevels.FirstOrDefaultAsync(l => l.AcademicLevelId == dto.AcademicLevelId && l.IsActive);
+            if (level == null)
+                throw new ArgumentException($"Invalid or inactive AcademicLevelId {dto.AcademicLevelId}.");
+
+            var year = await _context.AcademicYears.FirstOrDefaultAsync(y => y.AcademicYearId == dto.AcademicYearId && y.IsActive);
+            if (year == null)
+                throw new ArgumentException($"Invalid or inactive AcademicYearId {dto.AcademicYearId}.");
+
+            var group = await _context.Groups.FirstOrDefaultAsync(g => g.GroupId == dto.GroupId && g.IsActive);
+            if (group == null)
+                throw new ArgumentException($"Invalid or inactive GroupId {dto.GroupId}.");
+
+            if (group.BoardId != dto.BoardId || group.AcademicLevelId != dto.AcademicLevelId)
+                throw new ArgumentException("GroupId does not match the specified Board and AcademicLevel hierarchy.");
+
             var targetSections = await _context.Sections
                 .Where(s => dto.SectionIds.Contains(s.SectionId) && s.IsActive)
                 .ToListAsync();
@@ -317,61 +337,114 @@ namespace CollegeManagement.API.Services.Implementations
             // Canonical Program Verification per Section
             foreach (var sec in targetSections)
             {
+                if (sec.GroupId != dto.GroupId)
+                {
+                    throw new ArgumentException($"Section '{sec.SectionName}' (ID: {sec.SectionId}) does not belong to GroupId {dto.GroupId}.");
+                }
+
                 if (sec.ProgramId == null || sec.ProgramId <= 0)
                 {
                     throw new InvalidOperationException($"Section '{sec.SectionName}' (ID: {sec.SectionId}) has no active ProgramId assigned.");
                 }
             }
 
+            // 2. Canonical PeriodStructure Resolution
+            IEnumerable<Period> rawPeriods;
+
+            if (dto.PeriodStructureId.HasValue && dto.PeriodStructureId.Value > 0)
+            {
+                // Priority 1: Explicit PeriodStructureId from request
+                rawPeriods = await _periodRepository.GetByStructureIdAsync(dto.PeriodStructureId.Value);
+                if (!rawPeriods.Any())
+                {
+                    throw new InvalidOperationException($"Period structure with ID {dto.PeriodStructureId.Value} not found or has no active periods.");
+                }
+            }
+            else
+            {
+                // Priority 2: Active structure assigned to Board + AcademicLevel + AcademicYear + Group
+                rawPeriods = await _periodRepository.GetByContextAsync(
+                    dto.BoardId,
+                    dto.AcademicLevelId,
+                    dto.AcademicYearId,
+                    dto.GroupId);
+
+                // Priority 3: Fallback to latest active PeriodStructure
+                if (!rawPeriods.Any())
+                {
+                    var latestStructure = await _context.PeriodStructures
+                        .Where(ps => ps.IsActive)
+                        .OrderByDescending(ps => ps.Id)
+                        .FirstOrDefaultAsync();
+
+                    if (latestStructure != null)
+                    {
+                        rawPeriods = await _periodRepository.GetByStructureIdAsync(latestStructure.Id);
+                    }
+                }
+            }
+
+            var teachingPeriods = rawPeriods
+                .Where(p => !p.IsBreak && p.IsActive)
+                .OrderBy(p => p.DisplayOrder)
+                .ThenBy(p => p.StartTime)
+                .ToList();
+
+            if (!teachingPeriods.Any())
+                throw new InvalidOperationException("No active teaching periods found for the resolved period structure.");
+
             var days = (dto.WorkingDays != null && dto.WorkingDays.Any())
                 ? dto.WorkingDays.Distinct().OrderBy(d => d).ToList()
                 : new List<int> { 1, 2, 3, 4, 5, 6 };
 
-            var teachingPeriods = await _context.Periods
-                .Where(p => !p.IsBreak && p.IsActive)
-                .OrderBy(p => p.DisplayOrder)
-                .ToListAsync();
-
-            if (!teachingPeriods.Any())
-                throw new InvalidOperationException($"No active teaching periods found.");
-
             int totalSlotsPerSection = days.Count * teachingPeriods.Count;
 
-            var theorySubjects = await _context.Subjects
+            // 3. Subject Resolution (All Active Subjects belonging to BoardId, GroupId, AcademicLevelId)
+            var groupSubjects = await _context.Subjects
                 .Where(s => s.GroupId == dto.GroupId &&
                             s.AcademicLevelId == dto.AcademicLevelId &&
                             (s.BoardId == 0 || s.BoardId == dto.BoardId) &&
-                            s.SubjectType == "Theory" &&
                             s.IsActive)
                 .OrderBy(s => s.SubjectId)
                 .ToListAsync();
 
-            if (!theorySubjects.Any())
-                throw new InvalidOperationException($"No active theory subjects found for GroupId {dto.GroupId}.");
+            if (!groupSubjects.Any())
+                throw new InvalidOperationException($"No active subjects found for GroupId {dto.GroupId}.");
+
+            // 4. Critical Staff Architecture: StaffSubjectAllocations is strictly Staff -> Subject (no section filtering)
+            var groupSubjectIds = groupSubjects.Select(s => s.SubjectId).ToList();
 
             var eligibleAllocations = await _context.StaffSubjectAllocations
                 .Include(a => a.Staff)
-                .Where(a => a.Staff != null &&
+                .Where(a => groupSubjectIds.Contains(a.SubjectId) &&
+                            a.Staff != null &&
+                            a.Staff.Status == "Active" &&
                             a.Staff.StaffType == "Teaching" &&
                             !a.Staff.IsDeleted)
                 .ToListAsync();
 
+            // 5. Existing Timetable Conflicts (other sections in same AcademicYear)
             var otherSectionsTimetables = await _context.Timetables
                 .Where(t => t.AcademicYearId == dto.AcademicYearId && !dto.SectionIds.Contains(t.SectionId))
                 .ToListAsync();
 
             var bookedStaffSlots = new HashSet<string>();
             var bookedRoomSlots = new HashSet<string>();
+            var bookedSectionSlots = new HashSet<string>();
 
             foreach (var t in otherSectionsTimetables)
             {
                 if (t.StaffId > 0)
                 {
-                    bookedStaffSlots.Add($"{t.StaffId}_{t.DayOfWeek}_{t.PeriodId}");
+                    bookedStaffSlots.Add($"{t.StaffId}_{t.AcademicYearId}_{t.DayOfWeek}_{t.PeriodId}");
                 }
                 if (t.RoomId > 0)
                 {
-                    bookedRoomSlots.Add($"{t.RoomId}_{t.DayOfWeek}_{t.PeriodId}");
+                    bookedRoomSlots.Add($"{t.RoomId}_{t.AcademicYearId}_{t.DayOfWeek}_{t.PeriodId}");
+                }
+                if (t.SectionId > 0)
+                {
+                    bookedSectionSlots.Add($"{t.SectionId}_{t.AcademicYearId}_{t.DayOfWeek}_{t.PeriodId}");
                 }
             }
 
@@ -381,17 +454,22 @@ namespace CollegeManagement.API.Services.Implementations
             var activeRooms = await _context.Rooms.Where(r => r.IsActive).ToListAsync();
             int defaultRoomId = activeRooms.Select(r => r.RoomId).FirstOrDefault();
             if (defaultRoomId <= 0) defaultRoomId = 1;
-            if (defaultRoomId <= 0)
-            {
-                defaultRoomId = 1;
-            }
 
-            int subjectCount = theorySubjects.Count;
-            int basePeriodsPerSubject = totalSlotsPerSection / subjectCount;
-            int remainderPeriods = totalSlotsPerSection % subjectCount;
+            // Map manual overrides if provided
+            var subjectRequirementsMap = dto.SubjectRequirements?
+                .Where(r => r.SubjectId > 0 && r.WeeklyPeriods > 0)
+                .ToDictionary(r => r.SubjectId, r => r.WeeklyPeriods)
+                ?? new Dictionary<int, int>();
 
+            int totalGroupSubjects = groupSubjects.Count;
+            int basePeriodsPerSubject = totalSlotsPerSection / totalGroupSubjects;
+            int remainderPeriods = totalSlotsPerSection % totalGroupSubjects;
+
+            // 6. Section Timetable Generation
             foreach (var sec in targetSections)
             {
+                int sectionRoomId = (sec.RoomId.HasValue && sec.RoomId.Value > 0) ? sec.RoomId.Value : defaultRoomId;
+
                 var availableSlots = new List<(int Day, int PeriodId)>();
                 foreach (var day in days)
                 {
@@ -403,16 +481,31 @@ namespace CollegeManagement.API.Services.Implementations
 
                 var assignedSlotsThisSection = new HashSet<string>();
                 var sectionDailySubjectMap = new Dictionary<string, int>();
+                var sectionDayLoadMap = new Dictionary<int, int>();
+                var sectionPeriodUsageMap = new Dictionary<int, int>();
 
-                for (int sIndex = 0; sIndex < theorySubjects.Count; sIndex++)
+                for (int sIndex = 0; sIndex < groupSubjects.Count; sIndex++)
                 {
-                    var subject = theorySubjects[sIndex];
-                    int requiredPeriods = basePeriodsPerSubject + (sIndex < remainderPeriods ? 1 : 0);
+                    var subject = groupSubjects[sIndex];
 
-                    // Canonical Teaching Staff Resolution for Subject and Section
+                    // Determine required weekly periods
+                    int requiredPeriods;
+                    if (subjectRequirementsMap.TryGetValue(subject.SubjectId, out int customReq) && customReq > 0)
+                    {
+                        requiredPeriods = customReq;
+                    }
+                    else if (subject.WeeklyPeriods > 0)
+                    {
+                        requiredPeriods = subject.WeeklyPeriods;
+                    }
+                    else
+                    {
+                        requiredPeriods = basePeriodsPerSubject + (sIndex < remainderPeriods ? 1 : 0);
+                    }
+
+                    // Canonical Teaching Staff Resolution by SubjectId ONLY (no SectionId filter)
                     var eligibleStaffIds = eligibleAllocations
-                        .Where(a => a.SubjectId == subject.SubjectId &&
-                                    true)
+                        .Where(a => a.SubjectId == subject.SubjectId)
                         .Select(a => a.StaffId)
                         .Where(id => id > 0)
                         .Distinct()
@@ -420,7 +513,17 @@ namespace CollegeManagement.API.Services.Implementations
 
                     if (!eligibleStaffIds.Any())
                     {
-                        throw new InvalidOperationException($"No Teaching Staff is allocated to SubjectId {subject.SubjectId} ({subject.SubjectName}).");
+                        // Graceful Warning: Subject has no eligible Teaching Staff
+                        warnings.Add(new UnassignedSlotWarningDto
+                        {
+                            SectionId = sec.SectionId,
+                            SectionName = sec.SectionName,
+                            SubjectId = subject.SubjectId,
+                            SubjectName = subject.SubjectName,
+                            UnassignedPeriodsCount = requiredPeriods,
+                            Reason = $"No Teaching Staff is allocated to Subject '{subject.SubjectName}' (ID: {subject.SubjectId})."
+                        });
+                        continue;
                     }
 
                     int placedCount = 0;
@@ -433,19 +536,25 @@ namespace CollegeManagement.API.Services.Implementations
                             string secSlotKey = $"{sec.SectionId}_{slot.Day}_{slot.PeriodId}";
                             if (assignedSlotsThisSection.Contains(secSlotKey)) continue;
 
+                            string globalSecSlotKey = $"{sec.SectionId}_{dto.AcademicYearId}_{slot.Day}_{slot.PeriodId}";
+                            if (bookedSectionSlots.Contains(globalSecSlotKey)) continue;
+
                             string dailySubKey = $"{sec.SectionId}_{slot.Day}_{subject.SubjectId}";
                             int dailyCount = sectionDailySubjectMap.GetValueOrDefault(dailySubKey, 0);
-                            if (dailyCount >= 2) continue;
+                            if (dailyCount >= 2) continue; // Max 2 periods of same subject per day
 
-                            foreach (var staffId in eligibleStaffIds)
+                            int dayLoad = sectionDayLoadMap.GetValueOrDefault(slot.Day, 0);
+                            int periodUsage = sectionPeriodUsageMap.GetValueOrDefault(slot.PeriodId, 0);
+
+                            foreach (int staffId in eligibleStaffIds)
                             {
-                                string staffSlotKey = $"{staffId}_{slot.Day}_{slot.PeriodId}";
+                                string staffSlotKey = $"{staffId}_{dto.AcademicYearId}_{slot.Day}_{slot.PeriodId}";
                                 if (bookedStaffSlots.Contains(staffSlotKey)) continue;
 
-                                string roomSlotKey = $"{defaultRoomId}_{slot.Day}_{slot.PeriodId}";
+                                string roomSlotKey = $"{sectionRoomId}_{dto.AcademicYearId}_{slot.Day}_{slot.PeriodId}";
                                 if (bookedRoomSlots.Contains(roomSlotKey)) continue;
 
-                                int score = (dailyCount == 0 ? 10 : 0) - slot.Day;
+                                int score = (dailyCount == 0 ? 100 : 0) - (dayLoad * 10) - (periodUsage * 5);
                                 candidateSlots.Add((slot.Day, slot.PeriodId, staffId, score));
                             }
                         }
@@ -455,14 +564,19 @@ namespace CollegeManagement.API.Services.Implementations
                             var best = candidateSlots.OrderByDescending(c => c.Score).First();
 
                             string secSlotKey = $"{sec.SectionId}_{best.Day}_{best.PeriodId}";
-                            string staffSlotKey = $"{best.StaffId}_{best.Day}_{best.PeriodId}";
-                            string roomSlotKey = $"{defaultRoomId}_{best.Day}_{best.PeriodId}";
+                            string globalSecSlotKey = $"{sec.SectionId}_{dto.AcademicYearId}_{best.Day}_{best.PeriodId}";
+                            string staffSlotKey = $"{best.StaffId}_{dto.AcademicYearId}_{best.Day}_{best.PeriodId}";
+                            string roomSlotKey = $"{sectionRoomId}_{dto.AcademicYearId}_{best.Day}_{best.PeriodId}";
                             string dailySubKey = $"{sec.SectionId}_{best.Day}_{subject.SubjectId}";
 
                             assignedSlotsThisSection.Add(secSlotKey);
+                            bookedSectionSlots.Add(globalSecSlotKey);
                             bookedStaffSlots.Add(staffSlotKey);
                             bookedRoomSlots.Add(roomSlotKey);
+
                             sectionDailySubjectMap[dailySubKey] = sectionDailySubjectMap.GetValueOrDefault(dailySubKey, 0) + 1;
+                            sectionDayLoadMap[best.Day] = sectionDayLoadMap.GetValueOrDefault(best.Day, 0) + 1;
+                            sectionPeriodUsageMap[best.PeriodId] = sectionPeriodUsageMap.GetValueOrDefault(best.PeriodId, 0) + 1;
                             availableSlots.Remove((best.Day, best.PeriodId));
 
                             int resolvedProgramId = sec.ProgramId ?? throw new InvalidOperationException($"Section {sec.SectionId} has no ProgramId.");
@@ -479,7 +593,7 @@ namespace CollegeManagement.API.Services.Implementations
                                 PeriodId = best.PeriodId,
                                 SubjectId = subject.SubjectId,
                                 StaffId = best.StaffId,
-                                RoomId = (sec.RoomId.HasValue && sec.RoomId.Value > 0) ? sec.RoomId.Value : defaultRoomId,
+                                RoomId = sectionRoomId,
                                 IsPublished = false,
                                 ApprovalStatus = TimetableApprovalStatus.Draft,
                                 Remarks = "Auto-generated theory slot",
@@ -499,7 +613,7 @@ namespace CollegeManagement.API.Services.Implementations
                                 SubjectId = subject.SubjectId,
                                 SubjectName = subject.SubjectName,
                                 UnassignedPeriodsCount = remainingUnassigned,
-                                Reason = $"Could not schedule {remainingUnassigned} period(s) due to staff or room availability conflicts."
+                                Reason = $"Could not schedule {remainingUnassigned} period(s) for Subject '{subject.SubjectName}' due to staff or room availability conflicts."
                             });
                             break;
                         }

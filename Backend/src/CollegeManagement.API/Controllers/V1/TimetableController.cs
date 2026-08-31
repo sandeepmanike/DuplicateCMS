@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Timetable;
@@ -13,10 +13,12 @@ namespace CollegeManagement.API.Controllers.V1
     public class TimetableController : ControllerBase
     {
         private readonly ITimetableService _timetableService;
+        private readonly ITimetableExportService _exportService;
 
-        public TimetableController(ITimetableService timetableService)
+        public TimetableController(ITimetableService timetableService, ITimetableExportService exportService)
         {
             _timetableService = timetableService;
+            _exportService = exportService;
         }
 
         /// <summary>
@@ -300,6 +302,91 @@ namespace CollegeManagement.API.Controllers.V1
             catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Exports the section timetable as a PDF document with full academic hierarchy validation.
+        /// </summary>
+        [HttpGet("export/section-pdf")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ExportSectionPdf(
+            [FromQuery] int boardId,
+            [FromQuery] int academicLevelId,
+            [FromQuery] int academicYearId,
+            [FromQuery] int groupId,
+            [FromQuery] int programId,
+            [FromQuery] int sectionId)
+        {
+            try
+            {
+                var (pdfBytes, fileName) = await _exportService.ExportSectionPdfAsync(
+                    boardId, academicLevelId, academicYearId, groupId, programId, sectionId);
+
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
+            }
+        }
+
+
+        /// <summary>
+        /// Exports the weekly timetable for all programs and sections in a specific group as an Excel workbook (.xlsx).
+        /// </summary>
+        [HttpGet("export/group-excel")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ExportGroupExcel(
+            [FromQuery] int boardId,
+            [FromQuery] int academicLevelId,
+            [FromQuery] int academicYearId,
+            [FromQuery] int groupId)
+        {
+            try
+            {
+                var (fileBytes, fileName) = await _exportService.ExportGroupExcelAsync(
+                    boardId,
+                    academicLevelId,
+                    academicYearId,
+                    groupId);
+
+                return File(
+                    fileBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
             }
         }
     }

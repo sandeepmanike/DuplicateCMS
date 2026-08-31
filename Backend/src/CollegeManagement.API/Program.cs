@@ -326,6 +326,7 @@ builder.Services.AddScoped<IPromotionService, PromotionService>();
 
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableService, TimetableService>();
+builder.Services.AddScoped<ITimetableExportService, TimetableExportService>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
 builder.Services.AddScoped<IPeriodStructureService, PeriodStructureService>();
 builder.Services.AddScoped<IBreakTypeService, BreakTypeService>();
