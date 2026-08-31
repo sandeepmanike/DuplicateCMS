@@ -128,74 +128,170 @@ public class DashboardController : ControllerBase
         var targetDateStr = targetDate.ToString("yyyy-MM-dd");
 
         // 1. Total Students
-        var studentCount = await conn.ExecuteScalarAsync<int>(@"
-            SELECT COUNT(*) FROM `Students`
-            WHERE (IsActive = 1 OR IsActive IS NULL)
-              AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
-              AND (@boardId IS NULL OR BoardId = @boardId);",
-            new { academicYearId, boardId });
-
-        if (studentCount == 0)
+        // 1. Total Active Students
+        int studentCount = 0;
+        try
         {
             studentCount = await conn.ExecuteScalarAsync<int>(@"
-                SELECT COUNT(*) FROM `StudentAdmissions`
+                SELECT COUNT(*) FROM Students
                 WHERE (IsActive = 1 OR IsActive IS NULL)
                   AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
                   AND (@boardId IS NULL OR BoardId = @boardId);",
                 new { academicYearId, boardId });
         }
+        catch
+        {
+            try
+            {
+                studentCount = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM Students
+                    WHERE (IsActive = 1 OR IsActive IS NULL)
+                      AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId);",
+                    new { academicYearId });
+            }
+            catch { }
+        }
+
+        if (studentCount == 0)
+        {
+            try
+            {
+                studentCount = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM StudentAdmissions
+                    WHERE (IsActive = 1 OR IsActive IS NULL)
+                      AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
+                      AND (@boardId IS NULL OR BoardId = @boardId);",
+                    new { academicYearId, boardId });
+            }
+            catch { }
+        }
 
         // 2. Teaching Staff (Filtered by Board)
-        var teachingStaff = await conn.ExecuteScalarAsync<int>(@"
-            SELECT COUNT(*) FROM `Staffs`
-            WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
-              AND (Status = 'Active' OR Status IS NULL)
-              AND (StaffType = 'Teaching' OR FacultyType = 'Teaching')
-              AND (@boardId IS NULL OR BoardId = @boardId);",
-            new { boardId });
+        int teachingStaff = 0;
+        try
+        {
+            teachingStaff = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM Staffs
+                WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
+                  AND (Status = 'Active' OR Status IS NULL)
+                  AND (StaffType = 'Teaching' OR FacultyType = 'Teaching')
+                  AND (@boardId IS NULL OR BoardId = @boardId);",
+                new { boardId });
+        }
+        catch
+        {
+            try
+            {
+                teachingStaff = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM Staffs
+                    WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
+                      AND (Status = 'Active' OR Status IS NULL)
+                      AND (StaffType = 'Teaching' OR FacultyType = 'Teaching');");
+            }
+            catch { }
+        }
 
         if (teachingStaff == 0 && !boardId.HasValue)
         {
-            teachingStaff = await conn.ExecuteScalarAsync<int>(@"
-                SELECT COUNT(*) FROM `Faculties`
-                WHERE (IsDeleted = 0 OR IsDeleted IS NULL) AND (Status = 'Active' OR Status IS NULL);");
+            try
+            {
+                teachingStaff = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM Faculties
+                    WHERE (IsDeleted = 0 OR IsDeleted IS NULL) AND (Status = 'Active' OR Status IS NULL);");
+            }
+            catch { }
         }
 
         // 3. Non-Teaching Staff (Filtered by Board)
-        var nonTeachingStaff = await conn.ExecuteScalarAsync<int>(@"
-            SELECT COUNT(*) FROM `Staffs`
-            WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
-              AND (Status = 'Active' OR Status IS NULL)
-              AND (StaffType = 'Non-Teaching' OR (StaffType != 'Teaching' AND FacultyType != 'Teaching'))
-              AND (@boardId IS NULL OR BoardId = @boardId);",
-            new { boardId });
+        int nonTeachingStaff = 0;
+        try
+        {
+            nonTeachingStaff = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM Staffs
+                WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
+                  AND (Status = 'Active' OR Status IS NULL)
+                  AND (StaffType = 'Non-Teaching' OR (StaffType != 'Teaching' AND FacultyType != 'Teaching'))
+                  AND (@boardId IS NULL OR BoardId = @boardId);",
+                new { boardId });
+        }
+        catch
+        {
+            try
+            {
+                nonTeachingStaff = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM Staffs
+                    WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
+                      AND (Status = 'Active' OR Status IS NULL)
+                      AND (StaffType = 'Non-Teaching' OR (StaffType != 'Teaching' AND FacultyType != 'Teaching'));");
+            }
+            catch { }
+        }
 
         // 4. Total Groups
-        var totalGroups = await conn.ExecuteScalarAsync<int>(@"
-            SELECT COUNT(*) FROM `Groups`
-            WHERE (IsActive = 1 OR IsActive IS NULL)
-              AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
-              AND (@boardId IS NULL OR BoardId = @boardId);",
-            new { academicYearId, boardId });
+        int totalGroups = 0;
+        try
+        {
+            totalGroups = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM Groups
+                WHERE (IsActive = 1 OR IsActive IS NULL)
+                  AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
+                  AND (@boardId IS NULL OR BoardId = @boardId);",
+                new { academicYearId, boardId });
+        }
+        catch
+        {
+            try
+            {
+                totalGroups = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM Groups
+                    WHERE (IsActive = 1 OR IsActive IS NULL)
+                      AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId);",
+                    new { academicYearId });
+            }
+            catch { }
+        }
 
         if (totalGroups == 0 && (academicYearId.HasValue || boardId.HasValue))
         {
-            totalGroups = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM `Groups` WHERE (IsActive = 1 OR IsActive IS NULL);");
+            try
+            {
+                totalGroups = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Groups WHERE (IsActive = 1 OR IsActive IS NULL);");
+            }
+            catch { }
         }
 
         // 5. Total Sections
-        var totalSections = await conn.ExecuteScalarAsync<int>(@"
-            SELECT COUNT(*) FROM `Sections`
-            WHERE (IsActive = 1 OR IsActive IS NULL)
-              AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
-              AND (@boardId IS NULL OR BoardId = @boardId);",
-            new { academicYearId, boardId });
+        int totalSections = 0;
+        try
+        {
+            totalSections = await conn.ExecuteScalarAsync<int>(@"
+                SELECT COUNT(*) FROM Sections
+                WHERE (IsActive = 1 OR IsActive IS NULL)
+                  AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
+                  AND (@boardId IS NULL OR BoardId = @boardId);",
+                new { academicYearId, boardId });
+        }
+        catch
+        {
+            try
+            {
+                totalSections = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(*) FROM Sections
+                    WHERE (IsActive = 1 OR IsActive IS NULL)
+                      AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId);",
+                    new { academicYearId });
+            }
+            catch { }
+        }
 
         if (totalSections == 0 && (academicYearId.HasValue || boardId.HasValue))
         {
-            totalSections = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM `Sections` WHERE (IsActive = 1 OR IsActive IS NULL);");
+            try
+            {
+                totalSections = await conn.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Sections WHERE (IsActive = 1 OR IsActive IS NULL);");
+            }
+            catch { }
         }
-
         // Context Metrics: Today's Attendance %
         var attStats = await conn.QueryFirstOrDefaultAsync<dynamic>(@"
             SELECT 
