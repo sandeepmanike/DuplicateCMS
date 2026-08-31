@@ -55,6 +55,17 @@ namespace CollegeManagement.API.DTOs.Staff
         [StringLength(100)]
         public string? Department { get; set; }
 
+        public int? BoardId { get; set; }
+
+        [StringLength(100)]
+        public string? BoardName { get; set; }
+
+        public string? Board
+        {
+            get => BoardName;
+            set => BoardName = value;
+        }
+
         [Required(ErrorMessage = "Joining date is required.")]
         public DateTime JoiningDate { get; set; }
 

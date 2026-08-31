@@ -52,9 +52,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
+                    f.BoardId,
+                    b.BoardName AS Board,
+                    b.BoardName AS BoardName,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE f.Id = @id AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
             var item = await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { id });
@@ -105,9 +109,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
+                    f.BoardId,
+                    b.BoardName AS Board,
+                    b.BoardName AS BoardName,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE f.EmployeeId = @employeeId AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
             return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { employeeId });
@@ -134,9 +142,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
+                    f.BoardId,
+                    b.BoardName AS Board,
+                    b.BoardName AS BoardName,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE f.Email = @email AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
             return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { email });
@@ -163,9 +175,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
+                    f.BoardId,
+                    b.BoardName AS Board,
+                    b.BoardName AS BoardName,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE f.Mobile = @mobile AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
             return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { mobile });
@@ -192,9 +208,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
+                    f.BoardId,
+                    b.BoardName AS Board,
+                    b.BoardName AS BoardName,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE f.Aadhaar = @aadhaar AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
 
             return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { aadhaar });
@@ -334,6 +354,17 @@ namespace CollegeManagement.API.Repositories.Implementations
                 param.Add("term", term);
             }
 
+            if (queryParams.BoardId.HasValue && queryParams.BoardId.Value > 0)
+            {
+                whereClauses.Add("f.BoardId = @boardId");
+                param.Add("boardId", queryParams.BoardId.Value);
+            }
+            else if (!string.IsNullOrWhiteSpace(queryParams.BoardName) && !string.Equals(queryParams.BoardName, "All", StringComparison.OrdinalIgnoreCase))
+            {
+                whereClauses.Add("(b.BoardName = @boardName OR b.BoardCode = @boardName)");
+                param.Add("boardName", queryParams.BoardName.Trim());
+            }
+
             if (!string.IsNullOrWhiteSpace(queryParams.StaffType) && !string.Equals(queryParams.StaffType, "All", StringComparison.OrdinalIgnoreCase))
             {
                 whereClauses.Add("(f.StaffType = @staffType OR f.FacultyType = @staffType)");
@@ -369,6 +400,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                 SELECT COUNT(*) 
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE {whereSql};";
 
             var total = await Connection.ExecuteScalarAsync<int>(countSql, param);
@@ -386,9 +418,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                     f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
                     f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
                     d.DepartmentName AS Department,
+                    f.BoardId,
+                    b.BoardName AS Board,
+                    b.BoardName AS BoardName,
                     f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
                 FROM Staffs f
                 LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
+                LEFT JOIN Boards b ON b.BoardId = f.BoardId
                 WHERE {whereSql}
                 ORDER BY f.Id DESC
                 LIMIT @limit OFFSET @offset;";
@@ -410,16 +446,20 @@ namespace CollegeManagement.API.Repositories.Implementations
             {
                 var sql = @"
                     SELECT 
-                        Id,
-                        EmployeeId,
-                        CONCAT(FirstName, ' ', LastName) AS FullName,
-                        Designation,
-                        DesignationId,
-                        IFNULL(StaffType, 'Teaching') AS StaffType
-                    FROM Staffs
-                    WHERE (IsDeleted = 0 OR IsDeleted IS NULL) AND Status = 'Active'
-                      AND (@staffType IS NULL OR @staffType = '' OR @staffType = 'All' OR StaffType = @staffType OR FacultyType = @staffType)
-                    ORDER BY FirstName ASC;";
+                        f.Id,
+                        f.EmployeeId,
+                        CONCAT(f.FirstName, ' ', f.LastName) AS FullName,
+                        f.Designation,
+                        f.DesignationId,
+                        f.BoardId,
+                        b.BoardName,
+                        b.BoardName AS Board,
+                        IFNULL(f.StaffType, 'Teaching') AS StaffType
+                    FROM Staffs f
+                    LEFT JOIN Boards b ON b.BoardId = f.BoardId
+                    WHERE (f.IsDeleted = 0 OR f.IsDeleted IS NULL) AND f.Status = 'Active'
+                      AND (@staffType IS NULL OR @staffType = '' OR @staffType = 'All' OR f.StaffType = @staffType OR f.FacultyType = @staffType)
+                    ORDER BY f.FirstName ASC;";
 
                 return await Connection.QueryAsync<StaffDropdownDto>(sql, new { staffType });
             }
@@ -463,8 +503,35 @@ namespace CollegeManagement.API.Repositories.Implementations
             return $"{prefix}{(maxSeq + 1).ToString("D4")}";
         }
 
+        private async Task<int?> ResolveBoardIdAsync(int? boardId, string? boardName)
+        {
+            if (boardId.HasValue && boardId.Value > 0) return boardId.Value;
+            if (string.IsNullOrWhiteSpace(boardName)) return null;
+
+            var name = boardName.Trim();
+            try
+            {
+                var id = await Connection.QueryFirstOrDefaultAsync<int?>(@"
+                    SELECT BoardId FROM `Boards` 
+                    WHERE (IsActive = 1 OR IsActive IS NULL)
+                      AND (LOWER(TRIM(BoardName)) = LOWER(TRIM(@name)) OR LOWER(TRIM(BoardCode)) = LOWER(TRIM(@name)))
+                    LIMIT 1;", new { name });
+
+                return id;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public async Task<Staff> AddAsync(Staff staff)
         {
+            if (!staff.BoardId.HasValue || staff.BoardId.Value <= 0)
+            {
+                staff.BoardId = await ResolveBoardIdAsync(staff.BoardId, staff.BoardName);
+            }
+
             try
             {
                 var id = await Connection.ExecuteScalarAsync<int>(
@@ -495,6 +562,14 @@ namespace CollegeManagement.API.Repositories.Implementations
                 if (id > 0)
                 {
                     staff.Id = id;
+                    if (staff.BoardId.HasValue)
+                    {
+                        try
+                        {
+                            await Connection.ExecuteAsync("UPDATE Staffs SET BoardId = @BoardId WHERE Id = @Id;", staff);
+                        }
+                        catch { }
+                    }
                     return staff;
                 }
             }
@@ -507,23 +582,53 @@ namespace CollegeManagement.API.Repositories.Implementations
                     EmployeeId, FirstName, LastName, Gender, DateOfBirth,
                     Aadhaar, Mobile, Email, BloodGroup, Qualification,
                     Designation, DesignationId, StaffType, FacultyType,
-                    DepartmentId, JoiningDate, Experience, Status, PhotoPath,
+                    DepartmentId, BoardId, JoiningDate, Experience, Status, PhotoPath,
                     CreatedAt, IsDeleted
                 ) VALUES (
                     @EmployeeId, @FirstName, @LastName, @Gender, @DateOfBirth,
                     @Aadhaar, @Mobile, @Email, @BloodGroup, @Qualification,
                     @Designation, @DesignationId, @StaffType, @StaffType,
-                    @DepartmentId, @JoiningDate, @Experience, @Status, @PhotoPath,
+                    @DepartmentId, @BoardId, @JoiningDate, @Experience, @Status, @PhotoPath,
                     UTC_TIMESTAMP(), 0
                 );
                 SELECT LAST_INSERT_ID();";
 
-            staff.Id = await Connection.ExecuteScalarAsync<int>(sql, staff);
+            try
+            {
+                staff.Id = await Connection.ExecuteScalarAsync<int>(sql, staff);
+            }
+            catch
+            {
+                // Fallback if BoardId column is not yet present
+                var fallbackSql = @"
+                    INSERT INTO Staffs (
+                        EmployeeId, FirstName, LastName, Gender, DateOfBirth,
+                        Aadhaar, Mobile, Email, BloodGroup, Qualification,
+                        Designation, DesignationId, StaffType, FacultyType,
+                        DepartmentId, JoiningDate, Experience, Status, PhotoPath,
+                        CreatedAt, IsDeleted
+                    ) VALUES (
+                        @EmployeeId, @FirstName, @LastName, @Gender, @DateOfBirth,
+                        @Aadhaar, @Mobile, @Email, @BloodGroup, @Qualification,
+                        @Designation, @DesignationId, @StaffType, @StaffType,
+                        @DepartmentId, @JoiningDate, @Experience, @Status, @PhotoPath,
+                        UTC_TIMESTAMP(), 0
+                    );
+                    SELECT LAST_INSERT_ID();";
+
+                staff.Id = await Connection.ExecuteScalarAsync<int>(fallbackSql, staff);
+            }
+
             return staff;
         }
 
         public async Task UpdateAsync(Staff staff)
         {
+            if (!staff.BoardId.HasValue || staff.BoardId.Value <= 0)
+            {
+                staff.BoardId = await ResolveBoardIdAsync(staff.BoardId, staff.BoardName);
+            }
+
             try
             {
                 await Connection.ExecuteAsync(
@@ -550,7 +655,6 @@ namespace CollegeManagement.API.Repositories.Implementations
                         p_PhotoPath = staff.PhotoPath
                     },
                     commandType: CommandType.StoredProcedure);
-                return;
             }
             catch
             {
@@ -572,6 +676,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                     StaffType = @StaffType,
                     FacultyType = @StaffType,
                     DepartmentId = @DepartmentId,
+                    BoardId = @BoardId,
                     JoiningDate = @JoiningDate,
                     Experience = @Experience,
                     Status = @Status,
@@ -579,7 +684,37 @@ namespace CollegeManagement.API.Repositories.Implementations
                     UpdatedAt = UTC_TIMESTAMP()
                 WHERE Id = @Id;";
 
-            await Connection.ExecuteAsync(sql, staff);
+            try
+            {
+                await Connection.ExecuteAsync(sql, staff);
+            }
+            catch
+            {
+                var fallbackSql = @"
+                    UPDATE Staffs SET
+                        FirstName = @FirstName,
+                        LastName = @LastName,
+                        Gender = @Gender,
+                        DateOfBirth = @DateOfBirth,
+                        Aadhaar = @Aadhaar,
+                        Mobile = @Mobile,
+                        Email = @Email,
+                        BloodGroup = @BloodGroup,
+                        Qualification = @Qualification,
+                        Designation = @Designation,
+                        DesignationId = @DesignationId,
+                        StaffType = @StaffType,
+                        FacultyType = @StaffType,
+                        DepartmentId = @DepartmentId,
+                        JoiningDate = @JoiningDate,
+                        Experience = @Experience,
+                        Status = @Status,
+                        PhotoPath = @PhotoPath,
+                        UpdatedAt = UTC_TIMESTAMP()
+                    WHERE Id = @Id;";
+
+                await Connection.ExecuteAsync(fallbackSql, staff);
+            }
         }
 
         public async Task UpdatePhotoPathAsync(int id, string photoPath)

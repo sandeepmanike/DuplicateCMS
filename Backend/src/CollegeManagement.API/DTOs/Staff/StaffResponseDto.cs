@@ -24,6 +24,9 @@ namespace CollegeManagement.API.DTOs.Staff
         public string FacultyType => StaffType;
         public int? DepartmentId { get; set; }
         public string Department { get; set; } = string.Empty;
+        public int? BoardId { get; set; }
+        public string? BoardName { get; set; }
+        public string? Board => BoardName;
         public DateTime JoiningDate { get; set; }
         public decimal Experience { get; set; }
         public string Status { get; set; } = "Active";

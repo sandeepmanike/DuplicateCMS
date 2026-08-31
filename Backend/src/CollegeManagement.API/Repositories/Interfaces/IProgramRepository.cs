@@ -1,4 +1,6 @@
-﻿using CollegeManagement.API.DTOs.Program;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using CollegeManagement.API.DTOs.Program;
 
 namespace CollegeManagement.API.Repositories
 {
@@ -20,11 +22,5 @@ namespace CollegeManagement.API.Repositories
 
         Task<IEnumerable<ProgramDto>> GetByGroupIdAsync(
             int groupId);
-    }
-}
-namespace CollegeManagement.API.Repositories.Interfaces
-{
-    public interface IProgramRepository
-    {
     }
 }
