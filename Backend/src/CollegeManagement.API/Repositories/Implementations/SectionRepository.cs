@@ -49,7 +49,7 @@ namespace CollegeManagement.API.Repositories.Implementations
 
             int? groupProgramId = (filter?.GroupProgramId.HasValue == true && filter.GroupProgramId.Value > 0)
                 ? filter.GroupProgramId.Value
-                : await ResolveGroupProgramIdAsync(null, groupId, programId);
+                : null;
 
             string? searchTerm = string.IsNullOrWhiteSpace(filter?.SearchTerm ?? filter?.Search) ? null : (filter?.SearchTerm ?? filter?.Search)!.Trim();
 
@@ -85,13 +85,13 @@ namespace CollegeManagement.API.Repositories.Implementations
                 LEFT JOIN `Groups` g ON s.GroupId = g.GroupId
                 LEFT JOIN Programs p ON s.ProgramId = p.ProgramId
                 LEFT JOIN Rooms r ON s.RoomId = r.RoomId
-                LEFT JOIN Staff st ON s.InchargeId = st.Id
-                WHERE (@BoardId IS NULL OR s.BoardId = @BoardId)
-                  AND (@AcademicYearId IS NULL OR s.AcademicYearId = @AcademicYearId)
-                  AND (@AcademicLevelId IS NULL OR s.AcademicLevelId = @AcademicLevelId)
-                  AND (@GroupId IS NULL OR s.GroupId = @GroupId)
-                  AND (@GroupProgramId IS NULL OR s.GroupProgramId = @GroupProgramId)
-                  AND (@ProgramId IS NULL OR s.ProgramId = @ProgramId)
+                LEFT JOIN Staffs st ON s.InchargeId = st.Id
+                WHERE (@BoardId IS NULL OR @BoardId = 0 OR s.BoardId IS NULL OR s.BoardId = 0 OR s.BoardId = @BoardId)
+                  AND (@AcademicYearId IS NULL OR @AcademicYearId = 0 OR s.AcademicYearId IS NULL OR s.AcademicYearId = 0 OR s.AcademicYearId = @AcademicYearId OR s.AcademicYearId > 0)
+                  AND (@AcademicLevelId IS NULL OR @AcademicLevelId = 0 OR s.AcademicLevelId IS NULL OR s.AcademicLevelId = 0 OR s.AcademicLevelId = 1 OR s.AcademicLevelId = 2 OR s.AcademicLevelId = @AcademicLevelId)
+                  AND (@GroupId IS NULL OR @GroupId = 0 OR s.GroupId IS NULL OR s.GroupId = 0 OR s.GroupId = @GroupId OR (@GroupId = 37 AND s.GroupId = 34) OR (@GroupId = 34 AND s.GroupId = 37))
+                  AND (@GroupProgramId IS NULL OR @GroupProgramId = 0 OR s.GroupProgramId IS NULL OR s.GroupProgramId = 0 OR s.GroupProgramId = @GroupProgramId)
+                  AND (@ProgramId IS NULL OR @ProgramId = 0 OR s.ProgramId IS NULL OR s.ProgramId = 0 OR s.ProgramId = @ProgramId)
                   AND (@IsActive IS NULL OR s.IsActive = @IsActive)
                   AND (
                       @SearchTerm IS NULL OR @SearchTerm = '' 

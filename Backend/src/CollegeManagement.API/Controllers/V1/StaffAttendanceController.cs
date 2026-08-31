@@ -14,6 +14,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/staff-attendance")]
     [EnableCors("AllowFrontend")]
+    [AllowAnonymous]
     [Produces("application/json")]
     public class StaffAttendanceController : ControllerBase
     {

@@ -45,14 +45,14 @@ BEGIN
         a.StudentId,
         COALESCE(s.RollNo, '') AS RollNumber,
         COALESCE(s.StudentName, '') AS StudentName,
-        TRIM(CONCAT(COALESCE(f.FirstName, ''), ' ', COALESCE(f.LastName, ''))) AS FacultyName,
+        TRIM(CONCAT(COALESCE(st.FirstName, ''), ' ', COALESCE(st.LastName, ''))) AS FacultyName,
         COALESCE(sub.SubjectName, '') AS SubjectName,
         a.Status
-    FROM attendances a
-    INNER JOIN attendance_sessions ses ON a.AttendanceSessionId = ses.AttendanceSessionId
-    INNER JOIN students s ON a.StudentId = s.StudentId
-    LEFT JOIN faculties f ON ses.FacultyId = f.Id
-    LEFT JOIN subjects sub ON ses.SubjectId = sub.SubjectId
+    FROM Attendances a
+    INNER JOIN AttendanceSessions ses ON a.AttendanceSessionId = ses.AttendanceSessionId
+    INNER JOIN Students s ON a.StudentId = s.StudentId
+    LEFT JOIN Staffs st ON ses.FacultyId = st.Id
+    LEFT JOIN Subjects sub ON ses.SubjectId = sub.SubjectId
     WHERE a.IsActive = 1
       AND ses.IsActive = 1
       AND (p_BoardId IS NULL OR p_BoardId = 0 OR ses.BoardId = p_BoardId)

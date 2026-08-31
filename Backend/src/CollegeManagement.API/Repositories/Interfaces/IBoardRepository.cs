@@ -68,9 +68,9 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<List<AcademicPattern>> GetAcademicPatternsAsync();
 
         /// <summary>
-        /// Retrieves active academic levels.
+        /// Retrieves active academic levels, optionally filtered by boardId.
         /// </summary>
-        Task<List<AcademicLevel>> GetAcademicLevelsAsync();
+        Task<List<AcademicLevel>> GetAcademicLevelsAsync(int? boardId = null);
 
         /// <summary>
         /// Retrieves active grading systems.

@@ -134,7 +134,7 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <summary>
         /// Auto-derives assigned Subject and Faculty for specified Date, Group, Section, and Period or Session from Timetable/Section.
         /// </summary>
-        Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(System.DateTime date, int groupId, int sectionId, int? periodId = null, string? sessionType = null);
+        Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(System.DateTime date, int? groupId = null, int? sectionId = null, int? periodId = null, string? sessionType = null);
 
         /// <summary>
         /// Generates the Student Monthly Calendar Matrix Grid Report.

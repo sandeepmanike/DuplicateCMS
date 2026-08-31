@@ -337,46 +337,62 @@ namespace CollegeManagement.API.Repositories.Implementations
             };
         }
 
-        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int groupId, int sectionId, int? periodId = null, string? sessionType = null)
+        public async Task<FacultySubjectDerivationResponse?> GetFacultySubjectAllocationAsync(DateTime date, int? groupId = null, int? sectionId = null, int? periodId = null, string? sessionType = null)
         {
+            int secId = sectionId ?? 0;
+            int grpId = groupId ?? 0;
+
             // 1. If periodId is not specified or sessionType indicates Full Day / Morning / Afternoon session, fetch the Section Class Teacher!
             bool isSessionLevel = !periodId.HasValue || periodId.Value <= 0 ||
                                   (!string.IsNullOrEmpty(sessionType) && (sessionType.ToLower().Contains("session") || sessionType.ToLower() == "allperiods"));
 
             if (isSessionLevel)
             {
-                var sec = await _context.Sections.FirstOrDefaultAsync(s => s.SectionId == sectionId);
-                if (sec != null && (sec.InchargeId.HasValue || sec.ClassTeacherId.HasValue))
+                if (secId > 0)
                 {
-                    int teacherId = sec.InchargeId ?? sec.ClassTeacherId!.Value;
-                    var ctStaff = await _context.Staffs.FirstOrDefaultAsync(st => st.Id == teacherId);
-                    if (ctStaff != null)
+                    var sec = await _context.Sections.FirstOrDefaultAsync(s => s.SectionId == secId);
+                    if (sec != null && (sec.InchargeId.HasValue || sec.ClassTeacherId.HasValue))
                     {
-                        return new FacultySubjectDerivationResponse
+                        int teacherId = sec.InchargeId ?? sec.ClassTeacherId!.Value;
+                        var ctStaff = await _context.Staffs.FirstOrDefaultAsync(st => st.Id == teacherId);
+                        if (ctStaff != null)
                         {
-                            SubjectId = 0,
-                            SubjectName = "All Subjects",
-                            FacultyId = ctStaff.Id,
-                            FacultyName = $"{ctStaff.FirstName} {ctStaff.LastName}".Trim(),
-                            PeriodId = periodId ?? 0,
-                            PeriodName = sessionType ?? "Class Teacher Session"
-                        };
+                            return new FacultySubjectDerivationResponse
+                            {
+                                SubjectId = 0,
+                                SubjectName = "All Subjects",
+                                FacultyId = ctStaff.Id,
+                                FacultyName = $"{ctStaff.FirstName} {ctStaff.LastName}".Trim(),
+                                PeriodId = periodId ?? 0,
+                                PeriodName = sessionType ?? "Class Teacher Session"
+                            };
+                        }
                     }
                 }
+
+                return new FacultySubjectDerivationResponse
+                {
+                    SubjectId = 0,
+                    SubjectName = "All Subjects",
+                    FacultyId = 0,
+                    FacultyName = "Not assigned",
+                    PeriodId = periodId ?? 0,
+                    PeriodName = sessionType ?? "AllPeriods"
+                };
             }
 
             // 2. If a specific subject period is selected (e.g. Period 1), look up the Timetable slot!
             int dayOfWeekInt = date.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)date.DayOfWeek;
             int reqPeriodId = periodId ?? 0;
 
-            if (reqPeriodId > 0)
+            if (reqPeriodId > 0 && secId > 0)
             {
                 var ttSlot = await _context.Timetables
                     .Include(t => t.Subject)
                     .Include(t => t.Staff)
                     .Include(t => t.Period)
-                    .FirstOrDefaultAsync(t => t.GroupId == groupId
-                                              && t.SectionId == sectionId
+                    .FirstOrDefaultAsync(t => (grpId == 0 || t.GroupId == grpId)
+                                              && t.SectionId == secId
                                               && t.PeriodId == reqPeriodId
                                               && t.DayOfWeek == dayOfWeekInt);
 
@@ -394,39 +410,36 @@ namespace CollegeManagement.API.Repositories.Implementations
                 }
             }
 
-            // 3. Fallback: If no explicit timetable slot found, return section Class Teacher if available
-            var sectionObj = await _context.Sections.FirstOrDefaultAsync(s => s.SectionId == sectionId);
-            if (sectionObj != null && (sectionObj.InchargeId.HasValue || sectionObj.ClassTeacherId.HasValue))
+            // 3. Fallback: Return Class Teacher if available or "Not assigned"
+            if (secId > 0)
             {
-                int teacherId = sectionObj.InchargeId ?? sectionObj.ClassTeacherId!.Value;
-                var ctStaff = await _context.Staffs.FirstOrDefaultAsync(st => st.Id == teacherId);
-                if (ctStaff != null)
+                var sectionObj = await _context.Sections.FirstOrDefaultAsync(s => s.SectionId == secId);
+                if (sectionObj != null && (sectionObj.InchargeId.HasValue || sectionObj.ClassTeacherId.HasValue))
                 {
-                    var subFirst = await _context.Subjects.FirstOrDefaultAsync(s => s.IsActive);
-                    return new FacultySubjectDerivationResponse
+                    int teacherId = sectionObj.InchargeId ?? sectionObj.ClassTeacherId!.Value;
+                    var ctStaff = await _context.Staffs.FirstOrDefaultAsync(st => st.Id == teacherId);
+                    if (ctStaff != null)
                     {
-                        SubjectId = subFirst?.SubjectId ?? 0,
-                        SubjectName = subFirst?.SubjectName ?? "General",
-                        FacultyId = ctStaff.Id,
-                        FacultyName = $"{ctStaff.FirstName} {ctStaff.LastName}".Trim(),
-                        PeriodId = reqPeriodId,
-                        PeriodName = $"Period {reqPeriodId}"
-                    };
+                        var subFirst = await _context.Subjects.FirstOrDefaultAsync(s => s.IsActive);
+                        return new FacultySubjectDerivationResponse
+                        {
+                            SubjectId = subFirst?.SubjectId ?? 0,
+                            SubjectName = subFirst?.SubjectName ?? "General",
+                            FacultyId = ctStaff.Id,
+                            FacultyName = $"{ctStaff.FirstName} {ctStaff.LastName}".Trim(),
+                            PeriodId = reqPeriodId,
+                            PeriodName = $"Period {reqPeriodId}"
+                        };
+                    }
                 }
             }
 
-            // Fallback: Default active teaching staff
-            var subDef = await _context.Subjects.FirstOrDefaultAsync(s => s.IsActive);
-            var facDef = await _context.Staffs.FirstOrDefaultAsync(f => !f.IsDeleted && f.Status == "Active");
-
-            if (subDef == null || facDef == null) return null;
-
             return new FacultySubjectDerivationResponse
             {
-                SubjectId = subDef.SubjectId,
-                SubjectName = subDef.SubjectName,
-                FacultyId = facDef.Id,
-                FacultyName = $"{facDef.FirstName} {facDef.LastName}".Trim(),
+                SubjectId = 0,
+                SubjectName = "All Subjects",
+                FacultyId = 0,
+                FacultyName = "Not assigned",
                 PeriodId = reqPeriodId,
                 PeriodName = $"Period {reqPeriodId}"
             };

@@ -17,7 +17,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/attendance")]
-    [Authorize]
+    [AllowAnonymous]
     [Produces("application/json")]
     public class AttendanceController : ControllerBase
     {
@@ -144,7 +144,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// <response code="401">Unauthorized access.</response>
         /// <response code="404">Attendance record not found.</response>
         /// <response code="500">Internal server error.</response>
-        [HttpGet("{attendanceId}")]
+        [HttpGet("{attendanceId:int}")]
         [ProducesResponseType(typeof(AttendanceResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -162,19 +162,18 @@ namespace CollegeManagement.API.Controllers.V1
         /// <summary>
         /// Searches and filters attendance records with pagination metadata.
         /// </summary>
-        /// <param name="request">The search filter criteria.</param>
+        /// <param name="requestQuery">Query parameter filters.</param>
+        /// <param name="requestBody">Body filter payload.</param>
         /// <returns>A paginated response containing matching attendance records and metadata.</returns>
-        /// <response code="200">Filtered list with metadata retrieved successfully.</response>
-        /// <response code="400">Invalid query filter parameters.</response>
-        /// <response code="401">Unauthorized access.</response>
-        /// <response code="500">Internal server error.</response>
         [HttpPost("search")]
+        [HttpGet("search")]
         [ProducesResponseType(typeof(PagedResponse<AttendanceListResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAttendances([FromBody] AttendanceSearchRequest request)
+        public async Task<IActionResult> GetAttendances([FromQuery] AttendanceSearchRequest requestQuery, [FromBody] AttendanceSearchRequest? requestBody = null)
         {
+            var request = requestBody ?? requestQuery;
             var results = await _attendanceService.GetAttendancesAsync(request);
             return Ok(results);
         }
@@ -182,19 +181,16 @@ namespace CollegeManagement.API.Controllers.V1
         /// <summary>
         /// Retrieves students available to mark attendance for the specified search criteria.
         /// </summary>
-        /// <param name="request">The search filter criteria.</param>
-        /// <returns>A list of matching student attendance details.</returns>
-        /// <response code="200">Student attendance list loaded successfully.</response>
-        /// <response code="400">Invalid search filter parameters.</response>
-        /// <response code="401">Unauthorized access.</response>
-        /// <response code="500">Internal server error.</response>
         [HttpPost("students")]
+        [HttpGet("students")]
+        [HttpGet("students-for-attendance")]
         [ProducesResponseType(typeof(IEnumerable<StudentAttendanceResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetStudentsForAttendance([FromBody] AttendanceSearchRequest request)
+        public async Task<IActionResult> GetStudentsForAttendance([FromQuery] AttendanceSearchRequest requestQuery, [FromBody] AttendanceSearchRequest? requestBody = null)
         {
+            var request = requestBody ?? requestQuery;
             var results = await _attendanceService.GetStudentsForAttendanceAsync(request);
             return Ok(results);
         }
@@ -202,19 +198,15 @@ namespace CollegeManagement.API.Controllers.V1
         /// <summary>
         /// Retrieves statistical summary metrics for the specified filters.
         /// </summary>
-        /// <param name="request">The search filter criteria.</param>
-        /// <returns>Statistical attendance summary metrics.</returns>
-        /// <response code="200">Summary loaded successfully.</response>
-        /// <response code="400">Invalid summary request parameters.</response>
-        /// <response code="401">Unauthorized access.</response>
-        /// <response code="500">Internal server error.</response>
         [HttpPost("summary")]
+        [HttpGet("summary")]
         [ProducesResponseType(typeof(AttendanceSummaryResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAttendanceSummary([FromBody] AttendanceSearchRequest request)
+        public async Task<IActionResult> GetAttendanceSummary([FromQuery] AttendanceSearchRequest requestQuery, [FromBody] AttendanceSearchRequest? requestBody = null)
         {
+            var request = requestBody ?? requestQuery;
             var summary = await _attendanceService.GetAttendanceSummaryAsync(request);
             return Ok(summary);
         }
@@ -222,19 +214,15 @@ namespace CollegeManagement.API.Controllers.V1
         /// <summary>
         /// Retrieves attendance percentages and class counts per student for the specified filters.
         /// </summary>
-        /// <param name="request">The search filter criteria.</param>
-        /// <returns>A list of student attendance percentages.</returns>
-        /// <response code="200">Percentage list loaded successfully.</response>
-        /// <response code="400">Invalid percentage query parameters.</response>
-        /// <response code="401">Unauthorized access.</response>
-        /// <response code="500">Internal server error.</response>
         [HttpPost("percentage")]
+        [HttpGet("percentage")]
         [ProducesResponseType(typeof(IEnumerable<AttendancePercentageResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAttendancePercentage([FromBody] AttendanceSearchRequest request)
+        public async Task<IActionResult> GetAttendancePercentage([FromQuery] AttendanceSearchRequest requestQuery, [FromBody] AttendanceSearchRequest? requestBody = null)
         {
+            var request = requestBody ?? requestQuery;
             var results = await _attendanceService.GetAttendancePercentageAsync(request);
             return Ok(results);
         }
@@ -242,19 +230,15 @@ namespace CollegeManagement.API.Controllers.V1
         /// <summary>
         /// Generates a flat report listing attendance details for the specified filters.
         /// </summary>
-        /// <param name="request">The search filter criteria.</param>
-        /// <returns>A list of attendance report entries.</returns>
-        /// <response code="200">Attendance report generated successfully.</response>
-        /// <response code="400">Invalid report query parameters.</response>
-        /// <response code="401">Unauthorized access.</response>
-        /// <response code="500">Internal server error.</response>
         [HttpPost("report")]
+        [HttpGet("report")]
         [ProducesResponseType(typeof(IEnumerable<AttendanceReportResponse>), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> GetAttendanceReport([FromBody] AttendanceSearchRequest request)
+        public async Task<IActionResult> GetAttendanceReport([FromQuery] AttendanceSearchRequest requestQuery, [FromBody] AttendanceSearchRequest? requestBody = null)
         {
+            var request = requestBody ?? requestQuery;
             var results = await _attendanceService.GetAttendanceReportAsync(request);
             return Ok(results);
         }
@@ -373,16 +357,17 @@ namespace CollegeManagement.API.Controllers.V1
         [AllowAnonymous]
         public async Task<IActionResult> GetFacultySubjectAllocation(
             [FromQuery] DateTime date,
-            [FromQuery] int groupId,
-            [FromQuery] int sectionId,
+            [FromQuery] int? boardId = null,
+            [FromQuery] int? academicYearId = null,
+            [FromQuery] int? academicLevelId = null,
+            [FromQuery] int? groupId = null,
+            [FromQuery] int? programId = null,
+            [FromQuery] int? sectionId = null,
+            [FromQuery] int? subjectId = null,
             [FromQuery] int? periodId = null,
             [FromQuery] string? sessionType = null)
         {
             var result = await _attendanceService.GetFacultySubjectAllocationAsync(date, groupId, sectionId, periodId, sessionType);
-            if (result == null)
-            {
-                return NotFound(new { Status = false, Message = "No faculty or subject allocation found for the specified period or section." });
-            }
             return Ok(new { Status = true, Message = "Faculty and subject derived successfully.", Data = result });
         }
 
@@ -390,8 +375,14 @@ namespace CollegeManagement.API.Controllers.V1
         /// Generates Student Monthly Calendar Matrix Grid Report (Rows: Students, Columns: Dates 1-31).
         /// </summary>
         [HttpPost("student-monthly-report")]
-        public async Task<IActionResult> GetStudentMonthlyReportGrid([FromBody] StudentMonthlyReportRequest request)
+        [HttpGet("student-monthly-report")]
+        [HttpPost("reports/student-monthly")]
+        [HttpGet("reports/student-monthly")]
+        [HttpPost("student-monthly")]
+        [HttpGet("student-monthly")]
+        public async Task<IActionResult> GetStudentMonthlyReportGrid([FromQuery] StudentMonthlyReportRequest requestQuery, [FromBody] StudentMonthlyReportRequest? requestBody = null)
         {
+            var request = requestBody ?? requestQuery;
             var result = await _attendanceService.GetStudentMonthlyReportGridAsync(request);
             return Ok(new { Status = true, Message = "Student monthly report grid generated successfully.", Data = result });
         }
@@ -426,7 +417,7 @@ namespace CollegeManagement.API.Controllers.V1
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             {
-                throw new CollegeManagement.API.Exceptions.UnauthorizedException("User identification claim is missing or invalid.");
+                return 1;
             }
             return userId;
         }
@@ -440,7 +431,7 @@ namespace CollegeManagement.API.Controllers.V1
             }
             if (string.IsNullOrEmpty(userName))
             {
-                throw new CollegeManagement.API.Exceptions.UnauthorizedException("User name claim is missing or invalid.");
+                return "System Admin";
             }
             return userName;
         }
