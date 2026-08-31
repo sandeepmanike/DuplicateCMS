@@ -163,13 +163,30 @@ public class FeeRepository : IFeeRepository
 
 
     public async Task<IEnumerable<FeeStructureResponse>>
-        GetFeeStructuresAsync()
+     GetFeeStructuresAsync()
     {
         using var c = Connection();
 
-        return await c.QueryAsync<FeeStructureResponse>(
+        using var multi = await c.QueryMultipleAsync(
             "sp_GetFeeStructures",
             commandType: CommandType.StoredProcedure);
+
+        var structures =
+            (await multi.ReadAsync<FeeStructureResponse>())
+            .ToList();
+
+        var items =
+            (await multi.ReadAsync<FeeStructureItemResponse>())
+            .ToList();
+
+        foreach (var structure in structures)
+        {
+            structure.Items = items
+                .Where(x => x.FeeStructureId == structure.FeeStructureId)
+                .ToList();
+        }
+
+        return structures;
     }
 
 
@@ -201,8 +218,8 @@ public class FeeRepository : IFeeRepository
 
 
     public async Task<FeeStructureResponse?> UpdateFeeStructureAsync(
-        int id,
-        UpdateFeeStructureRequest request)
+    int id,
+    UpdateFeeStructureRequest request)
     {
         using var c = Connection();
 
@@ -211,7 +228,8 @@ public class FeeRepository : IFeeRepository
             new
             {
                 p_FeeStructureId = id,
-                p_ProgramId = request.ProgramId,
+                p_StructureName = request.StructureName,
+                p_Description = request.Description,
                 p_IsActive = request.IsActive
             },
             commandType: CommandType.StoredProcedure);
