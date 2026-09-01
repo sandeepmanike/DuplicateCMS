@@ -23,9 +23,9 @@ namespace CollegeManagement.API.Models
         [MaxLength(50)]
         public string AdmissionNo { get; set; } = string.Empty;
 
-        [Required]
+        
         [MaxLength(50)]
-        public string RollNo { get; set; } = string.Empty;
+        public string? RollNo { get; set; }
 
         [Required]
         public DateTime AdmissionDate { get; set; }

@@ -7,9 +7,11 @@ using System.Threading.Tasks;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Timetable;
 using CollegeManagement.API.Models;
+using CollegeManagement.API.Models.Timetable;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Exports;
 using CollegeManagement.API.Services.Interfaces;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 
@@ -494,68 +496,65 @@ namespace CollegeManagement.API.Services.Implementations
 
             var slotPeriodIds = slots.Select(s => s.PeriodId).Distinct().ToList();
 
-            var structureIds = await _context.Periods
-                .AsNoTracking()
-                .Where(p => slotPeriodIds.Contains(p.PeriodId) && p.PeriodStructureId.HasValue)
-                .Select(p => p.PeriodStructureId!.Value)
-                .Distinct()
-                .ToListAsync();
-
-            List<Period> relevantPeriods = new List<Period>();
-
-            if (structureIds.Any())
+            try
             {
-                relevantPeriods = await _context.Periods
-                    .AsNoTracking()
-                    .Where(p => p.IsActive && p.PeriodStructureId.HasValue && structureIds.Contains(p.PeriodStructureId.Value))
-                    .OrderBy(p => p.DisplayOrder)
-                    .ThenBy(p => p.StartTime)
-                    .ToListAsync();
+                var dbConn = _context.Database.GetDbConnection();
+                var structureIds = (await dbConn.QueryAsync<int?>(
+                    "SELECT DISTINCT PeriodStructureId FROM Periods WHERE PeriodId IN @Ids AND PeriodStructureId IS NOT NULL",
+                    new { Ids = slotPeriodIds }
+                )).Where(x => x.HasValue).Select(x => x!.Value).ToList();
+
+                IEnumerable<PeriodColumnModel> relevantPeriods;
+                if (structureIds.Any())
+                {
+                    relevantPeriods = await dbConn.QueryAsync<PeriodColumnModel>(
+                        @"SELECT PeriodId, PeriodName, StartTime, EndTime, DisplayOrder, IsBreak 
+                          FROM Periods 
+                          WHERE IsActive = 1 AND PeriodStructureId IN @StructIds 
+                          ORDER BY DisplayOrder ASC, StartTime ASC",
+                        new { StructIds = structureIds }
+                    );
+                }
+                else
+                {
+                    relevantPeriods = await dbConn.QueryAsync<PeriodColumnModel>(
+                        @"SELECT PeriodId, PeriodName, StartTime, EndTime, DisplayOrder, IsBreak 
+                          FROM Periods 
+                          WHERE IsActive = 1 AND PeriodId IN @Ids 
+                          ORDER BY DisplayOrder ASC, StartTime ASC",
+                        new { Ids = slotPeriodIds }
+                    );
+                }
+
+                var periodList = relevantPeriods.ToList();
+                if (periodList.Count > 0)
+                {
+                    return periodList;
+                }
+            }
+            catch
+            {
+                // Fallback safely to slot-derived columns if raw query fails
             }
 
-            if (!relevantPeriods.Any())
-            {
-                relevantPeriods = await _context.Periods
-                    .AsNoTracking()
-                    .Where(p => p.IsActive && slotPeriodIds.Contains(p.PeriodId))
-                    .OrderBy(p => p.DisplayOrder)
-                    .ThenBy(p => p.StartTime)
-                    .ToListAsync();
-            }
-
-            var periodColumns = relevantPeriods.Select(p => new PeriodColumnModel
-            {
-                PeriodId = p.PeriodId,
-                PeriodName = p.PeriodName,
-                StartTime = p.StartTime,
-                EndTime = p.EndTime,
-                DisplayOrder = p.DisplayOrder,
-                IsBreak = p.IsBreak
-            }).ToList();
-
-            if (periodColumns.Count == 0)
-            {
-                periodColumns = slots
-                    .GroupBy(s => s.PeriodId)
-                    .Select(g =>
+            return slots
+                .GroupBy(s => s.PeriodId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return new PeriodColumnModel
                     {
-                        var first = g.First();
-                        return new PeriodColumnModel
-                        {
-                            PeriodId = first.PeriodId,
-                            PeriodName = first.PeriodName,
-                            StartTime = first.StartTime,
-                            EndTime = first.EndTime,
-                            DisplayOrder = first.PeriodId,
-                            IsBreak = first.IsBreak
-                        };
-                    })
-                    .OrderBy(p => p.DisplayOrder)
-                    .ThenBy(p => p.StartTime)
-                    .ToList();
-            }
-
-            return periodColumns;
+                        PeriodId = first.PeriodId,
+                        PeriodName = first.PeriodName,
+                        StartTime = first.StartTime,
+                        EndTime = first.EndTime,
+                        DisplayOrder = first.PeriodId,
+                        IsBreak = first.IsBreak
+                    };
+                })
+                .OrderBy(p => p.DisplayOrder)
+                .ThenBy(p => p.StartTime)
+                .ToList();
         }
 
         private static string GetDayName(int dayOfWeek)

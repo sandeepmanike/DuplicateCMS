@@ -173,8 +173,13 @@ namespace CollegeManagement.API.Services.Implementations
 
         public async Task<ValidateTimetableResultDto> ValidateSectionTimetableAsync(int sectionId, int academicYearId)
         {
+            var section = await _context.Sections.AsNoTracking().FirstOrDefaultAsync(s => s.SectionId == sectionId);
+            if (academicYearId <= 0 && section != null && section.AcademicYearId > 0)
+            {
+                academicYearId = section.AcademicYearId;
+            }
+
             var slots = (await _timetableRepository.GetBySectionIdAsync(sectionId, academicYearId)).ToList();
-            var section = await _context.Sections.FirstOrDefaultAsync(s => s.SectionId == sectionId);
 
             var result = new ValidateTimetableResultDto
             {
@@ -195,6 +200,7 @@ namespace CollegeManagement.API.Services.Implementations
                 return result;
             }
 
+            // 1. Check duplicate slots within this section in memory
             var duplicateSlots = slots
                 .GroupBy(s => new { s.DayOfWeek, s.PeriodId })
                 .Where(g => g.Count() > 1);
@@ -211,10 +217,31 @@ namespace CollegeManagement.API.Services.Implementations
                 });
             }
 
+            // 2. Fetch all external conflicting slots in a single batch query (O(1) in-memory resolution)
+            var staffIds = slots.Where(s => s.StaffId > 0).Select(s => s.StaffId).Distinct().ToList();
+            var roomIds = slots.Where(s => s.RoomId > 0).Select(s => s.RoomId).Distinct().ToList();
+            var currentSlotIds = slots.Select(s => s.Id).ToHashSet();
+
+            var externalSlots = await _context.Timetables
+                .AsNoTracking()
+                .Where(t => t.AcademicYearId == academicYearId 
+                         && !currentSlotIds.Contains(t.Id)
+                         && (staffIds.Contains(t.StaffId) || (t.RoomId > 0 && roomIds.Contains(t.RoomId))))
+                .Select(t => new { t.Id, t.StaffId, t.RoomId, t.DayOfWeek, t.PeriodId, t.SectionId })
+                .ToListAsync();
+
+            var staffSlotLookup = externalSlots
+                .GroupBy(t => (StaffId: t.StaffId, Day: t.DayOfWeek, Period: t.PeriodId))
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var roomSlotLookup = externalSlots
+                .Where(t => t.RoomId > 0)
+                .GroupBy(t => (RoomId: t.RoomId, Day: t.DayOfWeek, Period: t.PeriodId))
+                .ToDictionary(g => g.Key, g => g.First());
+
             foreach (var slot in slots)
             {
-                bool staffConflict = await _timetableRepository.HasFacultySlotConflictAsync(academicYearId, slot.StaffId, slot.DayOfWeek, slot.PeriodId, excludeId: slot.Id);
-                if (staffConflict)
+                if (slot.StaffId > 0 && staffSlotLookup.ContainsKey((slot.StaffId, slot.DayOfWeek, slot.PeriodId)))
                 {
                     result.IsValid = false;
                     result.Errors.Add(new TimetableValidationErrorDto
@@ -231,8 +258,7 @@ namespace CollegeManagement.API.Services.Implementations
                     });
                 }
 
-                bool roomConflict = await _timetableRepository.HasRoomSlotConflictAsync(academicYearId, slot.RoomId, slot.DayOfWeek, slot.PeriodId, excludeId: slot.Id);
-                if (roomConflict)
+                if (slot.RoomId > 0 && roomSlotLookup.ContainsKey((slot.RoomId, slot.DayOfWeek, slot.PeriodId)))
                 {
                     result.IsValid = false;
                     result.Errors.Add(new TimetableValidationErrorDto
