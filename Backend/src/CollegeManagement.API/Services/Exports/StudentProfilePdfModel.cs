@@ -33,17 +33,17 @@ namespace CollegeManagement.API.Services.Exports
         public string? Pincode { get; set; }
 
         // Academic Context
-        public int BoardId { get; set; }
+        public int? BoardId { get; set; }
         public string BoardName { get; set; } = string.Empty;
-        public int AcademicYearId { get; set; }
+        public int? AcademicYearId { get; set; }
         public string AcademicYearName { get; set; } = string.Empty;
-        public int AcademicLevelId { get; set; }
+        public int? AcademicLevelId { get; set; }
         public string AcademicLevelName { get; set; } = string.Empty;
-        public int GroupId { get; set; }
+        public int? GroupId { get; set; }
         public string GroupName { get; set; } = string.Empty;
-        public int ProgramId { get; set; }
+        public int? ProgramId { get; set; }
         public string ProgramName { get; set; } = string.Empty;
-        public int SectionId { get; set; }
+        public int? SectionId { get; set; }
         public string SectionName { get; set; } = string.Empty;
 
         // Parents & Guardian
