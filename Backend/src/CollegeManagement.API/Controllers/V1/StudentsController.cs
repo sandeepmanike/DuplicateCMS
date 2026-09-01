@@ -1,5 +1,6 @@
 using CollegeManagement.API.DTOs.Students;
 using CollegeManagement.API.Services;
+using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers.V1
@@ -9,10 +10,12 @@ namespace CollegeManagement.API.Controllers.V1
     public class StudentsController : ControllerBase
     {
         private readonly IStudentService _service;
+        private readonly IStudentExportService _exportService;
 
-        public StudentsController(IStudentService service)
+        public StudentsController(IStudentService service, IStudentExportService exportService)
         {
             _service = service;
+            _exportService = exportService;
         }
 
 
@@ -453,6 +456,71 @@ namespace CollegeManagement.API.Controllers.V1
             {
                 exists
             });
+        }
+    
+
+        // =========================================================
+        // EXPORT INDIVIDUAL STUDENT PROFILE PDF
+        // =========================================================
+
+        /// <summary>
+        /// Exports an individual student's profile as a PDF document.
+        /// </summary>
+        /// <param name="studentId">The unique ID of the student.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>A binary PDF stream.</returns>
+        [HttpGet("{studentId:int}/export/pdf")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ExportProfilePdf(
+            int studentId,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var (pdfBytes, fileName) = await _exportService.ExportStudentProfilePdfAsync(studentId, ct);
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+    
+        // =========================================================
+        // EXPORT ALL OR FILTERED STUDENTS EXCEL
+        // =========================================================
+
+        /// <summary>
+        /// Exports all or filtered students to an Excel spreadsheet (.xlsx).
+        /// </summary>
+        /// <param name="filter">Optional query filters.</param>
+        /// <param name="ct">Cancellation token.</param>
+        /// <returns>An Excel binary stream.</returns>
+        [HttpGet("export/excel")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ExportExcel(
+            [FromQuery] StudentExportFilterDto filter,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var (excelBytes, fileName) = await _exportService.ExportStudentsToExcelAsync(filter, ct);
+                return File(
+                    excelBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    fileName);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }

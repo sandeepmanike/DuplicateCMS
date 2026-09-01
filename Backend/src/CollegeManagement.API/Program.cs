@@ -318,7 +318,7 @@ builder.Services.AddScoped<IAssignmentService, AssignmentService>();
 builder.Services.AddScoped<IAssignmentSubmissionService, AssignmentSubmissionService>();
 builder.Services.AddScoped<IExaminationService, ExaminationService>();
 builder.Services.AddScoped<IExaminationExportService, ExaminationExportService>();
-builder.Services.AddHostedService<CollegeManagement.API.Services.Background.ExamAutoCompletionWorker>();
+// builder.Services.AddHostedService<CollegeManagement.API.Services.Background.ExamAutoCompletionWorker>();
 builder.Services.AddScoped<IMarksService, MarksService>();
 builder.Services.AddScoped<IEvaluationService, EvaluationService>();
 builder.Services.AddScoped<IResultService, ResultService>();
@@ -327,6 +327,7 @@ builder.Services.AddScoped<IPromotionService, PromotionService>();
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableService, TimetableService>();
 builder.Services.AddScoped<ITimetableExportService, TimetableExportService>();
+builder.Services.AddScoped<IStudentExportService, StudentExportService>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
 builder.Services.AddScoped<IPeriodStructureService, PeriodStructureService>();
 builder.Services.AddScoped<IBreakTypeService, BreakTypeService>();
