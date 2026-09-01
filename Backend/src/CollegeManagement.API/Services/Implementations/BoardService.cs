@@ -369,18 +369,6 @@ namespace CollegeManagement.API.Services.Implementations
         }
 
         /// <summary>
-        /// Retrieves active academic patterns, using memory cache.
-        /// </summary>
-        public async Task<IEnumerable<AcademicPatternResponse>> GetAcademicPatternsAsync()
-        {
-            return await _cacheService.GetOrCreateAsync("lookup:academic-patterns", async () =>
-            {
-                var patterns = await _boardRepository.GetAcademicPatternsAsync();
-                return _mapper.Map<IEnumerable<AcademicPatternResponse>>(patterns);
-            });
-        }
-
-        /// <summary>
         /// Retrieves active academic levels, using memory cache.
         /// </summary>
         public async Task<IEnumerable<AcademicLevelResponse>> GetAcademicLevelsAsync(int? boardId = null)
@@ -411,16 +399,23 @@ namespace CollegeManagement.API.Services.Implementations
         public async Task<BoardFormDataResponse> GetFormDataAsync()
         {
             var countries = await GetCountriesAsync();
-            var patterns = await GetAcademicPatternsAsync();
             var levels = await GetAcademicLevelsAsync();
             var gradingSystems = await GetGradingSystemsAsync();
+            var boardTypes = new List<string>
+            {
+                "State Board",
+                "Central Board",
+                "National / Central Board",
+                "Open Board",
+                "International Board"
+            };
 
             return new BoardFormDataResponse
             {
                 Countries = countries,
-                AcademicPatterns = patterns,
                 AcademicLevels = levels,
-                GradingSystems = gradingSystems
+                GradingSystems = gradingSystems,
+                BoardTypes = boardTypes
             };
         }
 
@@ -622,7 +617,7 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ConflictException($"Board code '{request.BoardCode}' already exists.");
             }
 
-            await ValidateLookupDataAsync(request.CountryId, request.StateId, request.AcademicPatternId, request.GradingSystemId);
+            await ValidateLookupDataAsync(request.CountryId, request.StateId, request.GradingSystemId);
             await ValidateAcademicLevelsAsync(request.AcademicLevelIds);
         }
 
@@ -648,14 +643,14 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ConflictException("Board code already exists.");
             }
 
-            await ValidateLookupDataAsync(request.CountryId, request.StateId, request.AcademicPatternId, request.GradingSystemId);
+            await ValidateLookupDataAsync(request.CountryId, request.StateId, request.GradingSystemId);
             await ValidateAcademicLevelsAsync(request.AcademicLevelIds);
         }
 
         /// <summary>
         /// Validates metadata relationships and lookup existences.
         /// </summary>
-        private async Task ValidateLookupDataAsync(int countryId, int? stateId, int academicPatternId, int gradingSystemId)
+        private async Task ValidateLookupDataAsync(int countryId, int? stateId, int gradingSystemId)
         {
             if (!await _boardRepository.CountryExistsAsync(countryId))
             {
@@ -673,11 +668,6 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     throw new Exceptions.ValidationException($"State with ID {stateId} does not belong to Country with ID {countryId}.");
                 }
-            }
-
-            if (!await _boardRepository.AcademicPatternExistsAsync(academicPatternId))
-            {
-                throw new NotFoundException($"Academic pattern with ID {academicPatternId} was not found.");
             }
 
             if (!await _boardRepository.GradingSystemExistsAsync(gradingSystemId))
@@ -724,6 +714,11 @@ namespace CollegeManagement.API.Services.Implementations
             if (oldBoard.BoardCode != request.BoardCode)
             {
                 changes.Add($"Board Code from '{oldBoard.BoardCode}' to '{request.BoardCode}'");
+            }
+
+            if (oldBoard.BoardType != request.BoardType)
+            {
+                changes.Add($"Board Type from '{oldBoard.BoardType}' to '{request.BoardType}'");
             }
 
             var oldLevels = oldBoard.BoardAcademicLevels != null 

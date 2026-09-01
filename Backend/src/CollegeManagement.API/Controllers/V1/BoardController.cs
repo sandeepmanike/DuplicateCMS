@@ -312,25 +312,10 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Retrieves active academic patterns.
-        /// </summary>
-        /// <returns>A list of academic patterns.</returns>
-        /// <response code="200">Academic patterns retrieved successfully.</response>
-        /// <response code="500">Internal server error.</response>
-        [HttpGet("academic-patterns")]
-        [ProducesResponseType(typeof(IEnumerable<AcademicPatternResponse>), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<IEnumerable<AcademicPatternResponse>>> GetAcademicPatterns()
-        {
-            var patterns = await _boardService.GetAcademicPatternsAsync();
-            return Ok(patterns);
-        }
-
-        /// <summary>
-        /// <summary>
         /// Retrieves active academic levels, optionally filtered by boardId.
         /// </summary>
         /// <param name="boardId">Optional BoardId filter.</param>
+        /// <param name="boardIdRoute">Optional BoardId from route.</param>
         /// <returns>A list of academic levels.</returns>
         /// <response code="200">Academic levels retrieved successfully.</response>
         /// <response code="500">Internal server error.</response>

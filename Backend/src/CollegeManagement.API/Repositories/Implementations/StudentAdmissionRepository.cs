@@ -144,6 +144,7 @@ namespace CollegeManagement.API.Repositories.Implementations
                         // -------------------------------------------------
                         p_AnnualIncome =
                             request.AnnualIncome,
+                        p_FeeStructureId = request.FeeStructureId,
 
                         p_ScholarshipStatus =
                             request.ScholarshipStatus,

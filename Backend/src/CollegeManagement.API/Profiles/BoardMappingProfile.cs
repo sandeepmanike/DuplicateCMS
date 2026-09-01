@@ -28,7 +28,6 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.BoardAcademicLevels, opt => opt.Ignore())
                 .ForMember(dest => dest.Country, opt => opt.Ignore())
                 .ForMember(dest => dest.State, opt => opt.Ignore())
-                .ForMember(dest => dest.AcademicPattern, opt => opt.Ignore())
                 .ForMember(dest => dest.GradingSystem, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Status));
 
@@ -40,7 +39,6 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.BoardAcademicLevels, opt => opt.Ignore())
                 .ForMember(dest => dest.Country, opt => opt.Ignore())
                 .ForMember(dest => dest.State, opt => opt.Ignore())
-                .ForMember(dest => dest.AcademicPattern, opt => opt.Ignore())
                 .ForMember(dest => dest.GradingSystem, opt => opt.Ignore())
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.Status));
 
@@ -50,9 +48,9 @@ namespace CollegeManagement.API.Profiles
 
             // Board -> BoardResponse mapping configuration
             CreateMap<Board, BoardResponse>()
+                .ForMember(dest => dest.BoardType, opt => opt.MapFrom(src => src.BoardType))
                 .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.Country != null ? src.Country.CountryName : string.Empty))
                 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.State != null ? src.State.StateName : string.Empty))
-                .ForMember(dest => dest.AcademicPatternName, opt => opt.MapFrom(src => src.AcademicPattern != null ? src.AcademicPattern.PatternName : string.Empty))
                 .ForMember(dest => dest.GradingSystemName, opt => opt.MapFrom(src => src.GradingSystem != null ? src.GradingSystem.GradingSystemName : string.Empty))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt))
@@ -67,9 +65,9 @@ namespace CollegeManagement.API.Profiles
 
             // Board -> BoardListResponse mapping configuration
             CreateMap<Board, BoardListResponse>()
+                .ForMember(dest => dest.BoardType, opt => opt.MapFrom(src => src.BoardType))
                 .ForMember(dest => dest.CountryName, opt => opt.MapFrom(src => src.Country != null ? src.Country.CountryName : string.Empty))
                 .ForMember(dest => dest.StateName, opt => opt.MapFrom(src => src.State != null ? src.State.StateName : string.Empty))
-                .ForMember(dest => dest.AcademicPatternName, opt => opt.MapFrom(src => src.AcademicPattern != null ? src.AcademicPattern.PatternName : string.Empty))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.CreatedDate, opt => opt.MapFrom(src => src.CreatedAt))
                 .ForMember(dest => dest.AcademicLevelIds, opt => opt.MapFrom(src => src.BoardAcademicLevels != null 
@@ -101,9 +99,6 @@ namespace CollegeManagement.API.Profiles
 
             // State -> StateResponse mapping configuration
             CreateMap<State, StateResponse>();
-
-            // AcademicPattern -> AcademicPatternResponse mapping configuration
-            CreateMap<AcademicPattern, AcademicPatternResponse>();
 
             // AcademicLevel -> AcademicLevelResponse mapping configuration
             CreateMap<AcademicLevel, AcademicLevelResponse>();
