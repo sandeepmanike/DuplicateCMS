@@ -242,6 +242,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 facultyQuery = facultyQuery.Where(f => f.StaffType != null && f.StaffType.ToLower() != "teaching");
             }
 
+            if (request.BoardId.HasValue && request.BoardId.Value > 0)
+            {
+                facultyQuery = facultyQuery.Where(f => f.BoardId == request.BoardId.Value || f.BoardId == null);
+            }
+
             if (request.DepartmentId.HasValue && request.DepartmentId.Value > 0)
             {
                 facultyQuery = facultyQuery.Where(f => f.DepartmentId == request.DepartmentId.Value);

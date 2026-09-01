@@ -143,7 +143,8 @@ namespace CollegeManagement.API.Models
 
         [MaxLength(50)]
         public string? Medium { get; set; }
-
+        // ADD THIS
+        public int FeeStructureId { get; set; }
         [MaxLength(50)]
         public string? ScholarshipStatus { get; set; }
 

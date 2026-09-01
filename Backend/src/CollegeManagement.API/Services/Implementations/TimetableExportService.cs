@@ -7,9 +7,11 @@ using System.Threading.Tasks;
 using CollegeManagement.API.Data;
 using CollegeManagement.API.DTOs.Timetable;
 using CollegeManagement.API.Models;
+using CollegeManagement.API.Models.Timetable;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Exports;
 using CollegeManagement.API.Services.Interfaces;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 
@@ -146,48 +148,10 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             // =========================================================================
-            // 3. FETCH CONFIG'D PERIODS (ORDERED BY DISPLAY ORDER / START TIME)
+            // 3. FETCH SCOPED PERIODS FOR THIS SECTION'S STRUCTURE
             // =========================================================================
 
-            var allPeriods = await _context.Periods
-                .AsNoTracking()
-                .Where(p => p.IsActive)
-                .OrderBy(p => p.DisplayOrder)
-                .ThenBy(p => p.StartTime)
-                .ToListAsync();
-
-            var periodColumns = allPeriods.Select(p => new PeriodColumnModel
-            {
-                PeriodId = p.PeriodId,
-                PeriodName = p.PeriodName,
-                StartTime = p.StartTime,
-                EndTime = p.EndTime,
-                DisplayOrder = p.DisplayOrder,
-                IsBreak = p.IsBreak
-            }).ToList();
-
-            // If no periods in DB, derive from slots
-            if (periodColumns.Count == 0)
-            {
-                periodColumns = slotsList
-                    .GroupBy(s => s.PeriodId)
-                    .Select(g =>
-                    {
-                        var first = g.First();
-                        return new PeriodColumnModel
-                        {
-                            PeriodId = first.PeriodId,
-                            PeriodName = first.PeriodName,
-                            StartTime = first.StartTime,
-                            EndTime = first.EndTime,
-                            DisplayOrder = first.PeriodId,
-                            IsBreak = first.IsBreak
-                        };
-                    })
-                    .OrderBy(p => p.DisplayOrder)
-                    .ThenBy(p => p.StartTime)
-                    .ToList();
-            }
+            var periodColumns = await ResolvePeriodColumnsForSlotsAsync(slotsList);
 
             // =========================================================================
             // 4. GROUP SLOTS BY DAY OF WEEK
@@ -342,49 +306,6 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new KeyNotFoundException("No timetable found for the selected Group.");
             }
 
-            // =========================================================================
-            // 3. FETCH CONFIGURED PERIODS & ACTIVE SECTIONS
-            // =========================================================================
-
-            var allPeriods = await _context.Periods
-                .AsNoTracking()
-                .Where(p => p.IsActive)
-                .OrderBy(p => p.DisplayOrder)
-                .ThenBy(p => p.StartTime)
-                .ToListAsync();
-
-            var periodColumns = allPeriods.Select(p => new PeriodColumnModel
-            {
-                PeriodId = p.PeriodId,
-                PeriodName = p.PeriodName,
-                StartTime = p.StartTime,
-                EndTime = p.EndTime,
-                DisplayOrder = p.DisplayOrder,
-                IsBreak = p.IsBreak
-            }).ToList();
-
-            if (periodColumns.Count == 0)
-            {
-                periodColumns = slotsList
-                    .GroupBy(s => s.PeriodId)
-                    .Select(g =>
-                    {
-                        var first = g.First();
-                        return new PeriodColumnModel
-                        {
-                            PeriodId = first.PeriodId,
-                            PeriodName = first.PeriodName,
-                            StartTime = first.StartTime,
-                            EndTime = first.EndTime,
-                            DisplayOrder = first.PeriodId,
-                            IsBreak = first.IsBreak
-                        };
-                    })
-                    .OrderBy(p => p.DisplayOrder)
-                    .ThenBy(p => p.StartTime)
-                    .ToList();
-            }
-
             // Fetch active Sections under this Group
             var allSections = await _context.Sections
                 .AsNoTracking()
@@ -395,7 +316,7 @@ namespace CollegeManagement.API.Services.Implementations
                 .ToListAsync();
 
             // =========================================================================
-            // 4. GROUP DATA BY PROGRAM -> SECTION -> DAY -> PERIOD
+            // 3. GROUP DATA BY PROGRAM -> SECTION -> DAY -> PERIOD
             // =========================================================================
 
             // Determine all distinct programs
@@ -473,6 +394,9 @@ namespace CollegeManagement.API.Services.Implementations
                     var secSlots = slotsList.Where(s => s.SectionId == sec.SectionId).ToList();
                     progSlotCount += secSlots.Count;
 
+                    // Resolve scoped periods for this section
+                    var secPeriodColumns = await ResolvePeriodColumnsForSlotsAsync(secSlots.Any() ? secSlots : slotsList);
+
                     var daySchedules = new List<DayScheduleModel>();
                     if (secSlots.Count > 0)
                     {
@@ -510,7 +434,7 @@ namespace CollegeManagement.API.Services.Implementations
                         SectionId = sec.SectionId,
                         SectionName = sec.SectionName,
                         HasTimetable = secSlots.Count > 0,
-                        Periods = periodColumns,
+                        Periods = secPeriodColumns,
                         Days = daySchedules
                     });
                 }
@@ -532,28 +456,27 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             // =========================================================================
-            // 5. ASSEMBLE MODEL & BUILD WORKBOOK
+            // 4. ASSEMBLE WORKBOOK MODEL & GENERATE EXCEL
             // =========================================================================
 
-            var excelModel = new GroupTimetableExcelModel
+            var groupExcelModel = new GroupTimetableExcelModel
             {
                 Title = "GROUP TIMETABLE",
                 BoardName = board.BoardName,
-                BoardCode = board.BoardCode,
+                BoardCode = board.BoardCode ?? string.Empty,
                 AcademicLevelName = level.LevelName,
-                LevelCode = level.LevelCode,
+                LevelCode = level.LevelCode ?? string.Empty,
                 AcademicYearName = year.AcademicYearName,
                 GroupName = group.GroupName,
-                GroupCode = group.GroupCode,
+                GroupCode = group.GroupCode ?? string.Empty,
                 GeneratedAt = DateTime.Now,
                 ProgramSummaries = programSummaries,
                 Programs = programExcelModels
             };
 
-            var excelBytes = GroupTimetableExcelBuilder.BuildWorkbook(excelModel);
+            var excelBytes = GroupTimetableExcelBuilder.BuildWorkbook(groupExcelModel);
 
-            // Filename: Timetable_<Group>_<AcademicYear>.xlsx
-            var safeGroup = SanitizeFileName(group.GroupName);
+            var safeGroup = SanitizeFileName(!string.IsNullOrWhiteSpace(group.GroupCode) ? group.GroupCode : group.GroupName);
             var safeYear = SanitizeFileName(year.AcademicYearName);
             var fileName = $"Timetable_{safeGroup}_{safeYear}.xlsx";
 
@@ -561,7 +484,79 @@ namespace CollegeManagement.API.Services.Implementations
         }
         #endregion
 
-        #region Helpers
+        #region Private Helpers
+        /// <summary>
+        /// Resolves the specific period columns (including breaks) belonging to the period structure(s) used by the slots.
+        /// Prevents concatenation of unrelated period structures across the database.
+        /// </summary>
+        private async Task<List<PeriodColumnModel>> ResolvePeriodColumnsForSlotsAsync(List<TimetableResponseDto> slots)
+        {
+            if (slots == null || slots.Count == 0)
+                return new List<PeriodColumnModel>();
+
+            var slotPeriodIds = slots.Select(s => s.PeriodId).Distinct().ToList();
+
+            try
+            {
+                var dbConn = _context.Database.GetDbConnection();
+                var structureIds = (await dbConn.QueryAsync<int?>(
+                    "SELECT DISTINCT PeriodStructureId FROM Periods WHERE PeriodId IN @Ids AND PeriodStructureId IS NOT NULL",
+                    new { Ids = slotPeriodIds }
+                )).Where(x => x.HasValue).Select(x => x!.Value).ToList();
+
+                IEnumerable<PeriodColumnModel> relevantPeriods;
+                if (structureIds.Any())
+                {
+                    relevantPeriods = await dbConn.QueryAsync<PeriodColumnModel>(
+                        @"SELECT PeriodId, PeriodName, StartTime, EndTime, DisplayOrder, IsBreak 
+                          FROM Periods 
+                          WHERE IsActive = 1 AND PeriodStructureId IN @StructIds 
+                          ORDER BY DisplayOrder ASC, StartTime ASC",
+                        new { StructIds = structureIds }
+                    );
+                }
+                else
+                {
+                    relevantPeriods = await dbConn.QueryAsync<PeriodColumnModel>(
+                        @"SELECT PeriodId, PeriodName, StartTime, EndTime, DisplayOrder, IsBreak 
+                          FROM Periods 
+                          WHERE IsActive = 1 AND PeriodId IN @Ids 
+                          ORDER BY DisplayOrder ASC, StartTime ASC",
+                        new { Ids = slotPeriodIds }
+                    );
+                }
+
+                var periodList = relevantPeriods.ToList();
+                if (periodList.Count > 0)
+                {
+                    return periodList;
+                }
+            }
+            catch
+            {
+                // Fallback safely to slot-derived columns if raw query fails
+            }
+
+            return slots
+                .GroupBy(s => s.PeriodId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return new PeriodColumnModel
+                    {
+                        PeriodId = first.PeriodId,
+                        PeriodName = first.PeriodName,
+                        StartTime = first.StartTime,
+                        EndTime = first.EndTime,
+                        DisplayOrder = first.PeriodId,
+                        IsBreak = first.IsBreak
+                    };
+                })
+                .OrderBy(p => p.DisplayOrder)
+                .ThenBy(p => p.StartTime)
+                .ToList();
+        }
+
         private static string GetDayName(int dayOfWeek)
         {
             return dayOfWeek switch
@@ -579,10 +574,11 @@ namespace CollegeManagement.API.Services.Implementations
 
         private static string SanitizeFileName(string input)
         {
-            if (string.IsNullOrWhiteSpace(input)) return "Timetable";
-            var invalidChars = Regex.Escape(new string(Path.GetInvalidFileNameChars()) + " /\\:*?\"<>|");
-            var sanitized = Regex.Replace(input, "[" + invalidChars + "]", "_");
-            return Regex.Replace(sanitized, "_+", "_").Trim('_');
+            if (string.IsNullOrWhiteSpace(input)) return "Export";
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var cleaned = new string(input.Select(ch => invalidChars.Contains(ch) || char.IsWhiteSpace(ch) ? '_' : ch).ToArray());
+            cleaned = Regex.Replace(cleaned, @"_+", "_").Trim('_');
+            return string.IsNullOrWhiteSpace(cleaned) ? "Export" : cleaned;
         }
         #endregion
     }

@@ -42,8 +42,8 @@ namespace CollegeManagement.API.Services.Background
                     _logger.LogError(ex, "Error in ExamAutoCompletionWorker cycle.");
                 }
 
-                // Check every 60 seconds
-                await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
+                // Check every 15 minutes to conserve database connection pool limits
+                await Task.Delay(TimeSpan.FromMinutes(15), stoppingToken);
             }
         }
 

@@ -185,29 +185,13 @@ public class DashboardController : ControllerBase
         }
 
         // 2. Teaching Staff (Filtered by Board)
-        int teachingStaff = 0;
-        try
-        {
-            teachingStaff = await conn.ExecuteScalarAsync<int>(@"
-                SELECT COUNT(*) FROM Staffs
-                WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
-                  AND (Status = 'Active' OR Status IS NULL)
-                  AND (StaffType = 'Teaching' OR FacultyType = 'Teaching')
-                  AND (@boardId IS NULL OR BoardId = @boardId);",
-                new { boardId });
-        }
-        catch
-        {
-            try
-            {
-                teachingStaff = await conn.ExecuteScalarAsync<int>(@"
-                    SELECT COUNT(*) FROM Staffs
-                    WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
-                      AND (Status = 'Active' OR Status IS NULL)
-                      AND (StaffType = 'Teaching' OR FacultyType = 'Teaching');");
-            }
-            catch { }
-        }
+        var teachingStaff = await conn.ExecuteScalarAsync<int>(@"
+            SELECT COUNT(*) FROM `Staff`
+            WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
+              AND (Status = 'Active' OR Status IS NULL)
+              AND (StaffType = 'Teaching' OR FacultyType = 'Teaching')
+              AND (@boardId IS NULL OR BoardId = @boardId);",
+            new { boardId });
 
         if (teachingStaff == 0 && !boardId.HasValue)
         {
@@ -221,29 +205,13 @@ public class DashboardController : ControllerBase
         }
 
         // 3. Non-Teaching Staff (Filtered by Board)
-        int nonTeachingStaff = 0;
-        try
-        {
-            nonTeachingStaff = await conn.ExecuteScalarAsync<int>(@"
-                SELECT COUNT(*) FROM Staffs
-                WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
-                  AND (Status = 'Active' OR Status IS NULL)
-                  AND (StaffType = 'Non-Teaching' OR (StaffType != 'Teaching' AND FacultyType != 'Teaching'))
-                  AND (@boardId IS NULL OR BoardId = @boardId);",
-                new { boardId });
-        }
-        catch
-        {
-            try
-            {
-                nonTeachingStaff = await conn.ExecuteScalarAsync<int>(@"
-                    SELECT COUNT(*) FROM Staffs
-                    WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
-                      AND (Status = 'Active' OR Status IS NULL)
-                      AND (StaffType = 'Non-Teaching' OR (StaffType != 'Teaching' AND FacultyType != 'Teaching'));");
-            }
-            catch { }
-        }
+        var nonTeachingStaff = await conn.ExecuteScalarAsync<int>(@"
+            SELECT COUNT(*) FROM `Staff`
+            WHERE (IsDeleted = 0 OR IsDeleted IS NULL)
+              AND (Status = 'Active' OR Status IS NULL)
+              AND (StaffType = 'Non-Teaching' OR (StaffType != 'Teaching' AND FacultyType != 'Teaching'))
+              AND (@boardId IS NULL OR BoardId = @boardId);",
+            new { boardId });
 
         // 4. Total Groups
         int totalGroups = 0;
@@ -1073,7 +1041,7 @@ public class DashboardController : ControllerBase
                           AND (t.IsPublished = 1 OR t.IsPublished IS NULL)
                           AND (@academicYearId IS NULL OR t.AcademicYearId = @academicYearId)
                     ), 0) AS PeriodCount
-                FROM Staffs s
+                FROM Staff s
                 LEFT JOIN Departments d ON d.DepartmentId = s.DepartmentId
                 WHERE (s.IsDeleted = 0 OR s.IsDeleted IS NULL)
                   AND (s.Status = 'Active' OR s.Status IS NULL)
@@ -1110,7 +1078,7 @@ public class DashboardController : ControllerBase
                         COALESCE(d.DepartmentName, s.Department, 'General') AS Department,
                         COALESCE((SELECT COUNT(*) FROM StaffSubjectAllocations a WHERE a.StaffId = s.Id OR a.FacultyId = s.Id), 0) AS AssignedSubjects,
                         COALESCE((SELECT COUNT(*) FROM Timetables t WHERE (t.StaffId = s.Id OR t.FacultyId = s.Id) AND (t.IsPublished = 1 OR t.IsPublished IS NULL)), 0) AS PeriodCount
-                    FROM Staffs s
+                    FROM Staff s
                     LEFT JOIN Departments d ON d.DepartmentId = s.DepartmentId
                     WHERE (s.IsDeleted = 0 OR s.IsDeleted IS NULL)
                       AND (s.Status = 'Active' OR s.Status IS NULL)

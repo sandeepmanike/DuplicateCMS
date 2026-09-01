@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -116,7 +116,7 @@ namespace CollegeManagement.API.Services.Implementations
             await _periodStructureRepository.AddItemsAsync(createdStructure.Id, structureItems);
 
             // Generate and persist Period records for this structure
-            await GenerateAndPersistPeriodsAsync(createdStructure, structureItems);
+            await UpdateOrPersistPeriodsAsync(createdStructure, structureItems);
 
             return (await GetByIdAsync(createdStructure.Id))!;
         }
@@ -140,9 +140,8 @@ namespace CollegeManagement.API.Services.Implementations
             var structureItems = BuildStructureItems(id, dto.PeriodDurationMinutes, dto.TotalTeachingPeriods, dto.Breaks);
             await _periodStructureRepository.AddItemsAsync(id, structureItems);
 
-            // Regenerate Periods belonging to this structure only
-            await _periodRepository.DeleteByStructureIdAsync(id);
-            await GenerateAndPersistPeriodsAsync(existing, structureItems);
+            // Update or generate Periods in-place (preserves Foreign Key references in Timetables)
+            await UpdateOrPersistPeriodsAsync(existing, structureItems);
 
             return await GetByIdAsync(id);
         }
@@ -319,15 +318,21 @@ namespace CollegeManagement.API.Services.Implementations
             return items;
         }
 
-        private async Task GenerateAndPersistPeriodsAsync(PeriodStructure structure, List<PeriodStructureItem> items)
+        private async Task UpdateOrPersistPeriodsAsync(PeriodStructure structure, List<PeriodStructureItem> items)
         {
             var breakTypes = (await _breakTypeRepository.GetAllAsync(includeInactive: true))
                 .ToDictionary(bt => bt.Id, bt => bt.Name);
 
-            var cursor = structure.DayStartTime;
+            var existingPeriods = (await _periodRepository.GetByStructureIdAsync(structure.Id))
+                .OrderBy(p => p.DisplayOrder)
+                .ToList();
 
-            foreach (var item in items.OrderBy(i => i.SequenceOrder))
+            var cursor = structure.DayStartTime;
+            var orderedItems = items.OrderBy(i => i.SequenceOrder).ToList();
+
+            for (int i = 0; i < orderedItems.Count; i++)
             {
+                var item = orderedItems[i];
                 var start = cursor;
                 var end = cursor.Add(TimeSpan.FromMinutes(item.DurationMinutes));
 
@@ -338,20 +343,57 @@ namespace CollegeManagement.API.Services.Implementations
                     name = btName;
                 }
 
-                var period = new Period
+                if (i < existingPeriods.Count)
                 {
-                    PeriodStructureId = structure.Id,
-                    PeriodName = name,
-                    StartTime = start,
-                    EndTime = end,
-                    DisplayOrder = item.SequenceOrder,
-                    IsBreak = isBreak,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
+                    // Update existing period in-place to preserve PeriodId references in Timetables table
+                    var existingPeriod = existingPeriods[i];
+                    existingPeriod.PeriodName = name;
+                    existingPeriod.StartTime = start;
+                    existingPeriod.EndTime = end;
+                    existingPeriod.DisplayOrder = item.SequenceOrder;
+                    existingPeriod.IsBreak = isBreak;
+                    existingPeriod.IsActive = true;
 
-                await _periodRepository.AddAsync(period);
+                    await _periodRepository.UpdateAsync(existingPeriod);
+                }
+                else
+                {
+                    // Add new period if structure expanded
+                    var newPeriod = new Period
+                    {
+                        PeriodStructureId = structure.Id,
+                        PeriodName = name,
+                        StartTime = start,
+                        EndTime = end,
+                        DisplayOrder = item.SequenceOrder,
+                        IsBreak = isBreak,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _periodRepository.AddAsync(newPeriod);
+                }
+
                 cursor = end;
+            }
+
+            // Deactivate or safely delete extra leftover periods if structure shrunk
+            if (existingPeriods.Count > orderedItems.Count)
+            {
+                for (int j = orderedItems.Count; j < existingPeriods.Count; j++)
+                {
+                    var extraPeriod = existingPeriods[j];
+                    try
+                    {
+                        await _periodRepository.DeleteAsync(extraPeriod.PeriodId);
+                    }
+                    catch
+                    {
+                        // If referenced by Timetable, soft-deactivate instead of throwing FK error
+                        extraPeriod.IsActive = false;
+                        await _periodRepository.UpdateAsync(extraPeriod);
+                    }
+                }
             }
         }
 

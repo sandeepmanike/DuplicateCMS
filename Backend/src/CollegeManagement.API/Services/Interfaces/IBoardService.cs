@@ -79,12 +79,6 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<IEnumerable<StateResponse>> GetStatesAsync(int countryId);
 
         /// <summary>
-        /// Retrieves all active academic patterns.
-        /// </summary>
-        /// <returns>A list of active academic patterns.</returns>
-        Task<IEnumerable<AcademicPatternResponse>> GetAcademicPatternsAsync();
-
-        /// <summary>
         /// Retrieves all active academic levels, optionally filtered by boardId.
         /// </summary>
         /// <returns>A list of active academic levels.</returns>
