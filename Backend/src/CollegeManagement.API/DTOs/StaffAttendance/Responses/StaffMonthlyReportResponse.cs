@@ -6,14 +6,23 @@ namespace CollegeManagement.API.DTOs.StaffAttendance.Responses
     public class StaffMonthlyGridRowDto
     {
         public int FacultyId { get; set; }
+        public int Id => FacultyId;
         public string EmployeeId { get; set; } = string.Empty;
+        public string StaffId => !string.IsNullOrEmpty(EmployeeId) ? EmployeeId : $"FAC{FacultyId:D3}";
         public string StaffName { get; set; } = string.Empty;
+        public string Name => StaffName;
+        public string FullName => StaffName;
         public string DepartmentName { get; set; } = string.Empty;
+        public string Department => DepartmentName;
 
         /// <summary>
         /// Daily status array ("P", "A", "L", "LV", "H", "-").
         /// </summary>
         public List<string> DailyStatus { get; set; } = new List<string>();
+        public List<string> Records => DailyStatus;
+        public List<string> AttendanceRecords => DailyStatus;
+        public List<string> DailyAttendance => DailyStatus;
+        public List<string> Attendance => DailyStatus;
 
         public int PresentCount { get; set; }
         public int AbsentCount { get; set; }
@@ -37,5 +46,7 @@ namespace CollegeManagement.API.DTOs.StaffAttendance.Responses
 
         public List<DayHeaderDto> DayHeaders { get; set; } = new List<DayHeaderDto>();
         public List<StaffMonthlyGridRowDto> StaffRows { get; set; } = new List<StaffMonthlyGridRowDto>();
+        public List<StaffMonthlyGridRowDto> Rows => StaffRows;
+        public List<StaffMonthlyGridRowDto> Items => StaffRows;
     }
 }

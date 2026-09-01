@@ -6,7 +6,7 @@ using CollegeManagement.API.Models.Faculty;
 
 namespace CollegeManagement.API.Models.Staff
 {
-    [Table("Staffs")]
+    [Table("Staff")]
     public class Staff
     {
 

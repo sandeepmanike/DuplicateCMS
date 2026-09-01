@@ -63,7 +63,7 @@ namespace CollegeManagement.API.Services.Implementations
                 return Enumerable.Empty<TimetableResponseDto>();
             }
 
-            return await _timetableRepository.GetBySectionIdAsync(student.SectionId, isPublished: true);
+            return await _timetableRepository.GetBySectionIdAsync(student.SectionId.GetValueOrDefault(), isPublished: true);
         }
 
         public async Task<TimetableResponseDto> CreateAsync(CreateTimetableDto dto)

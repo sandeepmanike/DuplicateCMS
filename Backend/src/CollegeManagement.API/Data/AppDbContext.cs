@@ -1092,6 +1092,8 @@ namespace CollegeManagement.API.Data
 
             modelBuilder.Entity<Staff>(entity =>
             {
+                entity.ToTable("Staff");
+
                 entity.HasOne(s => s.DesignationRef)
                     .WithMany(d => d.Staffs)
                     .HasForeignKey(s => s.DesignationId)

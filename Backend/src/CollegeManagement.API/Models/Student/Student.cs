@@ -108,36 +108,31 @@ namespace CollegeManagement.API.Models
         // ACADEMIC FOREIGN KEYS
         // =========================================================
 
-        [Required]
-        public int BoardId { get; set; }
+        public int? BoardId { get; set; }
 
         [ForeignKey(nameof(BoardId))]
         public Board? BoardNavigation { get; set; }
 
 
-        [Required]
-        public int AcademicYearId { get; set; }
+        public int? AcademicYearId { get; set; }
 
         [ForeignKey(nameof(AcademicYearId))]
         public AcademicYear? AcademicYear { get; set; }
 
 
-        [Required]
-        public int AcademicLevelId { get; set; }
+        public int? AcademicLevelId { get; set; }
 
         [ForeignKey(nameof(AcademicLevelId))]
         public AcademicLevel? AcademicLevelNavigation { get; set; }
 
 
-        [Required]
-        public int GroupId { get; set; }
+        public int? GroupId { get; set; }
 
         [ForeignKey(nameof(GroupId))]
         public Group? GroupNavigation { get; set; }
 
 
-        [Required]
-        public int ProgramId { get; set; }
+        public int? ProgramId { get; set; }
 
         [ForeignKey(nameof(ProgramId))]
         public AcademicProgram? ProgramNavigation { get; set; }
@@ -147,8 +142,7 @@ namespace CollegeManagement.API.Models
         // SECTION
         // =========================================================
 
-        [Required]
-        public int SectionId { get; set; }
+        public int? SectionId { get; set; }
 
         [ForeignKey(nameof(SectionId))]
         public Section? SectionNavigation { get; set; }

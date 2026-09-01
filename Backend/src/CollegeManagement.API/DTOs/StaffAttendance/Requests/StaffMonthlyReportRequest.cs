@@ -13,6 +13,8 @@ namespace CollegeManagement.API.DTOs.StaffAttendance.Requests
 
         public int? AcademicYearId { get; set; }
 
+        public int? BoardId { get; set; }
+
         public int? DepartmentId { get; set; }
 
         public StaffType StaffType { get; set; } = StaffType.Teaching;
