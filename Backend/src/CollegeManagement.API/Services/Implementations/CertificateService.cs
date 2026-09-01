@@ -131,6 +131,13 @@ public class CertificateService : ICertificateService
         return await _repository.MoveStatusAsync(id, status, issuedBy, ct);
     }
 
+    public async Task<int> BulkReviewAsync(
+        string reviewedBy,
+        CancellationToken ct = default)
+    {
+        return await _repository.BulkReviewAsync(reviewedBy, ct);
+    }
+
     public async Task<int> BulkApproveAsync(
         string approvedBy,
         CancellationToken ct = default)

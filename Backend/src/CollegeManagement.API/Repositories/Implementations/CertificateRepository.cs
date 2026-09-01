@@ -467,6 +467,23 @@ public class CertificateRepository : ICertificateRepository
         }
     }
 
+    public async Task<int> BulkReviewAsync(
+        string reviewedBy,
+        CancellationToken ct = default)
+    {
+        using var connection = _database.CreateConnection();
+
+        try
+        {
+            var sql = "UPDATE `certificates` SET Status = 'Reviewed' WHERE Status IN ('Generated', 'Requested', 'Pending');";
+            return await connection.ExecuteAsync(new CommandDefinition(sql, cancellationToken: ct));
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     public async Task<int> BulkApproveAsync(
         string approvedBy,
         CancellationToken ct = default)

@@ -57,6 +57,10 @@ public interface ICertificateRepository
         string? issuedBy = null,
         CancellationToken ct = default);
 
+    Task<int> BulkReviewAsync(
+        string reviewedBy,
+        CancellationToken ct = default);
+
     Task<int> BulkApproveAsync(
         string approvedBy,
         CancellationToken ct = default);

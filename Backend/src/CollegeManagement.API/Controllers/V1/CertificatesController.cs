@@ -167,6 +167,18 @@ public class CertificatesController : ControllerBase
     }
 
     // =========================================================
+    // 9.1. BULK REVIEW (Review All Generated/Pending)
+    // PATCH /api/v1/certificates/bulk-review
+    // =========================================================
+    [HttpPatch("bulk-review")]
+    public async Task<IActionResult> BulkReview(CancellationToken ct = default)
+    {
+        var userName = User.Identity?.Name ?? "Admin";
+        var affected = await _service.BulkReviewAsync(userName, ct);
+        return Ok(new { success = true, count = affected, message = $"{affected} certificate(s) reviewed successfully." });
+    }
+
+    // =========================================================
     // 10. BULK APPROVE (Approve All Reviewed)
     // PATCH /api/v1/certificates/bulk-approve
     // =========================================================
@@ -309,6 +321,117 @@ public class CertificatesController : ControllerBase
         var bytes = BuildCertificatePdf(certificate, hasSignature ? signaturePath : null);
 
         return File(bytes, "application/pdf", $"{certificate.CertificateNumber}.pdf");
+    }
+
+    // =========================================================
+    // 17. EXPORT CERTIFICATES EXCEL / CSV
+    // GET /api/v1/certificates/export/excel
+    // =========================================================
+    [HttpGet("export/excel")]
+    public async Task<IActionResult> ExportExcel(
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? certificateType = null,
+        CancellationToken ct = default)
+    {
+        var certificates = await _service.GetAllAsync(search, status, certificateType, ct);
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Certificate Number,Admission Number,Student Name,Academic Level,Group,Certificate Type,Request Date,Issue Date,Status,Issued By,Purpose,Remarks");
+
+        foreach (var c in certificates)
+        {
+            var issueDateStr = c.IssueDate != default ? c.IssueDate.ToString("dd/MM/yyyy") : "";
+            sb.AppendLine($"\"{c.CertificateNumber}\",\"{c.AdmissionNo}\",\"{c.StudentName}\",\"{c.AcademicLevel}\",\"{c.GroupName}\",\"{c.CertificateType}\",\"{c.RequestDate:dd/MM/yyyy}\",\"{issueDateStr}\",\"{c.Status}\",\"{c.IssuedBy ?? ""}\",\"{c.Purpose?.Replace("\"", "\"\"")}\",\"{c.Remarks?.Replace("\"", "\"\"")}\"");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "text/csv", $"Certificates_Export_{DateTime.UtcNow:yyyyMMddHHmmss}.csv");
+    }
+
+    // =========================================================
+    // 18. EXPORT CERTIFICATES REPORT PDF
+    // GET /api/v1/certificates/export/pdf
+    // =========================================================
+    [HttpGet("export/pdf")]
+    public async Task<IActionResult> ExportPdf(
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] string? certificateType = null,
+        CancellationToken ct = default)
+    {
+        var certificates = await _service.GetAllAsync(search, status, certificateType, ct);
+
+        QuestPDF.Settings.License = LicenseType.Community;
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(30);
+
+                page.Header().Column(col =>
+                {
+                    col.Item().AlignCenter().Text("COLLEGE MANAGEMENT SYSTEM - CERTIFICATE RECORDS").Bold().FontSize(16).FontColor("#1b5e20");
+                    col.Item().AlignCenter().Text($"Generated on: {DateTime.UtcNow:dd/MM/yyyy HH:mm} UTC | Total Records: {certificates.Count}").FontSize(10).FontColor("#666666");
+                    col.Item().PaddingTop(4).LineHorizontal(1).LineColor("#cccccc");
+                });
+
+                page.Content().PaddingTop(10).Table(table =>
+                {
+                    table.ColumnsDefinition(cols =>
+                    {
+                        cols.ConstantColumn(30);
+                        cols.RelativeColumn(2);
+                        cols.RelativeColumn(1.2f);
+                        cols.RelativeColumn(2);
+                        cols.RelativeColumn(1.8f);
+                        cols.RelativeColumn(1.2f);
+                        cols.RelativeColumn(1.2f);
+                        cols.RelativeColumn(1.2f);
+                    });
+
+                    table.Header(header =>
+                    {
+                        header.Cell().Background("#2e7d32").Padding(4).Text("#").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Cert No").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Adm No").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Student").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Type").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Req Date").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Issue Date").Bold().FontColor("#ffffff").FontSize(9);
+                        header.Cell().Background("#2e7d32").Padding(4).Text("Status").Bold().FontColor("#ffffff").FontSize(9);
+                    });
+
+                    int idx = 1;
+                    foreach (var c in certificates)
+                    {
+                        var bg = idx % 2 == 0 ? "#f9f9f9" : "#ffffff";
+                        var issueDateStr = c.IssueDate != default ? c.IssueDate.ToString("dd/MM/yyyy") : "-";
+                        table.Cell().Background(bg).Padding(4).Text(idx.ToString()).FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text(c.CertificateNumber).Bold().FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text(c.AdmissionNo).FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text($"{c.StudentName}\n({c.AcademicLevel})").FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text(c.CertificateType).FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text(c.RequestDate.ToString("dd/MM/yyyy")).FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text(issueDateStr).FontSize(8);
+                        table.Cell().Background(bg).Padding(4).Text(c.Status).Bold().FontSize(8);
+                        idx++;
+                    }
+                });
+
+                page.Footer().AlignCenter().Text(x =>
+                {
+                    x.Span("Page ");
+                    x.CurrentPageNumber();
+                    x.Span(" of ");
+                    x.TotalPages();
+                });
+            });
+        });
+
+        return File(document.GeneratePdf(), "application/pdf", $"Certificates_Report_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf");
     }
 
     // =========================================================
