@@ -18,7 +18,6 @@ namespace CollegeManagement.API.Controllers.V1;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/certificates")]
 [Route("api/v{version:apiVersion}/certificates")]
 [EnableCors("AllowFrontend")]
 [AllowAnonymous]
@@ -120,49 +119,6 @@ public class CertificatesController : ControllerBase
     }
 
     // =========================================================
-    // 6. SPECIFIC GENERATE ENDPOINTS (Backwards Compatibility)
-    // =========================================================
-    [HttpPost("bonafide")]
-    public async Task<IActionResult> Bonafide([FromBody] GenerateCertificateRequestDto request, CancellationToken ct = default)
-        => await GenerateType("Bonafide Certificate", request, ct);
-
-    [HttpPost("study")]
-    public async Task<IActionResult> Study([FromBody] GenerateCertificateRequestDto request, CancellationToken ct = default)
-        => await GenerateType("Study Certificate", request, ct);
-
-    [HttpPost("conduct")]
-    public async Task<IActionResult> Conduct([FromBody] GenerateCertificateRequestDto request, CancellationToken ct = default)
-        => await GenerateType("Conduct Certificate", request, ct);
-
-    [HttpPost("tc")]
-    public async Task<IActionResult> TransferCertificate([FromBody] GenerateCertificateRequestDto request, CancellationToken ct = default)
-        => await GenerateType("Transfer Certificate", request, ct);
-
-    [HttpPost("other")]
-    public async Task<IActionResult> OtherCertificate([FromBody] GenerateCertificateRequestDto request, CancellationToken ct = default)
-    {
-        var type = !string.IsNullOrWhiteSpace(request.CertificateType) ? request.CertificateType : "General Certificate";
-        return await GenerateType(type, request, ct);
-    }
-
-    private async Task<IActionResult> GenerateType(string type, GenerateCertificateRequestDto request, CancellationToken ct)
-    {
-        if (request == null) return BadRequest(new { message = "Request body is required" });
-        request.CertificateType = type;
-
-        try
-        {
-            var result = await _service.GenerateAsync(request, ct);
-            if (result == null) return BadRequest(new { message = $"Unable to generate {type} certificate for '{request.AdmissionNo}'." });
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new { message = $"Error generating {type}: {ex.Message}" });
-        }
-    }
-
-    // =========================================================
     // 7. REVIEW CERTIFICATE (Stage 1 -> 2)
     // PATCH /api/v1/certificates/{id}/review
     // =========================================================
@@ -232,6 +188,45 @@ public class CertificatesController : ControllerBase
         var issuer = issuedBy ?? User.Identity?.Name ?? "Principal";
         var affected = await _service.BulkIssueAsync(issuer, ct);
         return Ok(new { success = true, count = affected, message = $"{affected} certificate(s) issued successfully." });
+    }
+
+    // =========================================================
+    // 11.1. BULK GENERATE CERTIFICATES
+    // POST /api/v1/certificates/bulk-generate
+    // =========================================================
+    [HttpPost("bulk-generate")]
+    [ProducesResponseType(typeof(IReadOnlyList<CertificateResponseDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> BulkGenerate([FromBody] BulkGenerateCertificateRequestDto request, CancellationToken ct = default)
+    {
+        if (request == null || request.AdmissionNos == null || !request.AdmissionNos.Any())
+            return BadRequest(new { message = "At least one Admission number is required." });
+
+        if (string.IsNullOrWhiteSpace(request.CertificateType))
+            return BadRequest(new { message = "Certificate type is required." });
+
+        if (string.IsNullOrWhiteSpace(request.Purpose))
+            return BadRequest(new { message = "Purpose is required." });
+
+        var results = await _service.BulkGenerateAsync(request, ct);
+        return Ok(results);
+    }
+
+    // =========================================================
+    // 11.2. GET BULK ELIGIBLE STUDENTS (GRID SELECTION)
+    // GET /api/v1/certificates/bulk-eligible-students
+    // =========================================================
+    [HttpGet("bulk-eligible-students")]
+    [ProducesResponseType(typeof(IReadOnlyList<BulkEligibleStudentDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBulkEligibleStudents(
+        [FromQuery] int? academicYearId = null,
+        [FromQuery] int? boardId = null,
+        [FromQuery] int? groupId = null,
+        [FromQuery] int? sectionId = null,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var students = await _service.GetBulkEligibleStudentsAsync(academicYearId, boardId, groupId, sectionId, search, ct);
+        return Ok(students);
     }
 
     // =========================================================

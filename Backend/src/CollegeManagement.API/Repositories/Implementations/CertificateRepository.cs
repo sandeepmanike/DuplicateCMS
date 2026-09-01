@@ -15,6 +15,15 @@ public class CertificateRepository : ICertificateRepository
 {
     private readonly DatabaseContext _database;
 
+    private class StudentDetailsQueryModel
+    {
+        public int StudentId { get; set; }
+        public string? StudentName { get; set; }
+        public string? GroupName { get; set; }
+        public string? AcademicLevel { get; set; }
+        public string? AcademicYear { get; set; }
+    }
+
     public CertificateRepository(DatabaseContext database)
     {
         _database = database;
@@ -164,51 +173,48 @@ public class CertificateRepository : ICertificateRepository
 
         var sql = @"
             SELECT 
-                COALESCE(sa.AdmissionId, s.StudentId) AS StudentId,
-                COALESCE(sa.AdmissionNo, s.AdmissionNo) AS AdmissionNo,
-                COALESCE(sa.RollNo, s.RollNo, '') AS RollNo,
-                COALESCE(NULLIF(TRIM(CONCAT(sa.FirstName, ' ', COALESCE(sa.LastName, ''))), ''), s.StudentName, '') AS StudentName,
-                COALESCE(g.GroupName, '') AS GroupName,
-                COALESCE(ay.AcademicYearName, '') AS AcademicYear,
-                COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
-                COALESCE(sec.SectionName, '') AS Section
-            FROM `StudentAdmissions` sa
-            LEFT JOIN `Students` s ON TRIM(s.AdmissionNo) = TRIM(sa.AdmissionNo)
-            LEFT JOIN `Groups` g ON g.GroupId = COALESCE(sa.GroupId, s.GroupId)
-            LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = COALESCE(sa.AcademicYearId, s.AcademicYearId)
-            LEFT JOIN `AcademicLevels` al ON al.AcademicLevelId = COALESCE(sa.AcademicLevelId, s.AcademicLevelId)
-            LEFT JOIN `Sections` sec ON sec.SectionId = COALESCE(sa.SectionId, s.SectionId)
-            WHERE (sa.IsActive = 1 OR sa.IsActive IS NULL)
-              AND (sa.AdmissionNo IS NOT NULL AND sa.AdmissionNo <> '')
+                StudentId, AdmissionNo, RollNo, StudentName, GroupName, AcademicYear, AcademicLevel, Section
+            FROM (
+                SELECT 
+                    s.StudentId AS StudentId,
+                    COALESCE(NULLIF(s.AdmissionNo, ''), CONCAT('ADM-', s.StudentId)) AS AdmissionNo,
+                    COALESCE(s.RollNo, '') AS RollNo,
+                    COALESCE(NULLIF(s.StudentName, ''), 'Student') AS StudentName,
+                    COALESCE(g.GroupName, '') AS GroupName,
+                    COALESCE(ay.AcademicYearName, '') AS AcademicYear,
+                    COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
+                    COALESCE(sec.SectionName, '') AS Section,
+                    COALESCE(s.IsActive, 1) AS IsActive
+                FROM `Students` s
+                LEFT JOIN `Groups` g ON g.GroupId = s.GroupId
+                LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = s.AcademicYearId
+                LEFT JOIN `AcademicLevels` al ON al.AcademicLevelId = s.AcademicLevelId
+                LEFT JOIN `Sections` sec ON sec.SectionId = s.SectionId
+
+                UNION ALL
+
+                SELECT 
+                    sa.AdmissionId AS StudentId,
+                    COALESCE(NULLIF(sa.AdmissionNo, ''), CONCAT('ADM-', sa.AdmissionId)) AS AdmissionNo,
+                    '' AS RollNo,
+                    TRIM(CONCAT(COALESCE(sa.FirstName, ''), ' ', COALESCE(sa.LastName, ''))) AS StudentName,
+                    COALESCE(g.GroupName, '') AS GroupName,
+                    COALESCE(ay.AcademicYearName, '') AS AcademicYear,
+                    '1st Year' AS AcademicLevel,
+                    '' AS Section,
+                    COALESCE(sa.IsActive, 1) AS IsActive
+                FROM `StudentAdmissions` sa
+                LEFT JOIN `Groups` g ON g.GroupId = sa.GroupId
+                LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = sa.AcademicYearId
+                WHERE NOT EXISTS (SELECT 1 FROM `Students` s2 WHERE s2.AdmissionNo = sa.AdmissionNo AND sa.AdmissionNo IS NOT NULL AND sa.AdmissionNo <> '')
+            ) combined
+            WHERE IsActive = 1
             ORDER BY StudentName ASC;";
 
         try
         {
             var list = await connection.QueryAsync<StudentCertificateDropdownDto>(
                 new CommandDefinition(sql, cancellationToken: ct));
-
-            if (!list.Any())
-            {
-                // Fallback to Students table if StudentAdmissions is completely empty
-                var fallbackSql = @"
-                    SELECT 
-                        s.StudentId, s.AdmissionNo, s.RollNo, s.StudentName,
-                        COALESCE(g.GroupName, '') AS GroupName,
-                        COALESCE(ay.AcademicYearName, '') AS AcademicYear,
-                        COALESCE(al.LevelName, '1st Year') AS AcademicLevel,
-                        COALESCE(sec.SectionName, '') AS Section
-                    FROM `Students` s
-                    LEFT JOIN `Groups` g ON g.GroupId = s.GroupId
-                    LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = s.AcademicYearId
-                    LEFT JOIN `AcademicLevels` al ON al.AcademicLevelId = s.AcademicLevelId
-                    LEFT JOIN `Sections` sec ON sec.SectionId = s.SectionId
-                    WHERE (s.IsActive = 1 OR s.IsActive IS NULL)
-                      AND (s.AdmissionNo IS NOT NULL AND s.AdmissionNo <> '')
-                    ORDER BY s.StudentName ASC;";
-
-                list = await connection.QueryAsync<StudentCertificateDropdownDto>(
-                    new CommandDefinition(fallbackSql, cancellationToken: ct));
-            }
 
             return list.ToList();
         }
@@ -248,7 +254,7 @@ public class CertificateRepository : ICertificateRepository
             WHERE TRIM(s.AdmissionNo) = TRIM(@admissionNo) OR TRIM(sa.AdmissionNo) = TRIM(@admissionNo)
             LIMIT 1;";
 
-        var student = await connection.QueryFirstOrDefaultAsync<dynamic>(
+        var student = await connection.QueryFirstOrDefaultAsync<StudentDetailsQueryModel>(
             new CommandDefinition(studentSql, new { admissionNo = request.AdmissionNo.Trim() }, cancellationToken: ct));
 
         // If not found in Students, try StudentAdmissions directly
@@ -268,17 +274,17 @@ public class CertificateRepository : ICertificateRepository
                 WHERE TRIM(sa.AdmissionNo) = TRIM(@admissionNo)
                 LIMIT 1;";
 
-            student = await connection.QueryFirstOrDefaultAsync<dynamic>(
+            student = await connection.QueryFirstOrDefaultAsync<StudentDetailsQueryModel>(
                 new CommandDefinition(saSql, new { admissionNo = request.AdmissionNo.Trim() }, cancellationToken: ct));
         }
 
-        string studentName = student != null && !string.IsNullOrWhiteSpace((string?)student.StudentName) 
-            ? (string)student.StudentName 
+        string studentName = !string.IsNullOrWhiteSpace(student?.StudentName) 
+            ? student.StudentName 
             : request.AdmissionNo.Trim();
-        string groupName = student != null && !string.IsNullOrWhiteSpace((string?)student.GroupName) ? (string)student.GroupName : "";
-        string academicLevel = student != null && !string.IsNullOrWhiteSpace((string?)student.AcademicLevel) ? (string)student.AcademicLevel : "1st Year";
-        string academicYear = student != null && !string.IsNullOrWhiteSpace((string?)student.AcademicYear) ? (string)student.AcademicYear : $"{DateTime.UtcNow.Year}-{DateTime.UtcNow.Year + 1}";
-        int studentId = student != null && (int)student.StudentId > 0 ? (int)student.StudentId : 1;
+        string groupName = !string.IsNullOrWhiteSpace(student?.GroupName) ? student.GroupName : "";
+        string academicLevel = !string.IsNullOrWhiteSpace(student?.AcademicLevel) ? student.AcademicLevel : "1st Year";
+        string academicYear = !string.IsNullOrWhiteSpace(student?.AcademicYear) ? student.AcademicYear : $"{DateTime.UtcNow.Year}-{DateTime.UtcNow.Year + 1}";
+        int studentId = (student != null && student.StudentId > 0) ? student.StudentId : 1;
 
         var yearNum = DateTime.UtcNow.Year.ToString();
         var certPrefix = request.CertificateType switch
@@ -288,29 +294,30 @@ public class CertificateRepository : ICertificateRepository
             "Conduct Certificate" => "CND",
             "Transfer Certificate" => "TC",
             "Transfer Certificate (TC)" => "TC",
+            "Migration Certificate" => "MIG",
+            "Course Completion Certificate" => "CMP",
+            "Intermediate Pass Certificate" => "IPC",
+            "Fee Due / Clearance Certificate" => "FEE",
+            "Extracurricular Achievement Certificate" => "ACH",
             _ => "CERT"
         };
 
-        var certNumber = $"{certPrefix}-{yearNum}{DateTime.UtcNow:MMdd}-{Random.Shared.Next(100000, 999999)}";
+        var certNumber = $"{certPrefix}-{yearNum}-{Guid.NewGuid().ToString("N")[..6].ToUpper()}";
 
-        // Check which columns exist in `certificates` table
-        var tableCols = (await connection.QueryAsync<string>(@"
-            SELECT COLUMN_NAME FROM information_schema.columns 
-            WHERE table_schema = DATABASE() AND table_name = 'certificates';")).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Check if certificates table has modern columns
+        var existingCols = await GetCertificateTableColumnsAsync(connection);
 
         int newId = 0;
 
-        if (tableCols.Contains("CertificateNumber") && tableCols.Contains("StudentName"))
+        if (existingCols.Contains("CertificateNumber") && existingCols.Contains("StudentName"))
         {
             var insertSql = @"
                 INSERT INTO `certificates` (
-                    CertificateNumber, StudentId, AdmissionNo, StudentName, GroupName,
-                    AcademicLevel, AcademicYear, CertificateType, Purpose, RequestDate,
-                    IssueDate, Remarks, Status, GeneratedAt, IsActive, CreatedAt
+                    CertificateNumber, StudentId, AdmissionNo, StudentName, GroupName, AcademicLevel, AcademicYear,
+                    CertificateType, Purpose, Status, Remarks, RequestDate, IssueDate, IsActive, CreatedAt
                 ) VALUES (
-                    @certNumber, @studentId, @admissionNo, @studentName, @groupName,
-                    @academicLevel, @academicYear, @certificateType, @purpose, @requestDate,
-                    @requestDate, @remarks, 'Generated', UTC_TIMESTAMP(), 1, UTC_TIMESTAMP()
+                    @certNumber, @studentId, @admissionNo, @studentName, @groupName, @academicLevel, @academicYear,
+                    @certificateType, @purpose, 'Generated', @remarks, @requestDate, @requestDate, 1, UTC_TIMESTAMP()
                 );
                 SELECT LAST_INSERT_ID();";
 
@@ -326,16 +333,16 @@ public class CertificateRepository : ICertificateRepository
                     academicYear,
                     certificateType = request.CertificateType.Trim(),
                     purpose = request.Purpose.Trim(),
-                    requestDate,
-                    remarks = request.Remarks?.Trim()
+                    remarks = request.Remarks?.Trim(),
+                    requestDate
                 }, cancellationToken: ct));
         }
         else
         {
-            // Legacy table structure fallback
+            // Fallback for legacy DB schema: (StudentId, CertificateNo, CertificateType, Purpose, IssueDate, Remarks, Status, CreatedAt, IsActive)
             var insertLegacySql = @"
                 INSERT INTO `certificates` (
-                    StudentId, CertificateNo, CertificateType, Purpose, IssueDate, Remarks, Status, CreatedAt, IsVerified
+                    StudentId, CertificateNo, CertificateType, Purpose, IssueDate, Remarks, Status, CreatedAt, IsActive
                 ) VALUES (
                     @studentId, @certNumber, @certificateType, @purpose, @requestDate, @remarks, 'Generated', UTC_TIMESTAMP(), 1
                 );
@@ -344,7 +351,7 @@ public class CertificateRepository : ICertificateRepository
             newId = await connection.ExecuteScalarAsync<int>(
                 new CommandDefinition(insertLegacySql, new
                 {
-                    studentId = (int)student.StudentId,
+                    studentId,
                     certNumber,
                     certificateType = request.CertificateType.Trim(),
                     purpose = request.Purpose.Trim(),
@@ -539,6 +546,135 @@ public class CertificateRepository : ICertificateRepository
         {
             Console.WriteLine($"DeleteAsync Error: {ex.Message}");
             return false;
+        }
+    }
+
+    // =========================================================
+    // BULK GENERATE CERTIFICATES
+    // =========================================================
+    public async Task<IReadOnlyList<CertificateResponseDto>> BulkGenerateAsync(
+        BulkGenerateCertificateRequestDto request,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.AdmissionNos == null || !request.AdmissionNos.Any())
+            return new List<CertificateResponseDto>();
+
+        var results = new List<CertificateResponseDto>();
+
+        foreach (var admissionNo in request.AdmissionNos.Distinct())
+        {
+            if (string.IsNullOrWhiteSpace(admissionNo)) continue;
+
+            var singleReq = new GenerateCertificateRequestDto
+            {
+                AdmissionNo = admissionNo.Trim(),
+                CertificateType = request.CertificateType,
+                Purpose = request.Purpose,
+                RequestDate = request.RequestDate ?? DateTime.UtcNow,
+                Remarks = request.Remarks
+            };
+
+            try
+            {
+                var created = await GenerateAsync(singleReq, ct);
+                if (created != null)
+                {
+                    results.Add(created);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error bulk generating for {admissionNo}: {ex.Message}");
+            }
+        }
+
+        return results;
+    }
+
+    // =========================================================
+    // GET BULK ELIGIBLE STUDENTS (GRID SELECTION)
+    // =========================================================
+    public async Task<IReadOnlyList<BulkEligibleStudentDto>> GetBulkEligibleStudentsAsync(
+        int? academicYearId,
+        int? boardId,
+        int? groupId,
+        int? sectionId,
+        string? search,
+        CancellationToken ct = default)
+    {
+        using var connection = _database.CreateConnection();
+
+        var sql = @"
+            SELECT 
+                StudentId, AdmissionNo, RollNo, StudentName, GroupName, SectionName, AcademicYear, BoardName
+            FROM (
+                SELECT 
+                    s.StudentId AS StudentId,
+                    COALESCE(NULLIF(s.AdmissionNo, ''), CONCAT('ADM-', s.StudentId)) AS AdmissionNo,
+                    COALESCE(s.RollNo, '') AS RollNo,
+                    COALESCE(NULLIF(s.StudentName, ''), 'Student') AS StudentName,
+                    COALESCE(g.GroupName, '') AS GroupName,
+                    COALESCE(sec.SectionName, '') AS SectionName,
+                    COALESCE(ay.AcademicYearName, '') AS AcademicYear,
+                    COALESCE(b.BoardName, '') AS BoardName,
+                    s.AcademicYearId,
+                    s.BoardId,
+                    s.GroupId,
+                    s.SectionId,
+                    COALESCE(s.IsActive, 1) AS IsActive
+                FROM `Students` s
+                LEFT JOIN `Groups` g ON g.GroupId = s.GroupId
+                LEFT JOIN `Sections` sec ON sec.SectionId = s.SectionId
+                LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = s.AcademicYearId
+                LEFT JOIN `Boards` b ON b.BoardId = s.BoardId
+
+                UNION ALL
+
+                SELECT 
+                    sa.AdmissionId AS StudentId,
+                    COALESCE(NULLIF(sa.AdmissionNo, ''), CONCAT('ADM-', sa.AdmissionId)) AS AdmissionNo,
+                    '' AS RollNo,
+                    TRIM(CONCAT(COALESCE(sa.FirstName, ''), ' ', COALESCE(sa.LastName, ''))) AS StudentName,
+                    COALESCE(g.GroupName, '') AS GroupName,
+                    '' AS SectionName,
+                    COALESCE(ay.AcademicYearName, '') AS AcademicYear,
+                    COALESCE(b.BoardName, '') AS BoardName,
+                    sa.AcademicYearId,
+                    sa.BoardId,
+                    sa.GroupId,
+                    CAST(NULL AS SIGNED) AS SectionId,
+                    COALESCE(sa.IsActive, 1) AS IsActive
+                FROM `StudentAdmissions` sa
+                LEFT JOIN `Groups` g ON g.GroupId = sa.GroupId
+                LEFT JOIN `AcademicYears` ay ON ay.AcademicYearId = sa.AcademicYearId
+                LEFT JOIN `Boards` b ON b.BoardId = sa.BoardId
+                WHERE NOT EXISTS (SELECT 1 FROM `Students` s2 WHERE s2.AdmissionNo = sa.AdmissionNo AND sa.AdmissionNo IS NOT NULL AND sa.AdmissionNo <> '')
+            ) combined
+            WHERE IsActive = 1
+              AND (@academicYearId IS NULL OR AcademicYearId = @academicYearId)
+              AND (@boardId IS NULL OR BoardId = @boardId)
+              AND (@groupId IS NULL OR GroupId = @groupId)
+              AND (@sectionId IS NULL OR SectionId = @sectionId)
+              AND (
+                  @search IS NULL OR @search = '' OR
+                  AdmissionNo LIKE CONCAT('%', @search, '%') OR
+                  StudentName LIKE CONCAT('%', @search, '%') OR
+                  RollNo LIKE CONCAT('%', @search, '%')
+              )
+            ORDER BY StudentName ASC;";
+
+        try
+        {
+            var list = (await connection.QueryAsync<BulkEligibleStudentDto>(
+                new CommandDefinition(sql, new { academicYearId, boardId, groupId, sectionId, search }, cancellationToken: ct))).ToList();
+
+            return list;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GetBulkEligibleStudentsAsync Error: {ex.Message}");
+            return new List<BulkEligibleStudentDto>();
         }
     }
 

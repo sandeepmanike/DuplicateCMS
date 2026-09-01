@@ -17,7 +17,6 @@ namespace CollegeManagement.API.Controllers.V1;
 
 [ApiController]
 [ApiVersion("1.0")]
-[Route("api/reports")]
 [Route("api/v{version:apiVersion}/reports")]
 [EnableCors("AllowFrontend")]
 [AllowAnonymous]
@@ -111,13 +110,13 @@ public class ReportsController : ControllerBase
     {
         var query = _db.Groups.AsNoTracking().Where(x => x.IsActive);
 
-        if (academicYearId.HasValue)
+        if (academicYearId.HasValue && academicYearId.Value > 0)
             query = query.Where(x => x.AcademicYearId == academicYearId.Value);
 
-        if (academicLevelId.HasValue)
+        if (academicLevelId.HasValue && academicLevelId.Value > 0)
             query = query.Where(x => x.AcademicLevelId == academicLevelId.Value);
 
-        if (boardId.HasValue)
+        if (boardId.HasValue && boardId.Value > 0)
         {
             query = query.Where(x =>
                 x.BoardId == boardId.Value
@@ -138,6 +137,23 @@ public class ReportsController : ControllerBase
             })
             .ToListAsync(ct);
 
+        if (!result.Any())
+        {
+            result = await _db.Groups.AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.GroupName)
+                .Select(x => new
+                {
+                    id = x.GroupId,
+                    name = x.GroupName,
+                    code = x.GroupCode,
+                    academicYearId = x.AcademicYearId,
+                    academicLevel = x.AcademicLevelNavigation != null ? x.AcademicLevelNavigation.LevelName : string.Empty,
+                    board = x.BoardNavigation != null ? x.BoardNavigation.BoardName : string.Empty
+                })
+                .ToListAsync(ct);
+        }
+
         return Ok(result);
     }
 
@@ -151,23 +167,23 @@ public class ReportsController : ControllerBase
     {
         var query = _db.Sections.AsNoTracking().Where(x => x.IsActive);
 
-        if (groupId.HasValue)
+        if (groupId.HasValue && groupId.Value > 0)
             query = query.Where(x => x.GroupId == groupId.Value);
 
-        if (academicYearId.HasValue)
+        if (academicYearId.HasValue && academicYearId.Value > 0)
             query = query.Where(x => x.AcademicYearId == academicYearId.Value);
 
-        if (boardId.HasValue)
+        if (boardId.HasValue && boardId.Value > 0)
         {
             var boardName = await _db.Boards.AsNoTracking().Where(b => b.BoardId == boardId.Value).Select(b => b.BoardName).FirstOrDefaultAsync(ct);
-            query = query.Where(x => x.BoardId == boardId.Value || x.Board == boardName || _db.StudentAdmissions.Any(a => a.IsActive && a.SectionId == x.SectionId && a.BoardId == boardId.Value));
+            query = query.Where(x => x.BoardId == boardId.Value || x.BoardId == null || x.Board == boardName || _db.StudentAdmissions.Any(a => a.IsActive && a.SectionId == x.SectionId && a.BoardId == boardId.Value));
         }
 
-        if (academicLevelId.HasValue)
+        if (academicLevelId.HasValue && academicLevelId.Value > 0)
         {
             var levelName = await _db.AcademicLevels.AsNoTracking().Where(x => x.AcademicLevelId == academicLevelId.Value).Select(x => x.LevelName).FirstOrDefaultAsync(ct);
             if (!string.IsNullOrWhiteSpace(levelName))
-                query = query.Where(x => x.AcademicLevel == levelName);
+                query = query.Where(x => x.AcademicLevel == levelName || string.IsNullOrEmpty(x.AcademicLevel));
         }
 
         var result = await query
@@ -185,6 +201,46 @@ public class ReportsController : ControllerBase
                 maximumStrength = x.MaximumStrength
             })
             .ToListAsync(ct);
+
+        if (!result.Any() && groupId.HasValue && groupId.Value > 0)
+        {
+            result = await _db.Sections.AsNoTracking()
+                .Where(x => x.IsActive && x.GroupId == groupId.Value)
+                .OrderBy(x => x.SectionName)
+                .Select(x => new
+                {
+                    id = x.SectionId,
+                    name = x.SectionName,
+                    groupId = x.GroupId,
+                    groupName = x.Group,
+                    boardId = x.BoardId,
+                    board = x.Board,
+                    academicYearId = x.AcademicYearId,
+                    academicLevel = x.AcademicLevel,
+                    maximumStrength = x.MaximumStrength
+                })
+                .ToListAsync(ct);
+        }
+
+        if (!result.Any())
+        {
+            result = await _db.Sections.AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.SectionName)
+                .Select(x => new
+                {
+                    id = x.SectionId,
+                    name = x.SectionName,
+                    groupId = x.GroupId,
+                    groupName = x.Group,
+                    boardId = x.BoardId,
+                    board = x.Board,
+                    academicYearId = x.AcademicYearId,
+                    academicLevel = x.AcademicLevel,
+                    maximumStrength = x.MaximumStrength
+                })
+                .ToListAsync(ct);
+        }
 
         return Ok(result);
     }

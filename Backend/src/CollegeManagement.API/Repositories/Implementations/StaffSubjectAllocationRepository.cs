@@ -83,11 +83,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 return await _context.StaffSubjectAllocations
                     .Include(a => a.Staff)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.BoardNavigation)
+                        .ThenInclude(s => s!.BoardNavigation)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.GroupNavigation)
+                        .ThenInclude(s => s!.GroupNavigation)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.AcademicLevelNavigation)
+                        .ThenInclude(s => s!.AcademicLevelNavigation)
                     .FirstOrDefaultAsync(a => a.Id == id);
             }
         }
@@ -153,11 +153,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 return await _context.StaffSubjectAllocations
                     .Include(a => a.Staff)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.BoardNavigation)
+                        .ThenInclude(s => s!.BoardNavigation)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.GroupNavigation)
+                        .ThenInclude(s => s!.GroupNavigation)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.AcademicLevelNavigation)
+                        .ThenInclude(s => s!.AcademicLevelNavigation)
                     .Where(a => a.StaffId == staffId)
                     .OrderByDescending(a => a.Id)
                     .ToListAsync();
@@ -225,11 +225,11 @@ namespace CollegeManagement.API.Repositories.Implementations
                 return await _context.StaffSubjectAllocations
                     .Include(a => a.Staff)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.BoardNavigation)
+                        .ThenInclude(s => s!.BoardNavigation)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.GroupNavigation)
+                        .ThenInclude(s => s!.GroupNavigation)
                     .Include(a => a.Subject)
-                        .ThenInclude(s => s.AcademicLevelNavigation)
+                        .ThenInclude(s => s!.AcademicLevelNavigation)
                     .Where(a => a.SubjectId == subjectId)
                     .OrderByDescending(a => a.Id)
                     .ToListAsync();

@@ -65,6 +65,18 @@ public interface ICertificateRepository
         string issuedBy,
         CancellationToken ct = default);
 
+    Task<IReadOnlyList<CertificateResponseDto>> BulkGenerateAsync(
+        BulkGenerateCertificateRequestDto request,
+        CancellationToken ct = default);
+
+    Task<IReadOnlyList<BulkEligibleStudentDto>> GetBulkEligibleStudentsAsync(
+        int? academicYearId,
+        int? boardId,
+        int? groupId,
+        int? sectionId,
+        string? search,
+        CancellationToken ct = default);
+
     Task<bool> DeleteAsync(
         int id,
         CancellationToken ct = default);

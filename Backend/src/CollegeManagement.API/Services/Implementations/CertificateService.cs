@@ -145,6 +145,25 @@ public class CertificateService : ICertificateService
         return await _repository.BulkIssueAsync(issuedBy, ct);
     }
 
+    public async Task<IReadOnlyList<CertificateResponseDto>> BulkGenerateAsync(
+        BulkGenerateCertificateRequestDto request,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await _repository.BulkGenerateAsync(request, ct);
+    }
+
+    public async Task<IReadOnlyList<BulkEligibleStudentDto>> GetBulkEligibleStudentsAsync(
+        int? academicYearId,
+        int? boardId,
+        int? groupId,
+        int? sectionId,
+        string? search,
+        CancellationToken ct = default)
+    {
+        return await _repository.GetBulkEligibleStudentsAsync(academicYearId, boardId, groupId, sectionId, search, ct);
+    }
+
     public async Task<bool> CancelAsync(
         int id,
         CancellationToken ct = default)

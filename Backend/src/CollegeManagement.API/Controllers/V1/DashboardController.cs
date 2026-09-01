@@ -166,6 +166,24 @@ public class DashboardController : ControllerBase
             catch { }
         }
 
+        if (studentCount == 0)
+        {
+            try
+            {
+                studentCount = await conn.ExecuteScalarAsync<int>(@"SELECT COUNT(*) FROM Students WHERE (IsActive = 1 OR IsActive IS NULL);");
+            }
+            catch { }
+
+            if (studentCount == 0)
+            {
+                try
+                {
+                    studentCount = await conn.ExecuteScalarAsync<int>(@"SELECT COUNT(*) FROM StudentAdmissions WHERE (IsActive = 1 OR IsActive IS NULL);");
+                }
+                catch { }
+            }
+        }
+
         // 2. Teaching Staff (Filtered by Board)
         int teachingStaff = 0;
         try
@@ -381,22 +399,59 @@ public class DashboardController : ControllerBase
         var rows = (await conn.QueryAsync<dynamic>(@"
             SELECT 
                 COALESCE(s.Gender, '') AS Gender,
-                COALESCE(s.IsActive, 1) AS IsActive
+                COALESCE(s.IsActive, 1) AS IsActive,
+                COALESCE(al.LevelName, '') AS AcademicLevel
             FROM `Students` s
+            LEFT JOIN `AcademicLevels` al ON s.AcademicLevelId = al.AcademicLevelId
             WHERE (@academicYearId IS NULL OR s.AcademicYearId = @academicYearId)
               AND (@boardId IS NULL OR s.BoardId = @boardId);",
             new { academicYearId, boardId })).ToList();
+
+        if (!rows.Any() && (academicYearId.HasValue || boardId.HasValue))
+        {
+            rows = (await conn.QueryAsync<dynamic>(@"
+                SELECT 
+                    COALESCE(s.Gender, '') AS Gender,
+                    COALESCE(s.IsActive, 1) AS IsActive,
+                    COALESCE(al.LevelName, '') AS AcademicLevel
+                FROM `Students` s
+                LEFT JOIN `AcademicLevels` al ON s.AcademicLevelId = al.AcademicLevelId
+                WHERE (@academicYearId IS NULL OR s.AcademicYearId = @academicYearId);",
+                new { academicYearId })).ToList();
+        }
+
+        if (!rows.Any())
+        {
+            rows = (await conn.QueryAsync<dynamic>(@"
+                SELECT 
+                    COALESCE(s.Gender, '') AS Gender,
+                    COALESCE(s.IsActive, 1) AS IsActive,
+                    COALESCE(al.LevelName, '') AS AcademicLevel
+                FROM `Students` s
+                LEFT JOIN `AcademicLevels` al ON s.AcademicLevelId = al.AcademicLevelId;")).ToList();
+        }
 
         if (!rows.Any())
         {
             rows = (await conn.QueryAsync<dynamic>(@"
                 SELECT 
                     COALESCE(sa.Gender, '') AS Gender,
-                    COALESCE(sa.IsActive, 1) AS IsActive
+                    COALESCE(sa.IsActive, 1) AS IsActive,
+                    COALESCE(sa.AcademicLevel, '') AS AcademicLevel
                 FROM `StudentAdmissions` sa
                 WHERE (@academicYearId IS NULL OR sa.AcademicYearId = @academicYearId)
                   AND (@boardId IS NULL OR sa.BoardId = @boardId);",
                 new { academicYearId, boardId })).ToList();
+
+            if (!rows.Any())
+            {
+                rows = (await conn.QueryAsync<dynamic>(@"
+                    SELECT 
+                        COALESCE(sa.Gender, '') AS Gender,
+                        COALESCE(sa.IsActive, 1) AS IsActive,
+                        COALESCE(sa.AcademicLevel, '') AS AcademicLevel
+                    FROM `StudentAdmissions` sa;")).ToList();
+            }
         }
 
         int total = rows.Count;
@@ -532,6 +587,25 @@ public class DashboardController : ControllerBase
 
         if (!studentCounts.Any())
         {
+            var allStudentsGroupRows = (await conn.QueryAsync<dynamic>(@"
+                SELECT 
+                    s.GroupId,
+                    COUNT(*) AS StudentCount
+                FROM `Students` s
+                WHERE (s.IsActive = 1 OR s.IsActive IS NULL)
+                GROUP BY s.GroupId;")).ToList();
+
+            foreach (var r in allStudentsGroupRows)
+            {
+                if (r.GroupId != null)
+                {
+                    studentCounts[Convert.ToInt32(r.GroupId)] = Convert.ToInt32(r.StudentCount);
+                }
+            }
+        }
+
+        if (!studentCounts.Any())
+        {
             var admissionCountsRows = (await conn.QueryAsync<dynamic>(@"
                 SELECT 
                     sa.GroupId,
@@ -544,6 +618,25 @@ public class DashboardController : ControllerBase
                 new { academicYearId, boardId })).ToList();
 
             foreach (var r in admissionCountsRows)
+            {
+                if (r.GroupId != null)
+                {
+                    studentCounts[Convert.ToInt32(r.GroupId)] = Convert.ToInt32(r.StudentCount);
+                }
+            }
+        }
+
+        if (!studentCounts.Any())
+        {
+            var allAdmissionsGroupRows = (await conn.QueryAsync<dynamic>(@"
+                SELECT 
+                    sa.GroupId,
+                    COUNT(*) AS StudentCount
+                FROM `StudentAdmissions` sa
+                WHERE (sa.IsActive = 1 OR sa.IsActive IS NULL)
+                GROUP BY sa.GroupId;")).ToList();
+
+            foreach (var r in allAdmissionsGroupRows)
             {
                 if (r.GroupId != null)
                 {
