@@ -28,6 +28,7 @@ namespace CollegeManagement.API.Models
         /// <summary>
         /// Gets or sets the board type (e.g., State Board, Central Board).
         /// </summary>
+        [Required]
         [MaxLength(50)]
         public string BoardType { get; set; } = "State Board";
 
@@ -56,44 +57,10 @@ namespace CollegeManagement.API.Models
         public int? StateId { get; set; }
 
         /// <summary>
-        /// Gets or sets the academic pattern identifier.
-        /// </summary>
-        [Required]
-        public int AcademicPatternId { get; set; }
-
-        /// <summary>
         /// Gets or sets the grading system identifier.
         /// </summary>
         [Required]
         public int GradingSystemId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the internal assessment details.
-        /// </summary>
-       
-        public bool InternalAssessment { get; set; }
-
-        /// <summary>
-        /// Gets or sets the practical exam details.
-        /// </summary>
-        
-        public bool PracticalExams { get; set; }
-
-        /// <summary>
-        /// Gets or sets the board exam details.
-        /// </summary>
-       
-        public bool BoardExams { get; set; }
-
-        /// <summary>
-        /// Gets or sets the minimum pass percentage.
-        /// </summary>
-        public decimal PassPercentage { get; set; }
-
-        /// <summary>
-        /// Gets or sets the rank calculation details.
-        /// </summary>
-        public bool RankCalculation { get; set; }
 
         /// <summary>
         /// Gets or sets a value indicating whether the board is active.
@@ -122,9 +89,6 @@ namespace CollegeManagement.API.Models
 
         [ForeignKey(nameof(StateId))]
         public virtual State? State { get; set; }
-
-        [ForeignKey(nameof(AcademicPatternId))]
-        public virtual AcademicPattern AcademicPattern { get; set; } = null!;
 
         [ForeignKey(nameof(GradingSystemId))]
         public virtual GradingSystem GradingSystem { get; set; } = null!;

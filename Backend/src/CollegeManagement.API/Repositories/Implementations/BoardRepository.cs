@@ -65,13 +65,7 @@ namespace CollegeManagement.API.Repositories.Implementations
             existing.Description = board.Description;
             existing.CountryId = board.CountryId;
             existing.StateId = board.StateId;
-            existing.AcademicPatternId = board.AcademicPatternId;
             existing.GradingSystemId = board.GradingSystemId;
-            existing.InternalAssessment = board.InternalAssessment;
-            existing.PracticalExams = board.PracticalExams;
-            existing.BoardExams = board.BoardExams;
-            existing.PassPercentage = board.PassPercentage;
-            existing.RankCalculation = board.RankCalculation;
             existing.IsActive = board.IsActive;
             existing.UpdatedAt = DateTime.UtcNow;
 
@@ -90,7 +84,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                 return 0;
             }
 
-            _context.Boards.Remove(existing);
+            existing.IsActive = false;
+            existing.UpdatedAt = DateTime.UtcNow;
             return await _context.SaveChangesAsync();
         }
 
@@ -102,7 +97,6 @@ namespace CollegeManagement.API.Repositories.Implementations
             return await _context.Boards
                 .Include(b => b.Country)
                 .Include(b => b.State)
-                .Include(b => b.AcademicPattern)
                 .Include(b => b.GradingSystem)
                 .Include(b => b.BoardAcademicLevels)
                     .ThenInclude(bal => bal.AcademicLevel)
@@ -117,7 +111,6 @@ namespace CollegeManagement.API.Repositories.Implementations
             var query = _context.Boards
                 .Include(x => x.Country)
                 .Include(x => x.State)
-                .Include(x => x.AcademicPattern)
                 .Include(x => x.GradingSystem)
                 .Include(x => x.BoardAcademicLevels)
                     .ThenInclude(bal => bal.AcademicLevel)
@@ -137,7 +130,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     x.BoardCode.ToLower().Contains(term) ||
                     x.BoardType.ToLower().Contains(term) ||
                     (x.State != null && x.State.StateName.ToLower().Contains(term)) ||
-                    (x.Description != null && x.Description.ToLower().Contains(term)));
+                    (x.Description != null && x.Description.ToLower().Contains(term)) ||
+                    x.BoardAcademicLevels.Any(bal => bal.AcademicLevel != null && bal.AcademicLevel.LevelName.ToLower().Contains(term)));
             }
 
             int totalCount = await query.CountAsync();
@@ -212,17 +206,6 @@ namespace CollegeManagement.API.Repositories.Implementations
                 .GroupBy(x => x.StateName.Trim(), StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.First())
                 .ToList();
-        }
-
-        /// <summary>
-        /// Retrieves active academic patterns.
-        /// </summary>
-        public async Task<List<AcademicPattern>> GetAcademicPatternsAsync()
-        {
-            return await _context.AcademicPatterns
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .ToListAsync();
         }
 
         /// <summary>
@@ -321,14 +304,6 @@ namespace CollegeManagement.API.Repositories.Implementations
         }
 
         /// <summary>
-        /// Checks if an academic pattern exists.
-        /// </summary>
-        public async Task<bool> AcademicPatternExistsAsync(int academicPatternId)
-        {
-            return await _context.AcademicPatterns.AsNoTracking().AnyAsync(x => x.AcademicPatternId == academicPatternId && x.IsActive);
-        }
-
-        /// <summary>
         /// Checks if a grading system exists.
         /// </summary>
         public async Task<bool> GradingSystemExistsAsync(int gradingSystemId)
@@ -394,7 +369,6 @@ namespace CollegeManagement.API.Repositories.Implementations
             var query = _context.Boards
                 .Include(x => x.Country)
                 .Include(x => x.State)
-                .Include(x => x.AcademicPattern)
                 .Include(x => x.GradingSystem)
                 .Include(x => x.BoardAcademicLevels)
                     .ThenInclude(bal => bal.AcademicLevel)
@@ -412,7 +386,10 @@ namespace CollegeManagement.API.Repositories.Implementations
                 query = query.Where(x =>
                     x.BoardName.ToLower().Contains(term) ||
                     x.BoardCode.ToLower().Contains(term) ||
-                    x.BoardType.ToLower().Contains(term));
+                    x.BoardType.ToLower().Contains(term) ||
+                    (x.State != null && x.State.StateName.ToLower().Contains(term)) ||
+                    (x.Description != null && x.Description.ToLower().Contains(term)) ||
+                    x.BoardAcademicLevels.Any(bal => bal.AcademicLevel != null && bal.AcademicLevel.LevelName.ToLower().Contains(term)));
             }
 
             return await query.OrderBy(x => x.BoardName).ToListAsync();

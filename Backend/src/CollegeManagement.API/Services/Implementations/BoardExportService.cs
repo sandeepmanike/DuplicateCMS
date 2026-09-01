@@ -25,27 +25,22 @@ namespace CollegeManagement.API.Services.Implementations
             using (var writer = new StreamWriter(ms, new UTF8Encoding(true)))
             {
                 // Write Header
-                await writer.WriteLineAsync("Board Code,Board Name,Description,Country,State,Academic Pattern,Grading System,Internal Assessment,Practical Exams,Board Exams,Pass Percentage,Rank Calculation,Status,Created At,Updated At");
+                await writer.WriteLineAsync("Board Code,Board Name,Board Type,Description,Country,State,Grading System,Status,Created At,Updated At");
 
                 foreach (var b in boards)
                 {
                     var code = EscapeCsv(SanitizeText(b.BoardCode));
                     var name = EscapeCsv(SanitizeText(b.BoardName));
+                    var type = EscapeCsv(SanitizeText(b.BoardType));
                     var desc = EscapeCsv(SanitizeText(b.Description));
                     var country = EscapeCsv(b.Country?.CountryName);
                     var state = EscapeCsv(b.State?.StateName);
-                    var pattern = EscapeCsv(b.AcademicPattern?.PatternName);
                     var grading = EscapeCsv(b.GradingSystem?.GradingSystemName);
-                    var internalAssess = b.InternalAssessment ? "Yes" : "No";
-                    var practical = b.PracticalExams ? "Yes" : "No";
-                    var exams = b.BoardExams ? "Yes" : "No";
-                    var passPct = b.PassPercentage.ToString("0.00");
-                    var rank = b.RankCalculation ? "Yes" : "No";
                     var status = b.IsActive ? "Active" : "Inactive";
                     var createdAt = b.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
                     var updatedAt = b.UpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty;
 
-                    await writer.WriteLineAsync($"{code},{name},{desc},{country},{state},{pattern},{grading},{internalAssess},{practical},{exams},{passPct},{rank},{status},{createdAt},{updatedAt}");
+                    await writer.WriteLineAsync($"{code},{name},{type},{desc},{country},{state},{grading},{status},{createdAt},{updatedAt}");
                 }
             }
             return ms.ToArray();
@@ -62,16 +57,11 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     { "Board Code", SanitizeText(b.BoardCode) },
                     { "Board Name", SanitizeText(b.BoardName) },
+                    { "Board Type", SanitizeText(b.BoardType) },
                     { "Description", SanitizeText(b.Description) },
                     { "Country", b.Country?.CountryName ?? string.Empty },
                     { "State", b.State?.StateName ?? string.Empty },
-                    { "Academic Pattern", b.AcademicPattern?.PatternName ?? string.Empty },
                     { "Grading System", b.GradingSystem?.GradingSystemName ?? string.Empty },
-                    { "Internal Assessment", b.InternalAssessment ? "Yes" : "No" },
-                    { "Practical Exams", b.PracticalExams ? "Yes" : "No" },
-                    { "Board Exams", b.BoardExams ? "Yes" : "No" },
-                    { "Pass Percentage", b.PassPercentage },
-                    { "Rank Calculation", b.RankCalculation ? "Yes" : "No" },
                     { "Status", b.IsActive ? "Active" : "Inactive" },
                     { "Created At", b.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") },
                     { "Updated At", b.UpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? string.Empty }
@@ -130,11 +120,10 @@ namespace CollegeManagement.API.Services.Implementations
                             {
                                 columns.ConstantColumn(70);  // Code
                                 columns.RelativeColumn(2);   // Name
+                                columns.RelativeColumn(1.5f); // Type
                                 columns.RelativeColumn(1.5f); // Country
                                 columns.RelativeColumn(1.5f); // State
-                                columns.RelativeColumn(2);   // Academic Pattern
                                 columns.RelativeColumn(2);   // Grading System
-                                columns.ConstantColumn(50);  // Pass %
                                 columns.ConstantColumn(50);  // Status
                                 columns.ConstantColumn(80);  // Created Date
                             });
@@ -144,11 +133,10 @@ namespace CollegeManagement.API.Services.Implementations
                             {
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Board Code").Bold().FontColor(Colors.White));
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Board Name").Bold().FontColor(Colors.White));
+                                header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Board Type").Bold().FontColor(Colors.White));
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Country").Bold().FontColor(Colors.White));
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("State").Bold().FontColor(Colors.White));
-                                header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Academic Pattern").Bold().FontColor(Colors.White));
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Grading System").Bold().FontColor(Colors.White));
-                                header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Pass %").Bold().FontColor(Colors.White));
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Status").Bold().FontColor(Colors.White));
                                 header.Cell().Background(Colors.Blue.Darken2).Padding(5).Text(t => t.Span("Created At").Bold().FontColor(Colors.White));
                             });
@@ -161,11 +149,10 @@ namespace CollegeManagement.API.Services.Implementations
 
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(SanitizeText(b.BoardCode)));
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(SanitizeText(b.BoardName)));
+                                table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(SanitizeText(b.BoardType)));
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.Country?.CountryName ?? string.Empty));
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.State?.StateName ?? string.Empty));
-                                table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.AcademicPattern?.PatternName ?? string.Empty));
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.GradingSystem?.GradingSystemName ?? string.Empty));
-                                table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.PassPercentage.ToString("0.00")));
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.IsActive ? "Active" : "Inactive"));
                                 table.Cell().Background(bgColor).Padding(5).Text(t => t.Span(b.CreatedAt.ToString("yyyy-MM-dd")));
 

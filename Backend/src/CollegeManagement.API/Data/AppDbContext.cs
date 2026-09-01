@@ -819,16 +819,16 @@ namespace CollegeManagement.API.Data
                     .IsRequired()
                     .HasMaxLength(30);
 
+                entity.Property(b => b.BoardType)
+                    .IsRequired()
+                    .HasMaxLength(50);
+
                 entity.Property(b => b.BoardName)
                     .IsRequired()
                     .HasMaxLength(100);
 
                 entity.Property(b => b.Description)
                     .HasMaxLength(500);
-
-                entity.Property(b => b.PassPercentage)
-    .HasColumnType("decimal(5,2)")
-    .IsRequired();
 
                 entity.Property(b => b.IsActive)
                     .HasDefaultValue(true);
@@ -843,9 +843,9 @@ namespace CollegeManagement.API.Data
                     .IsUnique();
 
                 entity.HasIndex(b => b.BoardName);
+                entity.HasIndex(b => b.BoardType);
                 entity.HasIndex(b => b.CountryId);
                 entity.HasIndex(b => b.StateId);
-                entity.HasIndex(b => b.AcademicPatternId);
                 entity.HasIndex(b => b.GradingSystemId);
                 entity.HasIndex(b => b.IsActive);
 
@@ -857,11 +857,6 @@ namespace CollegeManagement.API.Data
                 entity.HasOne(b => b.State)
                     .WithMany(s => s.Boards)
                     .HasForeignKey(b => b.StateId)
-                    .OnDelete(DeleteBehavior.Restrict);
-
-                entity.HasOne(b => b.AcademicPattern)
-                    .WithMany(ap => ap.Boards)
-                    .HasForeignKey(b => b.AcademicPatternId)
                     .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(b => b.GradingSystem)

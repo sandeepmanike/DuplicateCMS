@@ -63,11 +63,6 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<List<State>> GetStatesByCountryAsync(int countryId);
 
         /// <summary>
-        /// Retrieves active academic patterns.
-        /// </summary>
-        Task<List<AcademicPattern>> GetAcademicPatternsAsync();
-
-        /// <summary>
         /// Retrieves active academic levels, optionally filtered by boardId.
         /// </summary>
         Task<List<AcademicLevel>> GetAcademicLevelsAsync(int? boardId = null);
@@ -96,11 +91,6 @@ namespace CollegeManagement.API.Repositories.Interfaces
         /// Checks if a state exists.
         /// </summary>
         Task<bool> StateExistsAsync(int stateId);
-
-        /// <summary>
-        /// Checks if an academic pattern exists.
-        /// </summary>
-        Task<bool> AcademicPatternExistsAsync(int academicPatternId);
 
         /// <summary>
         /// Checks if a grading system exists.
