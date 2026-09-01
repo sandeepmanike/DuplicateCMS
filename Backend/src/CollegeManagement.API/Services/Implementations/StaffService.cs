@@ -201,10 +201,17 @@ namespace CollegeManagement.API.Services.Implementations
             staff.DepartmentId = resolvedDepartmentId;
             staff.DesignationId = resolvedDesignationId;
             staff.Designation = resolvedDesignationName;
+            staff.BoardId = dto.BoardId;
+            staff.BoardName = dto.BoardName ?? dto.Board;
 
             var createdStaff = await _staffRepository.AddAsync(staff);
             createdStaff.Department = deptName;
-            return _mapper.Map<StaffResponseDto>(createdStaff);
+            var response = _mapper.Map<StaffResponseDto>(createdStaff);
+            if (string.IsNullOrWhiteSpace(response.BoardName))
+            {
+                response.BoardName = staff.BoardName ?? staff.Board;
+            }
+            return response;
         }
 
         public async Task<StaffResponseDto> UpdateStaffAsync(int id, UpdateStaffDto dto)
@@ -318,10 +325,17 @@ namespace CollegeManagement.API.Services.Implementations
             existingStaff.Department = deptName;
             existingStaff.DesignationId = resolvedDesignationId;
             existingStaff.Designation = resolvedDesignationName;
+            existingStaff.BoardId = dto.BoardId ?? existingStaff.BoardId;
+            existingStaff.BoardName = dto.BoardName ?? dto.Board ?? existingStaff.BoardName;
             existingStaff.UpdatedAt = DateTime.UtcNow;
 
             await _staffRepository.UpdateAsync(existingStaff);
-            return _mapper.Map<StaffResponseDto>(existingStaff);
+            var response = _mapper.Map<StaffResponseDto>(existingStaff);
+            if (string.IsNullOrWhiteSpace(response.BoardName))
+            {
+                response.BoardName = existingStaff.BoardName ?? existingStaff.Board;
+            }
+            return response;
         }
 
         public async Task<bool> DeleteStaffAsync(int id)

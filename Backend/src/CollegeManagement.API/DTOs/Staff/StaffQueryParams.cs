@@ -2,7 +2,7 @@ namespace CollegeManagement.API.DTOs.Staff
 {
     public class StaffQueryParams
     {
-        private const int MaxPageSize = 100;
+        private const int MaxPageSize = 10000;
         private int _pageSize = 10;
         private int _pageNumber = 1;
 
@@ -22,6 +22,13 @@ namespace CollegeManagement.API.DTOs.Staff
         public string? Department { get; set; }
         public string? Designation { get; set; }
         public int? DesignationId { get; set; }
+        public int? BoardId { get; set; }
+        public string? BoardName { get; set; }
+        public string? Board
+        {
+            get => BoardName;
+            set => BoardName = value;
+        }
         public string? StaffType { get; set; }
         public string? FacultyType
         {

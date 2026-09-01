@@ -8,6 +8,7 @@ using CollegeManagement.API.DTOs.Examination.Requests;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CollegeManagement.API.Repositories.Implementations
 {
@@ -22,11 +23,102 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         #region Examination Methods
 
+        private static readonly System.Threading.SemaphoreSlim _seqLock = new(1, 1);
+
         public async Task<Examination> CreateExaminationAsync(Examination examination)
         {
-            _context.Examinations.Add(examination);
-            await _context.SaveChangesAsync();
-            return examination;
+            // 1. Resolve Academic Year string (e.g. "2026")
+            string yearStr = DateTime.UtcNow.Year.ToString();
+            if (examination.AcademicYearId > 0)
+            {
+                var y = await _context.AcademicYears
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.AcademicYearId == examination.AcademicYearId);
+
+                if (y != null && !string.IsNullOrWhiteSpace(y.AcademicYearName))
+                {
+                    var match = System.Text.RegularExpressions.Regex.Match(y.AcademicYearName, @"\d{4}");
+                    if (match.Success)
+                    {
+                        yearStr = match.Value;
+                    }
+                }
+            }
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                // 2. Concurrency-safe atomic sequence retrieval guarded by SemaphoreSlim + DB Sequence Table
+                int nextSeq;
+                await _seqLock.WaitAsync();
+                try
+                {
+                    var seqRecord = await _context.ExamCodeSequences
+                        .FirstOrDefaultAsync(s => s.AcademicYear == yearStr);
+
+                    if (seqRecord == null)
+                    {
+                        // Align with existing records in DB
+                        var maxExisting = await _context.Examinations
+                            .AsNoTracking()
+                            .Where(e => e.ExamCode != null && e.ExamCode.StartsWith($"EXAM-{yearStr}-"))
+                            .Select(e => e.ExamCode)
+                            .ToListAsync();
+
+                        int maxSeq = 0;
+                        foreach (var code in maxExisting)
+                        {
+                            if (!string.IsNullOrWhiteSpace(code))
+                            {
+                                var parts = code.Split('-');
+                                if (parts.Length >= 3 && int.TryParse(parts[parts.Length - 1], out int parsed))
+                                {
+                                    if (parsed > maxSeq) maxSeq = parsed;
+                                }
+                            }
+                        }
+
+                        nextSeq = maxSeq + 1;
+                        var newSeq = new ExamCodeSequence
+                        {
+                            AcademicYear = yearStr,
+                            LastSequence = nextSeq,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        _context.ExamCodeSequences.Add(newSeq);
+                        await _context.SaveChangesAsync();
+                    }
+                    else
+                    {
+                        seqRecord.LastSequence += 1;
+                        seqRecord.UpdatedAt = DateTime.UtcNow;
+                        nextSeq = seqRecord.LastSequence;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+                finally
+                {
+                    _seqLock.Release();
+                }
+
+                // 3. Format: EXAM-{academicYear}-{sequence:D4} (e.g. EXAM-2026-0001)
+                examination.ExamCode = $"EXAM-{yearStr}-{nextSeq:D4}";
+
+                // 4. Save Examination record inside database transaction
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    _context.Examinations.Add(examination);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return examination;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<Examination?> GetExaminationByIdAsync(int examinationId)
@@ -406,49 +498,27 @@ namespace CollegeManagement.API.Repositories.Implementations
 
         public async Task<string> GenerateUniqueExamCodeAsync(int boardId, int academicYearId, int groupId, int? programId)
         {
-            string boardCode = "BIEAP";
+            string yearStr = DateTime.UtcNow.Year.ToString();
             try
             {
-                var b = await _context.Boards.FirstOrDefaultAsync(x => x.BoardId == boardId);
-                if (b != null && !string.IsNullOrWhiteSpace(b.BoardCode)) boardCode = b.BoardCode.Trim().ToUpper();
-            }
-            catch { }
+                var y = await _context.AcademicYears
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.AcademicYearId == academicYearId);
 
-            int year = DateTime.UtcNow.Year;
-            try
-            {
-                var y = await _context.AcademicYears.FirstOrDefaultAsync(x => x.AcademicYearId == academicYearId);
                 if (y != null && !string.IsNullOrWhiteSpace(y.AcademicYearName))
                 {
                     var match = System.Text.RegularExpressions.Regex.Match(y.AcademicYearName, @"\d{4}");
-                    if (match.Success) int.TryParse(match.Value, out year);
+                    if (match.Success) yearStr = match.Value;
                 }
             }
             catch { }
 
-            string groupCode = "GEN";
-            try
-            {
-                var g = await _context.Groups.FirstOrDefaultAsync(x => x.GroupId == groupId);
-                if (g != null && !string.IsNullOrWhiteSpace(g.GroupCode)) groupCode = g.GroupCode.Trim().ToUpper();
-            }
-            catch { }
+            var seqRecord = await _context.ExamCodeSequences
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.AcademicYear == yearStr);
 
-            string prefix = $"{boardCode}-{year}-{groupCode}";
-            var existingCodes = await _context.Examinations
-                .Where(e => e.ExamCode != null && e.ExamCode.StartsWith(prefix))
-                .Select(e => e.ExamCode!)
-                .ToListAsync();
-
-            int seq = 1;
-            string candidate = $"{prefix}-{seq:D4}";
-            while (existingCodes.Contains(candidate))
-            {
-                seq++;
-                candidate = $"{prefix}-{seq:D4}";
-            }
-
-            return candidate;
+            int seq = (seqRecord?.LastSequence ?? 0) + 1;
+            return $"EXAM-{yearStr}-{seq:D4}";
         }
 
         public async Task<IEnumerable<DTOs.Examination.Responses.AvailableHallDto>> GetAvailableHallsFilteredAsync(

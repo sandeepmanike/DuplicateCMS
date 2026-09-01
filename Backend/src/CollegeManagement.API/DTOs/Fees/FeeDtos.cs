@@ -40,6 +40,9 @@ public class CreateFeeStructureRequest
 
 public class UpdateFeeStructureRequest
 {
+    public string StructureName { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
     public int? ProgramId { get; set; }
     public bool IsActive { get; set; } = true;
 }

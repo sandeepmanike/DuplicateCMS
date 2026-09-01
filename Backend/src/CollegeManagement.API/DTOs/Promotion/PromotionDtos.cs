@@ -116,50 +116,44 @@ namespace CollegeManagement.API.DTOs.Promotion
 
     public class PromotionConfiguration
     {
-        [Range(1, int.MaxValue)]
         public int SourceAcademicYearId { get; set; }
 
         public int? SourceBoardId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string SourceAcademicLevel { get; set; } = string.Empty;
+        public int? SourceAcademicLevelId { get; set; }
 
-        [Range(1, int.MaxValue)]
+        public string? SourceAcademicLevel { get; set; }
+
         public int SourceGroupId { get; set; }
 
         public int? SourceProgramId { get; set; }
 
         public string? SourceProgram { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string SourceSection { get; set; } = string.Empty;
+        public int? SourceSectionId { get; set; }
 
-        [MaxLength(50)]
+        public string? SourceSection { get; set; }
+
         public string? SourceMedium { get; set; }
 
-        [Range(1, int.MaxValue)]
         public int TargetAcademicYearId { get; set; }
 
         public int? TargetBoardId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string TargetAcademicLevel { get; set; } = string.Empty;
+        public int? TargetAcademicLevelId { get; set; }
 
-        [Range(1, int.MaxValue)]
+        public string? TargetAcademicLevel { get; set; }
+
         public int TargetGroupId { get; set; }
 
         public int? TargetProgramId { get; set; }
 
         public string? TargetProgram { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string TargetSection { get; set; } = string.Empty;
+        public int? TargetSectionId { get; set; }
 
-        [MaxLength(50)]
+        public string? TargetSection { get; set; }
+
         public string? TargetMedium { get; set; }
     }
 
@@ -422,15 +416,12 @@ namespace CollegeManagement.API.DTOs.Promotion
         [MinLength(1)]
         public List<int> StudentIds { get; set; } = new();
 
-        [Range(1, int.MaxValue)]
         public int TargetAcademicYearId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string TargetAcademicLevel { get; set; }
-            = string.Empty;
+        public int? TargetAcademicLevelId { get; set; }
 
-        [Range(1, int.MaxValue)]
+        public string? TargetAcademicLevel { get; set; }
+
         public int TargetGroupId { get; set; }
     }
 
@@ -444,21 +435,17 @@ namespace CollegeManagement.API.DTOs.Promotion
         [MinLength(1)]
         public List<int> StudentIds { get; set; } = new();
 
-        [Range(1, int.MaxValue)]
         public int TargetAcademicYearId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string TargetAcademicLevel { get; set; }
-            = string.Empty;
+        public int? TargetAcademicLevelId { get; set; }
 
-        [Range(1, int.MaxValue)]
+        public string? TargetAcademicLevel { get; set; }
+
         public int TargetGroupId { get; set; }
 
-        [Required]
-        [MaxLength(50)]
-        public string TargetSection { get; set; }
-            = string.Empty;
+        public int? TargetSectionId { get; set; }
+
+        public string? TargetSection { get; set; }
     }
 
     // ============================================================

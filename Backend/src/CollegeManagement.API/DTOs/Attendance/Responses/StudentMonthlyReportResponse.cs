@@ -20,15 +20,25 @@ namespace CollegeManagement.API.DTOs.Attendance.Responses
     public class StudentMonthlyGridRowDto
     {
         public int StudentId { get; set; }
+        public int Id => StudentId;
         public string RollNumber { get; set; } = string.Empty;
+        public string RollNo => RollNumber;
         public string StudentName { get; set; } = string.Empty;
+        public string Name => StudentName;
+        public string FullName => StudentName;
         public string GroupName { get; set; } = string.Empty;
+        public string Group => GroupName;
         public string SectionName { get; set; } = string.Empty;
+        public string Section => SectionName;
 
         /// <summary>
         /// Daily status code array for each day in the month: "P", "A", "L", "LV", "H" (Holiday), or "-" (Not Marked).
         /// </summary>
         public List<string> DailyStatus { get; set; } = new List<string>();
+        public List<string> Records => DailyStatus;
+        public List<string> AttendanceRecords => DailyStatus;
+        public List<string> DailyAttendance => DailyStatus;
+        public List<string> Attendance => DailyStatus;
 
         public int PresentCount { get; set; }
         public int AbsentCount { get; set; }
@@ -53,5 +63,8 @@ namespace CollegeManagement.API.DTOs.Attendance.Responses
 
         public List<DayHeaderDto> DayHeaders { get; set; } = new List<DayHeaderDto>();
         public List<StudentMonthlyGridRowDto> StudentRows { get; set; } = new List<StudentMonthlyGridRowDto>();
+        public List<StudentMonthlyGridRowDto> Rows => StudentRows;
+        public List<StudentMonthlyGridRowDto> Items => StudentRows;
+        public List<StudentMonthlyGridRowDto> Students => StudentRows;
     }
 }

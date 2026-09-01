@@ -6,7 +6,7 @@ using CollegeManagement.API.Models.Faculty;
 
 namespace CollegeManagement.API.Models.Staff
 {
-    [Table("Staffs")]
+    [Table("Staff")]
     public class Staff
     {
 
@@ -93,6 +93,21 @@ namespace CollegeManagement.API.Models.Staff
 
         [NotMapped]
         public string Department { get; set; } = string.Empty;
+
+        public int? BoardId { get; set; }
+
+        [ForeignKey(nameof(BoardId))]
+        public virtual Board? BoardRef { get; set; }
+
+        [NotMapped]
+        public string? BoardName { get; set; }
+
+        [NotMapped]
+        public string? Board
+        {
+            get => BoardName;
+            set => BoardName = value;
+        }
 
         [Required]
         public DateTime JoiningDate { get; set; }

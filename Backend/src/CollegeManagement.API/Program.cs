@@ -246,6 +246,7 @@ builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
 // Group, Section & Subject
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<CollegeManagement.API.Repositories.IProgramRepository, CollegeManagement.API.Repositories.ProgramRepository>();
 builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<ISubjectRepository, SubjectRepository>();
 
@@ -302,6 +303,7 @@ builder.Services.AddScoped<IFeeService, FeeService>();
 
 // Group, Section & Subject
 builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<CollegeManagement.API.Services.IProgramService, CollegeManagement.API.Services.ProgramService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISubjectService, SubjectService>();
 
@@ -485,6 +487,44 @@ builder.Services.AddSwaggerGen(c =>
 #endregion
 
 var app = builder.Build();
+
+#region Database Schema Initialization
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CollegeManagement.API.Data.AppDbContext>();
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS `ExamCodeSequences` (
+                `AcademicYear` VARCHAR(20) NOT NULL PRIMARY KEY,
+                `LastSequence` INT NOT NULL DEFAULT 0,
+                `UpdatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+        ");
+
+        db.Database.ExecuteSqlRaw(@"
+            SET @idx_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Examinations' AND INDEX_NAME = 'IX_Examinations_ExamCode');
+            SET @ddl = IF(@idx_exists = 0, 'ALTER TABLE `Examinations` ADD UNIQUE INDEX `IX_Examinations_ExamCode` (`ExamCode`);', 'SELECT 1;');
+            PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+        ");
+        var logger = scope.ServiceProvider.GetService<ILogger<Program>>();
+        var firstYear = db.AcademicYears.FirstOrDefault();
+        var firstBoard = db.Boards.FirstOrDefault();
+        var firstGroup = db.Groups.FirstOrDefault();
+        var firstLevel = db.AcademicLevels.FirstOrDefault();
+        logger?.LogInformation("DB State: AcademicYear={YearId} ({YearName}), Board={BoardId} ({BoardName}), Group={GroupId} ({GroupName}), Level={LevelId} ({LevelName})",
+            firstYear?.AcademicYearId, firstYear?.AcademicYearName,
+            firstBoard?.BoardId, firstBoard?.BoardName,
+            firstGroup?.GroupId, firstGroup?.GroupName,
+            firstLevel?.AcademicLevelId, firstLevel?.LevelName);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetService<ILogger<Program>>();
+        logger?.LogWarning(ex, "Schema initialization notice for Examinations unique index / ExamCodeSequences");
+    }
+}
+#endregion
 
 #region Forwarded Headers
 

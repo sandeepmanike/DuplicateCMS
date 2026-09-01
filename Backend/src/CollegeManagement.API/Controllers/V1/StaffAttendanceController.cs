@@ -64,7 +64,18 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// Generates Staff Monthly Calendar Matrix Grid Report (Rows: Staff, Columns: Dates 1-31).
+        /// Generates Staff Monthly Calendar Matrix Grid Report via GET query string.
+        /// </summary>
+        [HttpGet("monthly-report")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetStaffMonthlyReportGridGet([FromQuery] StaffMonthlyReportRequest request)
+        {
+            var result = await _service.GetStaffMonthlyReportGridAsync(request);
+            return Ok(new { Status = true, Message = "Staff monthly report grid generated successfully.", Data = result });
+        }
+
+        /// <summary>
+        /// Generates Staff Monthly Calendar Matrix Grid Report via POST body.
         /// </summary>
         [HttpPost("monthly-report")]
         [AllowAnonymous]

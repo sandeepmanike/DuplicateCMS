@@ -51,6 +51,7 @@ namespace CollegeManagement.API.Data
         public DbSet<AssignmentSubmission> AssignmentSubmissions { get; set; }
 
         public DbSet<Examination> Examinations { get; set; }
+        public DbSet<ExamCodeSequence> ExamCodeSequences { get; set; }
         public DbSet<ExamSchedule> ExamSchedules { get; set; }
         public DbSet<HallTicket> HallTickets { get; set; }
         public DbSet<InvigilatorAssignment> InvigilatorAssignments { get; set; }
@@ -1091,6 +1092,8 @@ namespace CollegeManagement.API.Data
 
             modelBuilder.Entity<Staff>(entity =>
             {
+                entity.ToTable("Staff");
+
                 entity.HasOne(s => s.DesignationRef)
                     .WithMany(d => d.Staffs)
                     .HasForeignKey(s => s.DesignationId)
@@ -1108,6 +1111,21 @@ namespace CollegeManagement.API.Data
                     .WithMany(d => d.Faculties)
                     .HasForeignKey(f => f.DesignationId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+            #endregion
+
+            #region Examination Configuration
+            modelBuilder.Entity<Examination>(entity =>
+            {
+                entity.HasKey(e => e.ExaminationId);
+                entity.Property(e => e.ExamCode).HasMaxLength(50);
+                entity.HasIndex(e => e.ExamCode).IsUnique();
+            });
+
+            modelBuilder.Entity<ExamCodeSequence>(entity =>
+            {
+                entity.HasKey(e => e.AcademicYear);
+                entity.Property(e => e.AcademicYear).HasMaxLength(20);
             });
             #endregion
         }

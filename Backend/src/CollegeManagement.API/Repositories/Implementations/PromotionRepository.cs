@@ -64,9 +64,9 @@ SELECT
     ay.AcademicYearName AS AcademicYear,
 
     s.BoardId,
-    COALESCE(b.BoardName, s.Board) AS BoardName,
+    COALESCE(b.BoardName, '') AS BoardName,
 
-    s.AcademicLevel,
+    COALESCE(al.LevelName, '') AS AcademicLevel,
 
     s.GroupId,
     g.GroupName,
@@ -74,7 +74,7 @@ SELECT
     s.ProgramId,
     p.ProgramName,
 
-    s.Section,
+    COALESCE(sec.SectionName, '') AS Section,
     s.Medium,
 
     @TargetAcademicYearId AS TargetAcademicYearId,
@@ -109,6 +109,12 @@ LEFT JOIN AcademicYears ay
 LEFT JOIN Boards b
     ON b.BoardId = s.BoardId
 
+LEFT JOIN AcademicLevels al
+    ON al.AcademicLevelId = s.AcademicLevelId
+
+LEFT JOIN Sections sec
+    ON sec.SectionId = s.SectionId
+
 LEFT JOIN `Groups` g
     ON g.GroupId = s.GroupId
 
@@ -139,12 +145,16 @@ AND (
 AND (
     @AcademicLevel IS NULL
     OR TRIM(@AcademicLevel) = ''
-    OR s.AcademicLevel = TRIM(@AcademicLevel)
+    OR al.LevelName = TRIM(@AcademicLevel)
+    OR (TRIM(@AcademicLevel) IN ('1st PUC', 'Intermediate 1st Year') AND s.AcademicLevelId IN (1, 5))
+    OR (TRIM(@AcademicLevel) IN ('2nd PUC', 'Intermediate 2nd Year') AND s.AcademicLevelId IN (2, 6))
 )
 
 AND (
     @GroupId IS NULL
+    OR @GroupId = 0
     OR s.GroupId = @GroupId
+    OR (@GroupId IN (34, 37) AND s.GroupId IN (34, 37))
 )
 
 AND (
@@ -156,7 +166,7 @@ AND (
 AND (
     @Section IS NULL
     OR TRIM(@Section) = ''
-    OR s.Section = TRIM(@Section)
+    OR sec.SectionName = TRIM(@Section)
 )
 
 AND (
@@ -368,19 +378,21 @@ ORDER BY s.StudentName;
                         await Connection.QuerySingleOrDefaultAsync<dynamic>(
                             @"
 SELECT
-    StudentId,
-    StudentName,
-    AcademicYearId,
-    BoardId,
-    AcademicLevelId,
-    AcademicLevel,
-    GroupId,
-    SectionId,
-    Section,
-    Medium
-FROM Students
-WHERE StudentId = @StudentId
-AND IsActive = 1
+    s.StudentId,
+    s.StudentName,
+    s.AcademicYearId,
+    s.BoardId,
+    s.AcademicLevelId,
+    COALESCE(al.LevelName, '') AS AcademicLevel,
+    s.GroupId,
+    s.SectionId,
+    COALESCE(sec.SectionName, '') AS Section,
+    s.Medium
+FROM Students s
+LEFT JOIN AcademicLevels al ON al.AcademicLevelId = s.AcademicLevelId
+LEFT JOIN Sections sec ON sec.SectionId = s.SectionId
+WHERE s.StudentId = @StudentId
+AND s.IsActive = 1
 FOR UPDATE;
 ",
                             new
@@ -495,6 +507,28 @@ VALUES
                         },
                         transaction);
 
+                    int? targetAcademicLevelId = request.TargetAcademicLevelId;
+                    if (!targetAcademicLevelId.HasValue || targetAcademicLevelId <= 0)
+                    {
+                        if (!string.IsNullOrWhiteSpace(request.TargetAcademicLevel))
+                        {
+                            targetAcademicLevelId = await Connection.ExecuteScalarAsync<int?>(
+                                "SELECT AcademicLevelId FROM AcademicLevels WHERE LOWER(TRIM(LevelName)) = LOWER(TRIM(@Level)) LIMIT 1;",
+                                new { Level = request.TargetAcademicLevel }, transaction);
+                        }
+                    }
+
+                    int? targetSectionId = request.TargetSectionId;
+                    if (!targetSectionId.HasValue || targetSectionId <= 0)
+                    {
+                        if (!string.IsNullOrWhiteSpace(request.TargetSection))
+                        {
+                            targetSectionId = await Connection.ExecuteScalarAsync<int?>(
+                                "SELECT SectionId FROM Sections WHERE LOWER(TRIM(SectionName)) = LOWER(TRIM(@Sec)) LIMIT 1;",
+                                new { Sec = request.TargetSection }, transaction);
+                        }
+                    }
+
                     /*
                      * Update actual student record.
                      */
@@ -504,9 +538,9 @@ UPDATE Students
 SET
     AcademicYearId = @AcademicYearId,
     BoardId = COALESCE(@BoardId, BoardId),
-    AcademicLevel = @AcademicLevel,
+    AcademicLevelId = COALESCE(@TargetAcademicLevelId, AcademicLevelId),
     GroupId = @GroupId,
-    Section = @Section,
+    SectionId = COALESCE(@TargetSectionId, SectionId),
     Medium = COALESCE(@Medium, Medium),
     UpdatedAt = UTC_TIMESTAMP()
 WHERE StudentId = @StudentId;
@@ -515,9 +549,9 @@ WHERE StudentId = @StudentId;
                         {
                             AcademicYearId = request.TargetAcademicYearId,
                             BoardId = request.TargetBoardId,
-                            AcademicLevel = request.TargetAcademicLevel,
+                            TargetAcademicLevelId = targetAcademicLevelId,
                             GroupId = request.TargetGroupId,
-                            Section = request.TargetSection,
+                            TargetSectionId = targetSectionId,
                             Medium = request.TargetMedium,
                             StudentId = studentId
                         },
@@ -579,7 +613,7 @@ SELECT
     fay.AcademicYearName AS SourceAcademicYear,
 
     s.BoardId AS SourceBoardId,
-    COALESCE(fb.BoardName, s.Board) AS SourceBoard,
+    COALESCE(fb.BoardName, '') AS SourceBoard,
 
     ph.FromAcademicLevel AS SourceAcademicLevel,
 
@@ -593,7 +627,7 @@ SELECT
     tay.AcademicYearName AS TargetAcademicYear,
 
     s.BoardId AS TargetBoardId,
-    COALESCE(tb.BoardName, s.Board) AS TargetBoard,
+    COALESCE(tb.BoardName, '') AS TargetBoard,
 
     ph.ToAcademicLevel AS TargetAcademicLevel,
 
@@ -819,9 +853,9 @@ INNER JOIN PromotionHistories ph
 
 SET
     s.AcademicYearId = ph.FromAcademicYearId,
-    s.AcademicLevel = ph.FromAcademicLevel,
+    s.AcademicLevelId = COALESCE(ph.FromClassId, s.AcademicLevelId),
     s.GroupId = ph.FromGroupId,
-    s.Section = ph.FromSection,
+    s.SectionId = COALESCE(ph.FromSectionId, s.SectionId),
     s.UpdatedAt = UTC_TIMESTAMP()
 
 WHERE s.StudentId = ph.StudentId;
@@ -906,16 +940,20 @@ WHERE Id = @PromotionId;
                 await Connection.QuerySingleOrDefaultAsync<dynamic>(
                     @"
 SELECT
-    StudentId,
-    BoardId,
-    AcademicYearId,
-    AcademicLevel,
-    GroupId,
-    Section,
-    Medium
-FROM Students
-WHERE StudentId = @StudentId
-AND IsActive = 1;
+    s.StudentId,
+    s.BoardId,
+    s.AcademicYearId,
+    s.AcademicLevelId,
+    COALESCE(al.LevelName, '') AS AcademicLevel,
+    s.GroupId,
+    s.SectionId,
+    COALESCE(sec.SectionName, '') AS Section,
+    s.Medium
+FROM Students s
+LEFT JOIN AcademicLevels al ON al.AcademicLevelId = s.AcademicLevelId
+LEFT JOIN Sections sec ON sec.SectionId = s.SectionId
+WHERE s.StudentId = @StudentId
+AND s.IsActive = 1;
 ",
                     new
                     {
@@ -1029,6 +1067,17 @@ AND IsActive = 1;
             var response =
                 new AllocationResponse();
 
+            int? targetLevelId = request.TargetAcademicLevelId;
+            if (!targetLevelId.HasValue || targetLevelId <= 0)
+            {
+                if (!string.IsNullOrWhiteSpace(request.TargetAcademicLevel))
+                {
+                    targetLevelId = await Connection.ExecuteScalarAsync<int?>(
+                        "SELECT AcademicLevelId FROM AcademicLevels WHERE LOWER(TRIM(LevelName)) = LOWER(TRIM(@Level)) LIMIT 1;",
+                        new { Level = request.TargetAcademicLevel });
+                }
+            }
+
             foreach (var studentId in
                      request.StudentIds.Distinct())
             {
@@ -1041,7 +1090,7 @@ UPDATE Students
 
 SET
     AcademicYearId = @AcademicYearId,
-    AcademicLevel = @AcademicLevel,
+    AcademicLevelId = COALESCE(@TargetAcademicLevelId, AcademicLevelId),
     GroupId = @GroupId,
     UpdatedAt = UTC_TIMESTAMP()
 
@@ -1053,8 +1102,8 @@ AND IsActive = 1;
                                 AcademicYearId =
                                     request.TargetAcademicYearId,
 
-                                AcademicLevel =
-                                    request.TargetAcademicLevel,
+                                TargetAcademicLevelId =
+                                    targetLevelId,
 
                                 GroupId =
                                     request.TargetGroupId,
@@ -1118,6 +1167,28 @@ AND IsActive = 1;
             var response =
                 new AllocationResponse();
 
+            int? targetSecLevelId = request.TargetAcademicLevelId;
+            if (!targetSecLevelId.HasValue || targetSecLevelId <= 0)
+            {
+                if (!string.IsNullOrWhiteSpace(request.TargetAcademicLevel))
+                {
+                    targetSecLevelId = await Connection.ExecuteScalarAsync<int?>(
+                        "SELECT AcademicLevelId FROM AcademicLevels WHERE LOWER(TRIM(LevelName)) = LOWER(TRIM(@Level)) LIMIT 1;",
+                        new { Level = request.TargetAcademicLevel });
+                }
+            }
+
+            int? targetSecSectionId = request.TargetSectionId;
+            if (!targetSecSectionId.HasValue || targetSecSectionId <= 0)
+            {
+                if (!string.IsNullOrWhiteSpace(request.TargetSection))
+                {
+                    targetSecSectionId = await Connection.ExecuteScalarAsync<int?>(
+                        "SELECT SectionId FROM Sections WHERE LOWER(TRIM(SectionName)) = LOWER(TRIM(@Sec)) LIMIT 1;",
+                        new { Sec = request.TargetSection });
+                }
+            }
+
             foreach (var studentId in
                      request.StudentIds.Distinct())
             {
@@ -1130,9 +1201,9 @@ UPDATE Students
 
 SET
     AcademicYearId = @AcademicYearId,
-    AcademicLevel = @AcademicLevel,
+    AcademicLevelId = COALESCE(@TargetAcademicLevelId, AcademicLevelId),
     GroupId = @GroupId,
-    Section = @Section,
+    SectionId = COALESCE(@TargetSectionId, SectionId),
     UpdatedAt = UTC_TIMESTAMP()
 
 WHERE StudentId = @StudentId
@@ -1143,14 +1214,14 @@ AND IsActive = 1;
                                 AcademicYearId =
                                     request.TargetAcademicYearId,
 
-                                AcademicLevel =
-                                    request.TargetAcademicLevel,
+                                TargetAcademicLevelId =
+                                    targetSecLevelId,
 
                                 GroupId =
                                     request.TargetGroupId,
 
-                                Section =
-                                    request.TargetSection,
+                                TargetSectionId =
+                                    targetSecSectionId,
 
                                 StudentId =
                                     studentId
