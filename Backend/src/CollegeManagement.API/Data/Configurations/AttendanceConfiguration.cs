@@ -54,6 +54,15 @@ namespace CollegeManagement.API.Data.Configurations
             builder.Property(a => a.UpdatedAt)
                 .IsRequired(false);
 
+            builder.Property(a => a.Session)
+                .IsRequired(false);
+
+            builder.Property(a => a.ModifiedByUserId)
+                .IsRequired(false);
+
+            builder.Property(a => a.ModifiedAt)
+                .IsRequired(false);
+
             #endregion
 
             #region Indexes

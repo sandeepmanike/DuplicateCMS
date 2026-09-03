@@ -62,56 +62,60 @@ namespace CollegeManagement.API.Services.Implementations
         /// <summary>
         /// Creates a new attendance record after performing duplicate validation checks and master data verification.
         /// </summary>
-        public async Task<int> CreateAttendanceAsync(CreateAttendanceRequest request, bool isAdmin, string userName)
+        public async Task<int> CreateAttendanceAsync(CreateAttendanceRequest request, bool isAdmin, string userName, int? userId = null)
         {
             if (request == null)
             {
                 throw new ValidationException("Request body cannot be null.");
             }
 
-            // 1. Validate student exists, is active, and belongs to Section
-            var student = await _context.Students.FindAsync(request.StudentId);
-            if (student == null)
+            // For Admin session-based attendance, we skip timetable/subject checks
+            if (!isAdmin)
             {
-                throw new NotFoundException($"Student with ID {request.StudentId} was not found.");
-            }
-            if (!student.IsActive)
-            {
-                throw new ValidationException($"Student with ID {request.StudentId} is not active.");
-            }
-            if (student.SectionId != request.SectionId)
-            {
-                throw new ValidationException($"Student with ID {request.StudentId} does not belong to Section ID {request.SectionId}.");
-            }
+                // 1. Validate student exists, is active, and belongs to Section
+                var student = await _context.Students.FindAsync(request.StudentId);
+                if (student == null)
+                {
+                    throw new NotFoundException($"Student with ID {request.StudentId} was not found.");
+                }
+                if (!student.IsActive)
+                {
+                    throw new ValidationException($"Student with ID {request.StudentId} is not active.");
+                }
+                if (student.SectionId != request.SectionId)
+                {
+                    throw new ValidationException($"Student with ID {request.StudentId} does not belong to Section ID {request.SectionId}.");
+                }
 
-            // 2. Validate other master IDs and Academic Year date range
-            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.SectionId, request.SubjectId, request.AttendanceDate);
+                // 2. Validate other master IDs and Academic Year date range
+                await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.ProgramId, request.SectionId, request.SubjectId, request.AttendanceDate);
 
-            // 3. Timetable/Period Checks
-            if (request.TimetableId.HasValue)
-            {
-                var timetable = await _context.Timetables.FindAsync(request.TimetableId.Value);
-                if (timetable == null || !timetable.IsPublished)
+                // 3. Timetable/Period Checks
+                if (request.TimetableId.HasValue)
                 {
-                    throw new ValidationException($"Published Timetable slot with ID {request.TimetableId.Value} was not found.");
+                    var timetable = await _context.Timetables.FindAsync(request.TimetableId.Value);
+                    if (timetable == null || !timetable.IsPublished)
+                    {
+                        throw new ValidationException($"Published Timetable slot with ID {request.TimetableId.Value} was not found.");
+                    }
+                    if (timetable.PeriodId != request.PeriodId)
+                    {
+                        throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
+                    }
+                    if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
+                    {
+                        throw new ValidationException("Timetable structural elements (Section, Subject, Faculty) do not match request parameters.");
+                    }
                 }
-                if (timetable.PeriodId != request.PeriodId)
+                else
                 {
-                    throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
-                }
-                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
-                {
-                    throw new ValidationException("Timetable structural elements (Section, Subject, Faculty) do not match request parameters.");
-                }
-            }
-            else
-            {
-                // Ad-hoc: Validate FacultySubjectAllocation is active
-                var subjectName = await _context.Subjects.Where(s => s.SubjectId == request.SubjectId).Select(s => s.SubjectName).FirstOrDefaultAsync();
-                var allocated = await _context.FacultySubjectAllocations.AnyAsync(a => a.FacultyId == request.FacultyId && a.SubjectId == request.SubjectId);
-                if (!allocated)
-                {
-                    throw new ValidationException($"Faculty member {request.FacultyId} is not allocated to subject {request.SubjectId}.");
+                    // Ad-hoc: Validate FacultySubjectAllocation is active
+                    var subjectName = await _context.Subjects.Where(s => s.SubjectId == request.SubjectId).Select(s => s.SubjectName).FirstOrDefaultAsync();
+                    var allocated = await _context.FacultySubjectAllocations.AnyAsync(a => a.FacultyId == request.FacultyId && a.SubjectId == request.SubjectId);
+                    if (!allocated)
+                    {
+                        throw new ValidationException($"Faculty member {request.FacultyId} is not allocated to subject {request.SubjectId}.");
+                    }
                 }
             }
 
@@ -121,29 +125,100 @@ namespace CollegeManagement.API.Services.Implementations
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // 4. Resolve or Create AttendanceSession
-                    var session = await GetOrCreateSessionAsync(request.SectionId, request.PeriodId, request.AttendanceDate, request);
-
-                    // 5. Check if session is locked
-                    if (session.IsLocked && !isAdmin)
+                    int id;
+                    if (isAdmin)
                     {
-                        throw new ValidationException("This attendance session is locked and cannot be modified.");
+                        // 1. Admin Master Data Validation
+                        var student = await _context.Students.FindAsync(request.StudentId);
+                        if (student == null) throw new NotFoundException($"Student with ID {request.StudentId} was not found.");
+                        if (!student.IsActive) throw new ValidationException($"Student with ID {request.StudentId} is not active.");
+                        
+                        if (student.SectionId != request.SectionId ||
+                            student.ProgramId != request.ProgramId ||
+                            student.GroupId != request.GroupId ||
+                            student.AcademicLevelId != request.AcademicLevelId ||
+                            student.AcademicYearId != request.AcademicYearId ||
+                            student.BoardId != request.BoardId)
+                        {
+                            throw new ValidationException($"Student with ID {request.StudentId} does not match the provided academic context.");
+                        }
+
+                        // Admin duplicate check based on StudentId + Date + Session
+                        var exists = await _context.Attendances.AnyAsync(a => 
+                            a.StudentId == request.StudentId && 
+                            a.AttendanceDate.Date == request.AttendanceDate.Date && 
+                            a.Session == request.Session &&
+                            a.IsActive);
+                            
+                        if (exists)
+                        {
+                            throw new ConflictException($"Attendance has already been marked for Student ID {request.StudentId} on {request.AttendanceDate:yyyy-MM-dd} for this session.");
+                        }
+
+                        // We cannot resolve a Morning/Afternoon AttendanceSession here because 
+                        // AttendanceSession lacks a 'Session' field, so we temporarily leave it NULL 
+                        // to prevent merging Morning and Afternoon into the same PeriodId=0 session.
+                        
+                        // BUT we must still check if ANY session for this class/date is locked
+                        var anyLockedSession = await _context.AttendanceSessions.AnyAsync(s => 
+                            s.AttendanceDate.Date == request.AttendanceDate.Date &&
+                            s.GroupId == student.GroupId &&
+                            s.SectionId == student.SectionId &&
+                            s.IsLocked);
+                            
+                        if (anyLockedSession)
+                        {
+                            throw new ConflictException($"An attendance session for this class on {request.AttendanceDate:yyyy-MM-dd} is locked by Faculty and cannot be bypassed by Admin.");
+                        }
+                        
+                        // Admin creating missing attendance directly
+                        var attendance = new Attendance
+                        {
+                            StudentId = request.StudentId,
+                            Status = request.Status,
+                            Remarks = request.Remarks,
+                            Session = request.Session,
+                            AttendanceDate = request.AttendanceDate,
+                            BoardId = request.BoardId,
+                            AcademicYearId = request.AcademicYearId,
+                            AcademicLevelId = request.AcademicLevelId,
+                            GroupId = request.GroupId,
+                            SectionId = request.SectionId,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            ModifiedByUserId = userId,
+                            ModifiedAt = DateTime.UtcNow
+                        };
+                        _context.Attendances.Add(attendance);
+                        await _context.SaveChangesAsync();
+                        id = attendance.AttendanceId;
+                    }
+                    else
+                    {
+                        // 4. Resolve or Create AttendanceSession
+                        var session = await GetOrCreateSessionAsync(request.SectionId, request.PeriodId, request.AttendanceDate, request);
+
+                        // 5. Check if session is locked
+                        if (session.IsLocked)
+                        {
+                            throw new ValidationException("This attendance session is locked and cannot be modified.");
+                        }
+
+                        // 6. Prevent duplicate StudentId + AttendanceSessionId
+                        var exists = await _repository.AttendanceExistsAsync(request.StudentId, session.AttendanceSessionId);
+                        if (exists)
+                        {
+                            throw new ConflictException($"Attendance has already been marked for Student ID {request.StudentId} in session {session.AttendanceSessionId}.");
+                        }
+
+                        // 7. Map and Create the Attendance detail
+                        var attendance = _mapper.Map<Attendance>(request);
+                        attendance.AttendanceSessionId = session.AttendanceSessionId;
+
+                        id = await _repository.CreateAttendanceAsync(attendance);
                     }
 
-                    // 6. Prevent duplicate StudentId + AttendanceSessionId
-                    var exists = await _repository.AttendanceExistsAsync(request.StudentId, session.AttendanceSessionId);
-                    if (exists)
-                    {
-                        throw new ConflictException($"Attendance has already been marked for Student ID {request.StudentId} in session {session.AttendanceSessionId}.");
-                    }
-
-                    // 7. Map and Create the Attendance detail
-                    var attendance = _mapper.Map<Attendance>(request);
-                    attendance.AttendanceSessionId = session.AttendanceSessionId;
-
-                    var id = await _repository.CreateAttendanceAsync(attendance);
-
-                    // Audit logging
+                    // Old Audit logging
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
                     var audit = new AuditLog
                     {
@@ -155,6 +230,23 @@ namespace CollegeManagement.API.Services.Implementations
                         CreatedAt = DateTime.UtcNow
                     };
                     await _auditLogRepository.InsertAsync(audit, dbTransaction);
+                    
+                    // Phase 3 Mandatory AttendanceAuditHistory
+                    _context.AttendanceAuditHistories.Add(new AttendanceAuditHistory
+                    {
+                        EntityType = "Student",
+                        EntityId = id,
+                        StudentId = request.StudentId,
+                        AttendanceDate = request.AttendanceDate,
+                        OldStatus = null,
+                        NewStatus = (byte)request.Status,
+                        Action = "CREATE",
+                        Description = request.Remarks ?? $"Attendance marked for Student ID {request.StudentId} as '{request.Status}'.",
+                        ModifiedByUserId = userId,
+                        ModifiedByUserName = userName,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
 
                     await transaction.CommitAsync();
                     _attendanceCache.InvalidateAll();
@@ -171,7 +263,7 @@ namespace CollegeManagement.API.Services.Implementations
         /// <summary>
         /// Creates student attendance records in bulk after master data verification and duplicate checks.
         /// </summary>
-        public async Task<int> CreateBulkAttendanceAsync(BulkAttendanceRequest request, bool isAdmin, string userName)
+        public async Task<int> CreateBulkAttendanceAsync(BulkAttendanceRequest request, bool isAdmin, string userName, int? userId = null)
         {
             if (request == null)
             {
@@ -183,33 +275,36 @@ namespace CollegeManagement.API.Services.Implementations
             }
 
             // 1. Validate master IDs and Academic Year date range
-            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.SectionId, request.SubjectId, request.AttendanceDate);
+            await ValidateMasterDataAsync(request.FacultyId, request.BoardId, request.AcademicYearId, request.AcademicLevelId, request.GroupId, request.ProgramId, request.SectionId, request.SubjectId, request.AttendanceDate);
 
-            // 2. Timetable/Period Checks
-            if (request.TimetableId.HasValue)
+            if (!isAdmin)
             {
-                var timetable = await _context.Timetables.FindAsync(request.TimetableId.Value);
-                if (timetable == null || !timetable.IsPublished)
+                // 2. Timetable/Period Checks
+                if (request.TimetableId.HasValue)
                 {
-                    throw new ValidationException($"Published Timetable slot with ID {request.TimetableId.Value} was not found.");
+                    var timetable = await _context.Timetables.FindAsync(request.TimetableId.Value);
+                    if (timetable == null || !timetable.IsPublished)
+                    {
+                        throw new ValidationException($"Published Timetable slot with ID {request.TimetableId.Value} was not found.");
+                    }
+                    if (timetable.PeriodId != request.PeriodId)
+                    {
+                        throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
+                    }
+                    if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
+                    {
+                        throw new ValidationException("Timetable structural elements do not match request parameters.");
+                    }
                 }
-                if (timetable.PeriodId != request.PeriodId)
+                else
                 {
-                    throw new ValidationException($"Timetable slot Period ID {timetable.PeriodId} does not match request Period ID {request.PeriodId}.");
-                }
-                if (timetable.SectionId != request.SectionId || timetable.SubjectId != request.SubjectId || timetable.StaffId != request.FacultyId)
-                {
-                    throw new ValidationException("Timetable structural elements do not match request parameters.");
-                }
-            }
-            else
-            {
-                // Ad-hoc: Validate allocation
-                var subjectName = await _context.Subjects.Where(s => s.SubjectId == request.SubjectId).Select(s => s.SubjectName).FirstOrDefaultAsync();
-                var allocated = await _context.FacultySubjectAllocations.AnyAsync(a => a.FacultyId == request.FacultyId && a.SubjectId == request.SubjectId);
-                if (!allocated)
-                {
-                    throw new ValidationException($"Faculty member {request.FacultyId} is not allocated to subject {request.SubjectId}.");
+                    // Ad-hoc: Validate allocation
+                    var subjectName = await _context.Subjects.Where(s => s.SubjectId == request.SubjectId).Select(s => s.SubjectName).FirstOrDefaultAsync();
+                    var allocated = await _context.FacultySubjectAllocations.AnyAsync(a => a.FacultyId == request.FacultyId && a.SubjectId == request.SubjectId);
+                    if (!allocated)
+                    {
+                        throw new ValidationException($"Faculty member {request.FacultyId} is not allocated to subject {request.SubjectId}.");
+                    }
                 }
             }
 
@@ -219,13 +314,33 @@ namespace CollegeManagement.API.Services.Implementations
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // 3. Resolve or Create AttendanceSession
-                    var session = await GetOrCreateSessionAsync(request.SectionId, request.PeriodId, request.AttendanceDate, request);
+                    int? targetSessionId = null;
 
-                    // 4. Check if session is locked
-                    if (session.IsLocked && !isAdmin)
+                    if (!isAdmin)
                     {
-                        throw new ValidationException("This attendance session is locked and cannot be modified.");
+                        // 3. Resolve or Create AttendanceSession for Faculty
+                        var session = await GetOrCreateSessionAsync(request.SectionId, request.PeriodId, request.AttendanceDate, request);
+
+                        // 4. Check if session is locked
+                        if (session.IsLocked)
+                        {
+                            throw new ValidationException("This attendance session is locked and cannot be modified.");
+                        }
+                        targetSessionId = session.AttendanceSessionId;
+                    }
+                    else
+                    {
+                        // BUT we must still check if ANY session for this class/date is locked
+                        var anyLockedSession = await _context.AttendanceSessions.AnyAsync(s => 
+                            s.AttendanceDate.Date == request.AttendanceDate.Date &&
+                            s.GroupId == request.GroupId &&
+                            s.SectionId == request.SectionId &&
+                            s.IsLocked);
+                            
+                        if (anyLockedSession)
+                        {
+                            throw new ConflictException($"An attendance session for this class on {request.AttendanceDate:yyyy-MM-dd} is locked by Faculty and cannot be bypassed by Admin.");
+                        }
                     }
 
                     var attendances = new List<Attendance>();
@@ -242,37 +357,106 @@ namespace CollegeManagement.API.Services.Implementations
                         {
                             throw new ValidationException($"Student with ID {studentRequest.StudentId} is not active.");
                         }
-                        if (student.SectionId != request.SectionId)
+                        if (student.SectionId != request.SectionId ||
+                            student.ProgramId != request.ProgramId ||
+                            student.GroupId != request.GroupId ||
+                            student.AcademicLevelId != request.AcademicLevelId ||
+                            student.AcademicYearId != request.AcademicYearId ||
+                            student.BoardId != request.BoardId)
                         {
-                            throw new ValidationException($"Student with ID {studentRequest.StudentId} does not belong to Section ID {request.SectionId}.");
+                            throw new ValidationException($"Student with ID {studentRequest.StudentId} does not match the provided academic context.");
                         }
 
-                        var exists = await _repository.AttendanceExistsAsync(studentRequest.StudentId, session.AttendanceSessionId);
-                        if (exists)
+                        if (!isAdmin)
                         {
-                            throw new ConflictException($"Attendance has already been marked for Student ID {studentRequest.StudentId} in session {session.AttendanceSessionId}.");
+                            var exists = await _repository.AttendanceExistsAsync(studentRequest.StudentId, targetSessionId!.Value);
+                            if (exists)
+                            {
+                                throw new ConflictException($"Attendance has already been marked for Student ID {studentRequest.StudentId} in session {targetSessionId.Value}.");
+                            }
                         }
-
-                        var attendance = _mapper.Map<Attendance>(studentRequest);
-                        attendance.AttendanceSessionId = session.AttendanceSessionId;
-                        attendance.IsActive = true;
-                        attendance.CreatedAt = DateTime.UtcNow;
-
-                        attendances.Add(attendance);
+                        else
+                        {
+                            // Admin checks duplicates based on Date and Session Enum
+                            var exists = await _context.Attendances.AnyAsync(a => a.StudentId == studentRequest.StudentId && a.AttendanceDate.Date == request.AttendanceDate.Date && a.Session == request.Session && a.IsActive);
+                            if (exists)
+                            {
+                                throw new ConflictException($"Attendance has already been marked for Student ID {studentRequest.StudentId} on {request.AttendanceDate:yyyy-MM-dd} ({request.Session}).");
+                            }
+                        }
+                        
+                        attendances.Add(new Attendance
+                        {
+                            StudentId = studentRequest.StudentId,
+                            Status = studentRequest.Status,
+                            Remarks = studentRequest.Remarks,
+                            Session = isAdmin ? request.Session : null,
+                            AttendanceDate = request.AttendanceDate,
+                            BoardId = request.BoardId,
+                            AcademicYearId = request.AcademicYearId,
+                            AcademicLevelId = request.AcademicLevelId,
+                            GroupId = request.GroupId,
+                            SectionId = request.SectionId,
+                            SubjectId = isAdmin ? null : request.SubjectId,
+                            FacultyId = isAdmin ? null : request.FacultyId,
+                            AttendanceSessionId = targetSessionId,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow,
+                            ModifiedByUserId = userId,
+                            ModifiedAt = DateTime.UtcNow
+                        });
                     }
 
-                    // 6. Bulk insert
-                    var affectedRows = await _repository.CreateBulkAttendanceAsync(attendances, session.AttendanceSessionId);
+                    int affectedRows = 0;
+                    List<Attendance> insertedRecords = new List<Attendance>();
 
-                    // Audit logging: single summary audit entry for the bulk operation
+                    if (!isAdmin)
+                    {
+                        affectedRows = await _repository.CreateBulkAttendanceAsync(attendances, targetSessionId!.Value);
+
+                        // Fetch the inserted attendances to get their generated IDs for the audit history
+                        var studentIds = request.Students.Select(s => s.StudentId).ToList();
+                        insertedRecords = await _context.Attendances
+                            .Where(a => a.AttendanceSessionId == targetSessionId.Value && studentIds.Contains(a.StudentId))
+                            .ToListAsync();
+                    }
+                    else
+                    {
+                        // Admin bulk insert via EF
+                        await _context.Attendances.AddRangeAsync(attendances);
+                        await _context.SaveChangesAsync();
+                        affectedRows = attendances.Count;
+                        insertedRecords = attendances;
+                    }
+
+                    foreach (var record in insertedRecords)
+                    {
+                        _context.AttendanceAuditHistories.Add(new AttendanceAuditHistory
+                        {
+                            EntityType = "Student",
+                            EntityId = record.AttendanceId,
+                            StudentId = record.StudentId,
+                            AttendanceDate = request.AttendanceDate,
+                            OldStatus = null,
+                            NewStatus = (byte)record.Status,
+                            Action = "CREATE",
+                            Description = record.Remarks ?? $"Bulk attendance marked as '{record.Status}'.",
+                            ModifiedByUserId = userId,
+                            ModifiedByUserName = userName,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    await _context.SaveChangesAsync();
+
+                    // Old Audit logging (summary)
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
                     var audit = new AuditLog
                     {
                         UserName = userName,
                         Action = "CREATE",
                         EntityName = "AttendanceSession",
-                        EntityId = session.AttendanceSessionId,
-                        Description = $"Bulk attendance marked for {request.Students.Count} students in Session ID {session.AttendanceSessionId}.",
+                        EntityId = targetSessionId ?? 0,
+                        Description = $"Bulk attendance created for {affectedRows} students.",
                         CreatedAt = DateTime.UtcNow
                     };
                     await _auditLogRepository.InsertAsync(audit, dbTransaction);
@@ -292,20 +476,39 @@ namespace CollegeManagement.API.Services.Implementations
         /// <summary>
         /// Updates an existing attendance record after validating its existence.
         /// </summary>
-        public async Task<int> UpdateAttendanceAsync(UpdateAttendanceRequest request, bool isAdmin, string userName)
+        public async Task<int> UpdateAttendanceAsync(UpdateAttendanceRequest request, bool isAdmin, string userName, int? userId = null)
         {
-            var existing = await _context.Attendances.AsNoTracking().FirstOrDefaultAsync(a => a.AttendanceId == request.AttendanceId);
-            if (existing == null)
+            if (request == null)
+            {
+                throw new ValidationException("Request body cannot be null.");
+            }
+
+            var existing = await _context.Attendances.FindAsync(request.AttendanceId);
+            if (existing == null || !existing.IsActive)
             {
                 throw new NotFoundException($"Attendance record with ID {request.AttendanceId} was not found.");
             }
 
             // Verify if the session is locked
-            var session = await _context.AttendanceSessions.FindAsync(existing.AttendanceSessionId);
+            var session = existing.AttendanceSessionId.HasValue ? await _context.AttendanceSessions.FindAsync(existing.AttendanceSessionId) : null;
             bool isLocked = session != null && session.IsLocked;
-            if (isLocked && !isAdmin)
+            
+            if (!existing.AttendanceSessionId.HasValue)
             {
-                throw new ValidationException("This attendance session is locked and cannot be modified.");
+                var student = await _context.Students.FindAsync(existing.StudentId);
+                if (student != null)
+                {
+                    isLocked = await _context.AttendanceSessions.AnyAsync(s => 
+                        s.AttendanceDate.Date == existing.AttendanceDate.Date &&
+                        s.GroupId == student.GroupId &&
+                        s.SectionId == student.SectionId &&
+                        s.IsLocked);
+                }
+            }
+
+            if (isLocked)
+            {
+                throw new ValidationException("An attendance session for this class on this date is locked and cannot be modified.");
             }
 
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -314,6 +517,8 @@ namespace CollegeManagement.API.Services.Implementations
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    var oldStatus = existing.Status;
+                    
                     var attendance = new Attendance
                     {
                         AttendanceId = request.AttendanceId,
@@ -321,12 +526,14 @@ namespace CollegeManagement.API.Services.Implementations
                         StudentId = existing.StudentId,
                         Status = request.Status,
                         Remarks = request.Remarks,
-                        UpdatedAt = DateTime.UtcNow
+                        UpdatedAt = DateTime.UtcNow,
+                        ModifiedByUserId = userId,
+                        ModifiedAt = DateTime.UtcNow
                     };
 
                     var affectedRows = await _repository.UpdateAttendanceAsync(attendance);
 
-                    // Audit logging
+                    // Old Audit logging
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
                     var prefix = isLocked ? "[ADMIN OVERRIDE] " : "";
                     var audit = new AuditLog
@@ -335,10 +542,29 @@ namespace CollegeManagement.API.Services.Implementations
                         Action = "UPDATE",
                         EntityName = "Attendance",
                         EntityId = request.AttendanceId,
-                        Description = prefix + $"Status updated from '{existing.Status}' to '{request.Status}'.",
+                        Description = prefix + $"Status updated from '{oldStatus}' to '{request.Status}'.",
                         CreatedAt = DateTime.UtcNow
                     };
                     await _auditLogRepository.InsertAsync(audit, dbTransaction);
+
+                    // Phase 3 Mandatory AttendanceAuditHistory
+                    _context.AttendanceAuditHistories.Add(new AttendanceAuditHistory
+                    {
+                        EntityType = "Student",
+                        EntityId = request.AttendanceId,
+                        StudentId = existing.StudentId,
+                        AttendanceDate = existing.AttendanceDate,
+                        OldStatus = (byte)oldStatus,
+                        NewStatus = (byte)request.Status,
+                        Action = "UPDATE",
+                        Description = request.Remarks ?? prefix + $"Status updated from '{oldStatus}' to '{request.Status}'.",
+                        ModifiedByUserId = userId,
+                        ModifiedByUserName = userName,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    
+                    // We must save changes to persist the EF Core added entity
+                    await _context.SaveChangesAsync();
 
                     await transaction.CommitAsync();
                     _attendanceCache.InvalidateAll();
@@ -355,7 +581,7 @@ namespace CollegeManagement.API.Services.Implementations
         /// <summary>
         /// Updates multiple existing student attendance records in one bulk operation.
         /// </summary>
-        public async Task<int> BulkUpdateAttendanceAsync(BulkUpdateAttendanceRequest request, bool isAdmin, string userName)
+        public async Task<int> BulkUpdateAttendanceAsync(BulkUpdateAttendanceRequest request, bool isAdmin, string userName, int? userId = null)
         {
             if (request == null)
             {
@@ -366,17 +592,18 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ValidationException("Updates list cannot be null or empty.");
             }
 
-            // Validate the session exists
-            var session = await _context.AttendanceSessions.FindAsync(request.AttendanceSessionId);
-            if (session == null)
+            // Validate the session exists and check lock
+            if (request.AttendanceSessionId.HasValue)
             {
-                throw new NotFoundException($"Attendance session with ID {request.AttendanceSessionId} was not found.");
-            }
-
-            // Validate the session lock
-            if (session.IsLocked && !isAdmin)
-            {
-                throw new ValidationException("This attendance session is locked and cannot be modified.");
+                var session = await _context.AttendanceSessions.FindAsync(request.AttendanceSessionId.Value);
+                if (session == null)
+                {
+                    throw new NotFoundException($"Attendance session with ID {request.AttendanceSessionId} was not found.");
+                }
+                if (session.IsLocked)
+                {
+                    throw new ValidationException("This attendance session is locked and cannot be modified.");
+                }
             }
 
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -397,23 +624,61 @@ namespace CollegeManagement.API.Services.Implementations
                         }
                         if (attendance.AttendanceSessionId != request.AttendanceSessionId)
                         {
-                            throw new ValidationException($"Attendance record ID {update.AttendanceId} does not belong to session ID {request.AttendanceSessionId}.");
+                            throw new ValidationException($"Attendance record ID {update.AttendanceId} does not match the requested session context.");
+                        }
+
+                        // Check lock for Admin session-less records
+                        bool isLockedOverride = false;
+                        if (!request.AttendanceSessionId.HasValue)
+                        {
+                            var student = await _context.Students.FindAsync(attendance.StudentId);
+                            if (student != null)
+                            {
+                                isLockedOverride = await _context.AttendanceSessions.AnyAsync(s => 
+                                    s.AttendanceDate.Date == attendance.AttendanceDate.Date &&
+                                    s.GroupId == student.GroupId &&
+                                    s.SectionId == student.SectionId &&
+                                    s.IsLocked);
+                                    
+                                if (isLockedOverride)
+                                {
+                                    throw new ValidationException("An attendance session for this class on this date is locked and cannot be modified.");
+                                }
+                            }
                         }
 
                         var oldStatus = attendance.Status;
                         attendance.Status = update.Status;
                         attendance.Remarks = update.Remarks;
                         attendance.UpdatedAt = DateTime.UtcNow;
+                        attendance.ModifiedByUserId = userId;
+                        attendance.ModifiedAt = DateTime.UtcNow;
 
                         affectedRows++;
                         descriptionDetails.Add($"[ID {update.AttendanceId}: {oldStatus} -> {update.Status}]");
+                        
+                        // Phase 3 Mandatory AttendanceAuditHistory per modified record
+                        _context.AttendanceAuditHistories.Add(new AttendanceAuditHistory
+                        {
+                            EntityType = "Student",
+                            EntityId = attendance.AttendanceId,
+                            StudentId = attendance.StudentId,
+                            AttendanceDate = attendance.AttendanceDate,
+                            OldStatus = (byte)oldStatus,
+                            NewStatus = (byte)update.Status,
+                            Action = "UPDATE",
+                            Description = update.Remarks ?? (isLockedOverride ? "[ADMIN OVERRIDE] " : "") + $"Status updated from '{oldStatus}' to '{update.Status}'.",
+                            ModifiedByUserId = userId,
+                            ModifiedByUserName = userName,
+                            CreatedAt = DateTime.UtcNow
+                        });
                     }
 
                     await _context.SaveChangesAsync();
 
                     // Apply the existing audit logging pattern as a single summary entry
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
-                    var prefix = session.IsLocked ? "[ADMIN OVERRIDE] " : "";
+                    var prefix = "";
                     var audit = new AuditLog
                     {
                         UserName = userName,
@@ -520,16 +785,21 @@ namespace CollegeManagement.API.Services.Implementations
 
                     // Audit logging
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
-                    var audit = new AuditLog
+                    var audit = new AttendanceAuditHistory
                     {
-                        UserName = userName,
-                        Action = "LOCK",
-                        EntityName = "AttendanceSession",
+                        EntityType = "AttendanceSession",
                         EntityId = sessionId,
+                        AttendanceDate = session.AttendanceDate.Date,
+                        Action = "LOCK",
+                        OldStatus = null,
+                        NewStatus = null,
                         Description = $"Attendance session ID {sessionId} was locked.",
+                        ModifiedByUserId = lockedByUserId,
+                        ModifiedByUserName = userName,
                         CreatedAt = DateTime.UtcNow
                     };
-                    await _auditLogRepository.InsertAsync(audit, dbTransaction);
+                    _context.AttendanceAuditHistories.Add(audit);
+                    await _context.SaveChangesAsync();
 
                     await transaction.CommitAsync();
                     _attendanceCache.InvalidateAll();
@@ -569,16 +839,20 @@ namespace CollegeManagement.API.Services.Implementations
 
                     // Audit logging
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
-                    var audit = new AuditLog
+                    var audit = new AttendanceAuditHistory
                     {
-                        UserName = userName,
-                        Action = "UNLOCK",
-                        EntityName = "AttendanceSession",
+                        EntityType = "AttendanceSession",
                         EntityId = sessionId,
+                        AttendanceDate = session.AttendanceDate.Date,
+                        Action = "UNLOCK",
+                        OldStatus = null,
+                        NewStatus = null,
                         Description = $"Attendance session ID {sessionId} was unlocked.",
+                        ModifiedByUserName = userName,
                         CreatedAt = DateTime.UtcNow
                     };
-                    await _auditLogRepository.InsertAsync(audit, dbTransaction);
+                    _context.AttendanceAuditHistories.Add(audit);
+                    await _context.SaveChangesAsync();
 
                     await transaction.CommitAsync();
                     _attendanceCache.InvalidateAll();
@@ -607,15 +881,15 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new ValidationException($"Attendance record with ID {attendanceId} is already deleted/inactive.");
             }
 
-            var session = await _context.AttendanceSessions.FindAsync(existing.AttendanceSessionId);
-            if (session == null)
+            bool isLocked = false;
+            if (existing.AttendanceSessionId.HasValue)
             {
-                throw new NotFoundException($"Attendance session with ID {existing.AttendanceSessionId} was not found.");
-            }
-
-            if (session.IsLocked && !isAdmin)
-            {
-                throw new ValidationException("This attendance session is locked and cannot be modified.");
+                var session = await _context.AttendanceSessions.FindAsync(existing.AttendanceSessionId.Value);
+                isLocked = session != null && session.IsLocked;
+                if (isLocked)
+                {
+                    throw new ValidationException("This attendance session is locked and cannot be modified.");
+                }
             }
 
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -630,7 +904,7 @@ namespace CollegeManagement.API.Services.Implementations
 
                     // Audit logging
                     var dbTransaction = _context.Database.CurrentTransaction?.GetDbTransaction();
-                    var prefix = session.IsLocked ? "[ADMIN OVERRIDE] " : "";
+                    var prefix = isLocked ? "[ADMIN OVERRIDE] " : "";
                     var audit = new AuditLog
                     {
                         UserName = userName,
@@ -760,6 +1034,15 @@ namespace CollegeManagement.API.Services.Implementations
         }
 
         /// <summary>
+        /// Retrieves students for Admin attendance marking (session-based).
+        /// </summary>
+        public async Task<IEnumerable<StudentAttendanceResponse>> GetAdminStudentsForAttendanceAsync(AttendanceSearchRequest request)
+        {
+            var key = _attendanceCache.GetCacheKey("GetAdminStudentsForAttendanceAsync", request);
+            return await _attendanceCache.GetOrCreateAsync(key, () => _repository.GetAdminStudentsForAttendanceAsync(request));
+        }
+
+        /// <summary>
         /// Retrieves statistical summary metrics for the specified filters.
         /// </summary>
         public async Task<AttendanceSummaryResponse> GetAttendanceSummaryAsync(AttendanceSearchRequest request)
@@ -790,7 +1073,7 @@ namespace CollegeManagement.API.Services.Implementations
 
         #region Helper Methods
 
-        private async Task ValidateMasterDataAsync(int facultyId, int boardId, int academicYearId, int academicLevelId, int groupId, int sectionId, int subjectId, DateTime? attendanceDate = null)
+        private async Task ValidateMasterDataAsync(int facultyId, int boardId, int academicYearId, int academicLevelId, int groupId, int programId, int sectionId, int subjectId, DateTime? attendanceDate = null)
         {
             var facultyExists = await _context.Faculties.AnyAsync(f => f.Id == facultyId && !f.IsDeleted && f.Status == "Active");
             if (!facultyExists)
@@ -833,6 +1116,12 @@ namespace CollegeManagement.API.Services.Implementations
             if (!groupExists)
             {
                 throw new NotFoundException($"Active Group with ID {groupId} was not found.");
+            }
+
+            var programExists = await _context.Programs.AnyAsync(p => p.ProgramId == programId && p.IsActive);
+            if (!programExists)
+            {
+                throw new NotFoundException($"Active Program with ID {programId} was not found.");
             }
 
             var sectionExists = await _context.Sections.AnyAsync(s => s.SectionId == sectionId && s.IsActive);
@@ -984,5 +1273,60 @@ namespace CollegeManagement.API.Services.Implementations
         }
 
         #endregion
+        public async Task<PagedResponse<CollegeManagement.API.DTOs.Attendance.Responses.AttendanceAuditHistoryResponse>> GetAuditHistoryAsync(CollegeManagement.API.DTOs.Attendance.Requests.AuditHistorySearchRequest request)
+        {
+            var query = _context.AttendanceAuditHistories.AsQueryable();
+
+            if (request.FromDate.HasValue)
+                query = query.Where(a => a.AttendanceDate.Date >= request.FromDate.Value.Date);
+            if (request.ToDate.HasValue)
+                query = query.Where(a => a.AttendanceDate.Date <= request.ToDate.Value.Date);
+            if (request.UserId.HasValue && request.UserId.Value > 0)
+                query = query.Where(a => a.ModifiedByUserId == request.UserId.Value);
+            if (request.StudentId.HasValue && request.StudentId.Value > 0)
+                query = query.Where(a => a.StudentId == request.StudentId.Value);
+            if (request.FacultyId.HasValue && request.FacultyId.Value > 0)
+                query = query.Where(a => a.FacultyId == request.FacultyId.Value);
+            if (!string.IsNullOrEmpty(request.EntityType))
+                query = query.Where(a => a.EntityType == request.EntityType);
+            if (!string.IsNullOrEmpty(request.Action))
+                query = query.Where(a => a.Action == request.Action);
+
+            var totalCount = await query.CountAsync();
+            var items = await query
+                .OrderByDescending(a => a.CreatedAt)
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(a => new CollegeManagement.API.DTOs.Attendance.Responses.AttendanceAuditHistoryResponse
+                {
+                    AuditId = a.AuditId,
+                    EntityType = a.EntityType,
+                    EntityId = a.EntityId,
+                    StudentId = a.StudentId,
+                    FacultyId = a.FacultyId,
+                    AttendanceDate = a.AttendanceDate,
+                    Session = a.Session.HasValue ? a.Session.ToString() : null,
+                    OldStatus = a.OldStatus,
+                    NewStatus = a.NewStatus,
+                    Action = a.Action,
+                    Description = a.Description,
+                    ModifiedByUserId = a.ModifiedByUserId,
+                    ModifiedByUserName = a.ModifiedByUserName,
+                    CreatedAt = a.CreatedAt
+                })
+                .ToListAsync();
+
+            return new CollegeManagement.API.DTOs.Common.PagedResponse<CollegeManagement.API.DTOs.Attendance.Responses.AttendanceAuditHistoryResponse>
+            {
+                Items = items,
+                CurrentPage = request.PageNumber,
+                PageSize = request.PageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize)
+            };
+        }
     }
 }
+
+
+

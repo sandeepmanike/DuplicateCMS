@@ -41,6 +41,22 @@ namespace CollegeManagement.API.Models
 
         public int? FacultyId { get; set; }
 
+        /// <summary>
+        /// Gets or sets the attendance session (Morning=1, Afternoon=2).
+        /// Nullable for backward compatibility with existing records that predate session-based attendance.
+        /// </summary>
+        public StudentAttendanceSession? Session { get; set; }
+
+        /// <summary>
+        /// Gets or sets the User ID of who last modified this record.
+        /// </summary>
+        public int? ModifiedByUserId { get; set; }
+
+        /// <summary>
+        /// Gets or sets when this record was last modified by an admin.
+        /// </summary>
+        public DateTime? ModifiedAt { get; set; }
+
         public DateTime AttendanceDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>

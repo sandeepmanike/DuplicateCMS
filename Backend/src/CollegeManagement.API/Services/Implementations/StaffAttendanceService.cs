@@ -8,6 +8,7 @@ using CollegeManagement.API.DTOs.StaffAttendance.Requests;
 using CollegeManagement.API.DTOs.StaffAttendance.Responses;
 using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using MiniExcelLibs;
 
 namespace CollegeManagement.API.Services.Implementations
@@ -15,10 +16,12 @@ namespace CollegeManagement.API.Services.Implementations
     public class StaffAttendanceService : IStaffAttendanceService
     {
         private readonly IStaffAttendanceRepository _repository;
+        private readonly CollegeManagement.API.Data.AppDbContext _context;
 
-        public StaffAttendanceService(IStaffAttendanceRepository repository)
+        public StaffAttendanceService(IStaffAttendanceRepository repository, CollegeManagement.API.Data.AppDbContext context)
         {
             _repository = repository;
+            _context = context;
         }
 
         public async Task<IEnumerable<StaffAttendanceItemResponse>> LoadStaffAttendanceAsync(LoadStaffAttendanceRequest request)
@@ -117,5 +120,6 @@ namespace CollegeManagement.API.Services.Implementations
             await ms.SaveAsAsync(dataList, sheetName: "Staff Monthly Report");
             return ms.ToArray();
         }
+
     }
 }

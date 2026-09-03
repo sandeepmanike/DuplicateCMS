@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.StaffAttendance.Requests;
 using CollegeManagement.API.DTOs.StaffAttendance.Responses;
+using CollegeManagement.API.Enums;
 
 namespace CollegeManagement.API.Services.Interfaces
 {
@@ -19,5 +20,7 @@ namespace CollegeManagement.API.Services.Interfaces
         Task<byte[]> ExportStaffMonthlyReportToCsvAsync(StaffMonthlyReportRequest request);
 
         Task<byte[]> ExportStaffMonthlyReportToExcelAsync(StaffMonthlyReportRequest request);
+
+
     }
 }

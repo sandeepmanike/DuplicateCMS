@@ -42,5 +42,13 @@ namespace CollegeManagement.API.DTOs.Attendance.Responses
         /// Gets or sets a value indicating whether attendance has been marked for the student.
         /// </summary>
         public bool IsAttendanceMarked { get; set; }
+
+        public StudentAttendanceSession? Session { get; set; }
+        
+        public int? AttendanceId { get; set; }
+
+        public string? ModifiedByUserName { get; set; }
+
+        public DateTime? ModifiedAt { get; set; }
     }
 }

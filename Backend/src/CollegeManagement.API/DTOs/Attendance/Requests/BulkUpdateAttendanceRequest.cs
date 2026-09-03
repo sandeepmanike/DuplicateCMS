@@ -8,9 +8,9 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
     public class BulkUpdateAttendanceRequest
     {
         /// <summary>
-        /// Gets or sets the attendance session identifier.
+        /// Gets or sets the attendance session identifier. Null for Admin session-based updates.
         /// </summary>
-        public int AttendanceSessionId { get; set; }
+        public int? AttendanceSessionId { get; set; }
 
         /// <summary>
         /// Gets or sets the list of student attendance updates.
