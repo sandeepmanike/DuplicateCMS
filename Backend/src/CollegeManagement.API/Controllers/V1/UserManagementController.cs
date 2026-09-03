@@ -3,7 +3,7 @@ using CollegeManagement.API.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CollegeManagement.API.Controllers
+namespace CollegeManagement.API.Controllers.V1
 {
     [Route("api/v1/users")]
     [ApiController]
