@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 using CollegeManagement.API.Models.Faculty;
 
 namespace CollegeManagement.API.Models.Staff
@@ -9,8 +10,6 @@ namespace CollegeManagement.API.Models.Staff
     [Table("Staff")]
     public class Staff
     {
-
-
         [Key]
         public int Id { get; set; }
 
@@ -36,9 +35,15 @@ namespace CollegeManagement.API.Models.Staff
         [StringLength(100)]
         public string FirstName { get; set; } = string.Empty;
 
+        [StringLength(100)]
+        public string? MiddleName { get; set; }
+
         [Required]
         [StringLength(100)]
         public string LastName { get; set; } = string.Empty;
+
+        [StringLength(150)]
+        public string? FatherOrHusbandName { get; set; }
 
         [Required]
         [StringLength(20)]
@@ -47,12 +52,24 @@ namespace CollegeManagement.API.Models.Staff
         [Required]
         public DateTime DateOfBirth { get; set; }
 
-        [StringLength(12)]
+        [StringLength(20)]
+        public string? MaritalStatus { get; set; }
+
+        [StringLength(50)]
+        public string? Nationality { get; set; } = "Indian";
+
+        [StringLength(20)]
         public string? Aadhaar { get; set; }
+
+        [StringLength(20)]
+        public string? PanNumber { get; set; }
 
         [Required]
         [StringLength(15)]
         public string Mobile { get; set; } = string.Empty;
+
+        [StringLength(15)]
+        public string? AlternateMobile { get; set; }
 
         [Required]
         [EmailAddress]
@@ -62,6 +79,29 @@ namespace CollegeManagement.API.Models.Staff
         [StringLength(10)]
         public string? BloodGroup { get; set; }
 
+        // Contact & Address
+        [StringLength(255)]
+        public string? CurrentAddress { get; set; }
+
+        [StringLength(255)]
+        public string? PermanentAddress { get; set; }
+
+        [StringLength(100)]
+        public string? City { get; set; }
+
+        [StringLength(100)]
+        public string? District { get; set; }
+
+        [StringLength(100)]
+        public string? State { get; set; }
+
+        [StringLength(20)]
+        public string? Pincode { get; set; }
+
+        [StringLength(100)]
+        public string? Country { get; set; } = "India";
+
+        // Professional / Employment details
         [Required]
         [StringLength(100)]
         public string Qualification { get; set; } = string.Empty;
@@ -77,7 +117,7 @@ namespace CollegeManagement.API.Models.Staff
 
         [Required]
         [StringLength(20)]
-        public string StaffType { get; set; } = "Teaching";
+        public string StaffType { get; set; } = "Teaching"; // "Teaching" | "Non-Teaching"
 
         [NotMapped]
         public string FacultyType
@@ -115,12 +155,45 @@ namespace CollegeManagement.API.Models.Staff
         [Required]
         public decimal Experience { get; set; } = 0.0m;
 
+        [StringLength(50)]
+        public string? EmploymentType { get; set; } = "Full Time"; // "Full Time", "Part Time", "Contract"
+
         [Required]
-        [StringLength(20)]
+        [StringLength(50)]
         public string Status { get; set; } = "Active";
 
         [StringLength(500)]
         public string? PhotoPath { get; set; }
+
+        // Profile Completion Lifecycle Workflow
+        [Required]
+        [StringLength(50)]
+        public string ProfileStatus { get; set; } = "PendingLink"; // "PendingLink", "LinkSent", "InProgress", "Submitted", "NeedsCorrection", "Completed"
+
+        public int ProfileCompletionPercentage { get; set; } = 30;
+
+        [StringLength(100)]
+        public string? ProfileLinkToken { get; set; }
+
+        public DateTime? ProfileLinkSentAt { get; set; }
+
+        public DateTime? ProfileLinkExpiresAt { get; set; }
+
+        public DateTime? SubmittedAt { get; set; }
+
+        public DateTime? ApprovedAt { get; set; }
+
+        public DateTime? CorrectionRequestedAt { get; set; }
+
+        [StringLength(1000)]
+        public string? CorrectionNotes { get; set; }
+
+        // JSON Columns for complex profile sections
+        public string? EducationJson { get; set; }
+        public string? ExperienceJson { get; set; }
+        public string? DocumentsJson { get; set; }
+        public string? BankDetailsJson { get; set; }
+        public string? EmergencyContactJson { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

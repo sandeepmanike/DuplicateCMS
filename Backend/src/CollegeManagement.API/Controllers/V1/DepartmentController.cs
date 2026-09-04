@@ -12,7 +12,6 @@ namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
     [ApiVersion("1.0")]
-    [Route("api/departments")]
     [Route("api/v{version:apiVersion}/departments")]
     [EnableCors("AllowFrontend")]
     [AllowAnonymous]

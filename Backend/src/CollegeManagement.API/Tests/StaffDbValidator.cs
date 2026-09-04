@@ -92,7 +92,36 @@ namespace CollegeManagement.API.Tests
                 { "DesignationId", "ALTER TABLE `Staff` ADD COLUMN `DesignationId` INT NULL AFTER `Designation`;" },
                 { "StaffType", "ALTER TABLE `Staff` ADD COLUMN `StaffType` VARCHAR(20) NOT NULL DEFAULT 'Teaching' AFTER `DesignationId`;" },
                 { "DepartmentId", "ALTER TABLE `Staff` ADD COLUMN `DepartmentId` INT NULL AFTER `StaffType`;" },
-                { "IsDeleted", "ALTER TABLE `Staff` ADD COLUMN `IsDeleted` TINYINT(1) NOT NULL DEFAULT 0;" }
+                { "IsDeleted", "ALTER TABLE `Staff` ADD COLUMN `IsDeleted` TINYINT(1) NOT NULL DEFAULT 0;" },
+                { "MiddleName", "ALTER TABLE `Staff` ADD COLUMN `MiddleName` VARCHAR(100) NULL AFTER `FirstName`;" },
+                { "FatherOrHusbandName", "ALTER TABLE `Staff` ADD COLUMN `FatherOrHusbandName` VARCHAR(150) NULL AFTER `LastName`;" },
+                { "MaritalStatus", "ALTER TABLE `Staff` ADD COLUMN `MaritalStatus` VARCHAR(20) NULL AFTER `DateOfBirth`;" },
+                { "Nationality", "ALTER TABLE `Staff` ADD COLUMN `Nationality` VARCHAR(50) NOT NULL DEFAULT 'Indian';" },
+                { "PanNumber", "ALTER TABLE `Staff` ADD COLUMN `PanNumber` VARCHAR(20) NULL;" },
+                { "AlternateMobile", "ALTER TABLE `Staff` ADD COLUMN `AlternateMobile` VARCHAR(15) NULL AFTER `Mobile`;" },
+                { "CurrentAddress", "ALTER TABLE `Staff` ADD COLUMN `CurrentAddress` VARCHAR(255) NULL;" },
+                { "PermanentAddress", "ALTER TABLE `Staff` ADD COLUMN `PermanentAddress` VARCHAR(255) NULL;" },
+                { "City", "ALTER TABLE `Staff` ADD COLUMN `City` VARCHAR(100) NULL;" },
+                { "District", "ALTER TABLE `Staff` ADD COLUMN `District` VARCHAR(100) NULL;" },
+                { "State", "ALTER TABLE `Staff` ADD COLUMN `State` VARCHAR(100) NULL;" },
+                { "Pincode", "ALTER TABLE `Staff` ADD COLUMN `Pincode` VARCHAR(20) NULL;" },
+                { "Country", "ALTER TABLE `Staff` ADD COLUMN `Country` VARCHAR(100) NOT NULL DEFAULT 'India';" },
+                { "BoardId", "ALTER TABLE `Staff` ADD COLUMN `BoardId` INT NULL;" },
+                { "EmploymentType", "ALTER TABLE `Staff` ADD COLUMN `EmploymentType` VARCHAR(50) NOT NULL DEFAULT 'Full Time';" },
+                { "ProfileStatus", "ALTER TABLE `Staff` ADD COLUMN `ProfileStatus` VARCHAR(50) NOT NULL DEFAULT 'PendingLink';" },
+                { "ProfileCompletionPercentage", "ALTER TABLE `Staff` ADD COLUMN `ProfileCompletionPercentage` INT NOT NULL DEFAULT 30;" },
+                { "ProfileLinkToken", "ALTER TABLE `Staff` ADD COLUMN `ProfileLinkToken` VARCHAR(100) NULL;" },
+                { "ProfileLinkSentAt", "ALTER TABLE `Staff` ADD COLUMN `ProfileLinkSentAt` DATETIME(6) NULL;" },
+                { "ProfileLinkExpiresAt", "ALTER TABLE `Staff` ADD COLUMN `ProfileLinkExpiresAt` DATETIME(6) NULL;" },
+                { "SubmittedAt", "ALTER TABLE `Staff` ADD COLUMN `SubmittedAt` DATETIME(6) NULL;" },
+                { "ApprovedAt", "ALTER TABLE `Staff` ADD COLUMN `ApprovedAt` DATETIME(6) NULL;" },
+                { "CorrectionRequestedAt", "ALTER TABLE `Staff` ADD COLUMN `CorrectionRequestedAt` DATETIME(6) NULL;" },
+                { "CorrectionNotes", "ALTER TABLE `Staff` ADD COLUMN `CorrectionNotes` VARCHAR(1000) NULL;" },
+                { "EducationJson", "ALTER TABLE `Staff` ADD COLUMN `EducationJson` LONGTEXT NULL;" },
+                { "ExperienceJson", "ALTER TABLE `Staff` ADD COLUMN `ExperienceJson` LONGTEXT NULL;" },
+                { "DocumentsJson", "ALTER TABLE `Staff` ADD COLUMN `DocumentsJson` LONGTEXT NULL;" },
+                { "BankDetailsJson", "ALTER TABLE `Staff` ADD COLUMN `BankDetailsJson` LONGTEXT NULL;" },
+                { "EmergencyContactJson", "ALTER TABLE `Staff` ADD COLUMN `EmergencyContactJson` LONGTEXT NULL;" }
             };
 
             foreach (var col in requiredCols)
@@ -103,6 +132,11 @@ namespace CollegeManagement.API.Tests
                     await conn.ExecuteAsync(col.Value);
                 }
             }
+
+            // Ensure columns that are optional during Step 1 allow NULL
+            await conn.ExecuteAsync("ALTER TABLE `Staff` MODIFY COLUMN `Aadhaar` VARCHAR(20) NULL;");
+            await conn.ExecuteAsync("ALTER TABLE `Staff` MODIFY COLUMN `BloodGroup` VARCHAR(10) NULL;");
+            await conn.ExecuteAsync("ALTER TABLE `Staff` MODIFY COLUMN `PhotoPath` VARCHAR(500) NULL;");
 
             // 3. Clean up ALL NULL values in Staff table and ensure 100% valid data
             Console.WriteLine("\n[3/5] Checking and Eliminating All NULL Values in 'Staff' Table...");

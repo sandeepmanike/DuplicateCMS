@@ -115,6 +115,7 @@ namespace CollegeManagement.API.Models
         public int? SectionId { get; set; }
 
         // Roll Number is allocated in bulk AFTER section allocation
+        [NotMapped]
         [MaxLength(30)]
         public string? RollNo { get; set; }
 
@@ -130,6 +131,7 @@ namespace CollegeManagement.API.Models
 
         public int? PreviousYearOfPassing { get; set; }
 
+        [NotMapped]
         [MaxLength(500)]
         public string? MarksMemo { get; set; }
 

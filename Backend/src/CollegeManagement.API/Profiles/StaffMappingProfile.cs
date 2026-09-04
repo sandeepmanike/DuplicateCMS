@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using AutoMapper;
 using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Models.Staff;
@@ -13,6 +16,8 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.StaffType, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.StaffType) ? "Teaching" : src.StaffType))
                 .ForMember(dest => dest.FacultyType, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.StaffType) ? "Teaching" : src.StaffType))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => string.IsNullOrWhiteSpace(src.Status) ? "Active" : src.Status))
+                .ForMember(dest => dest.ProfileStatus, opt => opt.MapFrom(_ => "PendingLink"))
+                .ForMember(dest => dest.ProfileCompletionPercentage, opt => opt.MapFrom(_ => 30))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => System.DateTime.UtcNow))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
                 .ForMember(dest => dest.IsDeleted, opt => opt.MapFrom(_ => false))
@@ -33,7 +38,21 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.DesignationRef, opt => opt.Ignore());
 
             // Staff Entity -> StaffResponseDto
-            CreateMap<Staff, StaffResponseDto>();
+            CreateMap<Staff, StaffResponseDto>()
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.DepartmentRef != null ? src.DepartmentRef.DepartmentName : src.Department))
+                .ForMember(dest => dest.BoardName, opt => opt.MapFrom(src => src.BoardRef != null ? src.BoardRef.BoardName : src.BoardName))
+                .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.DesignationRef != null ? src.DesignationRef.Name : src.Designation));
+
+            // Staff Entity -> StaffProfileFullDto
+            CreateMap<Staff, StaffProfileFullDto>()
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.DepartmentRef != null ? src.DepartmentRef.DepartmentName : src.Department))
+                .ForMember(dest => dest.BoardName, opt => opt.MapFrom(src => src.BoardRef != null ? src.BoardRef.BoardName : src.BoardName))
+                .ForMember(dest => dest.Designation, opt => opt.MapFrom(src => src.DesignationRef != null ? src.DesignationRef.Name : src.Designation))
+                .ForMember(dest => dest.EducationList, opt => opt.MapFrom(src => DeserializeList<StaffEducationItem>(src.EducationJson)))
+                .ForMember(dest => dest.ExperienceList, opt => opt.MapFrom(src => DeserializeList<StaffExperienceItem>(src.ExperienceJson)))
+                .ForMember(dest => dest.DocumentsList, opt => opt.MapFrom(src => DeserializeList<StaffDocumentItem>(src.DocumentsJson)))
+                .ForMember(dest => dest.BankDetails, opt => opt.MapFrom(src => DeserializeObject<StaffBankDetails>(src.BankDetailsJson) ?? new StaffBankDetails()))
+                .ForMember(dest => dest.EmergencyContact, opt => opt.MapFrom(src => DeserializeObject<StaffEmergencyContact>(src.EmergencyContactJson) ?? new StaffEmergencyContact()));
 
             // AssignStaffSubjectDto -> StaffSubjectAllocation Entity
             CreateMap<AssignStaffSubjectDto, StaffSubjectAllocation>()
@@ -65,6 +84,32 @@ namespace CollegeManagement.API.Profiles
                 .ForMember(dest => dest.MaxWeeklyHours, opt => opt.MapFrom(src => src.MaxWeeklyHours > 0 ? src.MaxWeeklyHours : 18))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => src.IsActive))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => "Allocated"));
+        }
+
+        private static List<T> DeserializeList<T>(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new List<T>();
+            try
+            {
+                return JsonSerializer.Deserialize<List<T>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<T>();
+            }
+            catch
+            {
+                return new List<T>();
+            }
+        }
+
+        private static T? DeserializeObject<T>(string? json) where T : class
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try
+            {
+                return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

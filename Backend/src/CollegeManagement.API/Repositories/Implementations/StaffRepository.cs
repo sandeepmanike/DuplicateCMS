@@ -21,735 +21,414 @@ namespace CollegeManagement.API.Repositories.Implementations
             _context = context;
         }
 
-        private bool IsRelational => _context.Database.ProviderName != null && !_context.Database.ProviderName.Contains("InMemory");
-
         private IDbConnection Connection => _context.Database.GetDbConnection();
 
         public async Task<Staff?> GetByIdAsync(int id)
         {
-            try
-            {
-                using var multi = await Connection.QueryMultipleAsync(
-                    "sp_GetStaffById",
-                    new { p_Id = id },
-                    commandType: CommandType.StoredProcedure);
-
-                var staff = await multi.ReadFirstOrDefaultAsync<Staff>();
-                if (staff != null)
-                {
-                    var allocations = (await multi.ReadAsync<StaffSubjectAllocation>()).ToList();
-                    staff.StaffSubjectAllocations = allocations;
-                    return staff;
-                }
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                SELECT 
-                    f.Id, f.EmployeeId, f.FirstName, f.LastName, f.Gender, f.DateOfBirth,
-                    f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
-                    f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
-                    d.DepartmentName AS Department,
-                    f.BoardId,
-                    b.BoardName AS Board,
-                    b.BoardName AS BoardName,
-                    f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE f.Id = @id AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
-
-            var item = await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { id });
-            if (item != null)
-            {
-                var allocSql = @"
-                    SELECT 
-                        a.Id, a.StaffId, a.FacultyId, a.SubjectId, a.CreatedAt, a.UpdatedAt,
-                        sub.SubjectId, sub.SubjectName, sub.SubjectCode, sub.SubjectType
-                    FROM StaffSubjectAllocations a
-                    INNER JOIN Subjects sub ON sub.SubjectId = a.SubjectId
-                    WHERE a.StaffId = @id OR a.FacultyId = @id;";
-
-                var allocs = (await Connection.QueryAsync<StaffSubjectAllocation, Models.Subject, StaffSubjectAllocation>(
-                    allocSql,
-                    (allocation, subject) =>
-                    {
-                        allocation.Subject = subject;
-                        return allocation;
-                    },
-                    new { id },
-                    splitOn: "SubjectId")).ToList();
-
-                item.StaffSubjectAllocations = allocs;
-            }
-
-            return item;
+            return await _context.Staffs
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .Include(s => s.StaffSubjectAllocations)
+                    .ThenInclude(ssa => ssa.Subject)
+                .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted);
         }
 
         public async Task<Staff?> GetByEmployeeIdAsync(string employeeId)
         {
-            try
-            {
-                var s = await Connection.QueryFirstOrDefaultAsync<Staff>(
-                    "sp_GetStaffByEmployeeId",
-                    new { p_EmployeeId = employeeId },
-                    commandType: CommandType.StoredProcedure);
-
-                if (s != null) return s;
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                SELECT 
-                    f.Id, f.EmployeeId, f.FirstName, f.LastName, f.Gender, f.DateOfBirth,
-                    f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
-                    f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
-                    d.DepartmentName AS Department,
-                    f.BoardId,
-                    b.BoardName AS Board,
-                    b.BoardName AS BoardName,
-                    f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE f.EmployeeId = @employeeId AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
-
-            return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { employeeId });
+            return await _context.Staffs
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .Include(s => s.StaffSubjectAllocations)
+                    .ThenInclude(ssa => ssa.Subject)
+                .FirstOrDefaultAsync(s => s.EmployeeId == employeeId && !s.IsDeleted);
         }
 
         public async Task<Staff?> GetByEmailAsync(string email)
         {
-            try
-            {
-                var s = await Connection.QueryFirstOrDefaultAsync<Staff>(
-                    "sp_GetStaffByEmail",
-                    new { p_Email = email },
-                    commandType: CommandType.StoredProcedure);
-
-                if (s != null) return s;
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                SELECT 
-                    f.Id, f.EmployeeId, f.FirstName, f.LastName, f.Gender, f.DateOfBirth,
-                    f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
-                    f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
-                    d.DepartmentName AS Department,
-                    f.BoardId,
-                    b.BoardName AS Board,
-                    b.BoardName AS BoardName,
-                    f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE f.Email = @email AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
-
-            return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { email });
+            return await _context.Staffs
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .FirstOrDefaultAsync(s => s.Email == email && !s.IsDeleted);
         }
 
         public async Task<Staff?> GetByMobileAsync(string mobile)
         {
-            try
-            {
-                var s = await Connection.QueryFirstOrDefaultAsync<Staff>(
-                    "sp_GetStaffByMobile",
-                    new { p_Mobile = mobile },
-                    commandType: CommandType.StoredProcedure);
-
-                if (s != null) return s;
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                SELECT 
-                    f.Id, f.EmployeeId, f.FirstName, f.LastName, f.Gender, f.DateOfBirth,
-                    f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
-                    f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
-                    d.DepartmentName AS Department,
-                    f.BoardId,
-                    b.BoardName AS Board,
-                    b.BoardName AS BoardName,
-                    f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE f.Mobile = @mobile AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
-
-            return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { mobile });
+            return await _context.Staffs
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .FirstOrDefaultAsync(s => s.Mobile == mobile && !s.IsDeleted);
         }
 
         public async Task<Staff?> GetByAadhaarAsync(string aadhaar)
         {
-            try
-            {
-                var s = await Connection.QueryFirstOrDefaultAsync<Staff>(
-                    "sp_GetStaffByAadhaar",
-                    new { p_Aadhaar = aadhaar },
-                    commandType: CommandType.StoredProcedure);
+            if (string.IsNullOrWhiteSpace(aadhaar)) return null;
+            return await _context.Staffs
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .FirstOrDefaultAsync(s => s.Aadhaar == aadhaar && !s.IsDeleted);
+        }
 
-                if (s != null) return s;
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                SELECT 
-                    f.Id, f.EmployeeId, f.FirstName, f.LastName, f.Gender, f.DateOfBirth,
-                    f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
-                    f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
-                    d.DepartmentName AS Department,
-                    f.BoardId,
-                    b.BoardName AS Board,
-                    b.BoardName AS BoardName,
-                    f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE f.Aadhaar = @aadhaar AND (f.IsDeleted = 0 OR f.IsDeleted IS NULL);";
-
-            return await Connection.QueryFirstOrDefaultAsync<Staff>(sql, new { aadhaar });
+        public async Task<Staff?> GetByTokenAsync(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return null;
+            return await _context.Staffs
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .FirstOrDefaultAsync(s => s.ProfileLinkToken == token && !s.IsDeleted);
         }
 
         public async Task<string?> GetPhotoPathAsync(int id)
         {
-            try
-            {
-                return await Connection.QueryFirstOrDefaultAsync<string>(
-                    "sp_GetStaffPhotoPath",
-                    new { p_Id = id },
-                    commandType: CommandType.StoredProcedure);
-            }
-            catch
-            {
-                var sql = "SELECT PhotoPath FROM Staffs WHERE Id = @id;";
-                return await Connection.QueryFirstOrDefaultAsync<string>(sql, new { id });
-            }
+            return await _context.Staffs
+                .Where(s => s.Id == id && !s.IsDeleted)
+                .Select(s => s.PhotoPath)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<bool> IsEmployeeIdUniqueAsync(string employeeId, int? excludeId = null)
         {
-            try
+            var query = _context.Staffs.Where(s => s.EmployeeId == employeeId && !s.IsDeleted);
+            if (excludeId.HasValue)
             {
-                var count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckStaffEmployeeIdUnique",
-                    new { p_EmployeeId = employeeId, p_ExcludeId = excludeId },
-                    commandType: CommandType.StoredProcedure);
-
-                return count == 0;
+                query = query.Where(s => s.Id != excludeId.Value);
             }
-            catch
-            {
-                var sql = "SELECT COUNT(*) FROM Staffs WHERE EmployeeId = @employeeId AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
-                var count = await Connection.ExecuteScalarAsync<int>(sql, new { employeeId, excludeId });
-                return count == 0;
-            }
+            return !await query.AnyAsync();
         }
 
         public async Task<bool> IsEmailUniqueAsync(string email, int? excludeId = null)
         {
-            try
+            var query = _context.Staffs.Where(s => s.Email == email && !s.IsDeleted);
+            if (excludeId.HasValue)
             {
-                var count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckStaffEmailUnique",
-                    new { p_Email = email, p_ExcludeId = excludeId },
-                    commandType: CommandType.StoredProcedure);
-
-                return count == 0;
+                query = query.Where(s => s.Id != excludeId.Value);
             }
-            catch
-            {
-                var sql = "SELECT COUNT(*) FROM Staffs WHERE Email = @email AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
-                var count = await Connection.ExecuteScalarAsync<int>(sql, new { email, excludeId });
-                return count == 0;
-            }
+            return !await query.AnyAsync();
         }
 
         public async Task<bool> IsMobileUniqueAsync(string mobile, int? excludeId = null)
         {
-            try
+            var query = _context.Staffs.Where(s => s.Mobile == mobile && !s.IsDeleted);
+            if (excludeId.HasValue)
             {
-                var count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckStaffMobileUnique",
-                    new { p_Mobile = mobile, p_ExcludeId = excludeId },
-                    commandType: CommandType.StoredProcedure);
-
-                return count == 0;
+                query = query.Where(s => s.Id != excludeId.Value);
             }
-            catch
-            {
-                var sql = "SELECT COUNT(*) FROM Staffs WHERE Mobile = @mobile AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
-                var count = await Connection.ExecuteScalarAsync<int>(sql, new { mobile, excludeId });
-                return count == 0;
-            }
+            return !await query.AnyAsync();
         }
 
         public async Task<bool> IsAadhaarUniqueAsync(string aadhaar, int? excludeId = null)
         {
             if (string.IsNullOrWhiteSpace(aadhaar)) return true;
-            try
+            var query = _context.Staffs.Where(s => s.Aadhaar == aadhaar && !s.IsDeleted);
+            if (excludeId.HasValue)
             {
-                var count = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CheckStaffAadhaarUnique",
-                    new { p_Aadhaar = aadhaar, p_ExcludeId = excludeId },
-                    commandType: CommandType.StoredProcedure);
-
-                return count == 0;
+                query = query.Where(s => s.Id != excludeId.Value);
             }
-            catch
-            {
-                var sql = "SELECT COUNT(*) FROM Staffs WHERE Aadhaar = @aadhaar AND (IsDeleted = 0 OR IsDeleted IS NULL) AND (@excludeId IS NULL OR Id != @excludeId);";
-                var count = await Connection.ExecuteScalarAsync<int>(sql, new { aadhaar, excludeId });
-                return count == 0;
-            }
+            return !await query.AnyAsync();
         }
 
         public async Task<(List<Staff> Items, int TotalCount)> GetPagedStaffAsync(StaffQueryParams queryParams)
         {
-            try
-            {
-                using var multi = await Connection.QueryMultipleAsync(
-                    "sp_GetPagedStaff",
-                    new
-                    {
-                        p_SearchTerm = queryParams.SearchTerm,
-                        p_Department = queryParams.Department,
-                        p_Designation = queryParams.Designation,
-                        p_DesignationId = queryParams.DesignationId,
-                        p_StaffType = queryParams.StaffType,
-                        p_Status = queryParams.Status,
-                        p_SortBy = queryParams.SortBy,
-                        p_SortOrder = queryParams.SortOrder,
-                        p_PageNumber = queryParams.PageNumber,
-                        p_PageSize = queryParams.PageSize
-                    },
-                    commandType: CommandType.StoredProcedure);
+            var query = _context.Staffs
+                .AsNoTracking()
+                .Include(s => s.DepartmentRef)
+                .Include(s => s.DesignationRef)
+                .Include(s => s.BoardRef)
+                .Where(s => !s.IsDeleted);
 
-                var totalCount = await multi.ReadFirstOrDefaultAsync<int>();
-                var items = (await multi.ReadAsync<Staff>()).ToList();
-
-                if (items.Count > 0 || totalCount > 0)
-                    return (items, totalCount);
-            }
-            catch
-            {
-            }
-
-            var whereClauses = new List<string> { "(f.IsDeleted = 0 OR f.IsDeleted IS NULL)" };
-            var param = new DynamicParameters();
-
+            // Search Term (EmployeeId, Name, Email, Mobile)
             if (!string.IsNullOrWhiteSpace(queryParams.SearchTerm))
             {
-                var term = $"%{queryParams.SearchTerm.Trim()}%";
-                whereClauses.Add("(f.FirstName LIKE @term OR f.LastName LIKE @term OR f.EmployeeId LIKE @term OR f.Email LIKE @term OR f.Mobile LIKE @term)");
-                param.Add("term", term);
+                var term = queryParams.SearchTerm.Trim();
+                query = query.Where(s =>
+                    s.FirstName.Contains(term) ||
+                    s.LastName.Contains(term) ||
+                    (s.MiddleName != null && s.MiddleName.Contains(term)) ||
+                    s.EmployeeId.Contains(term) ||
+                    s.Email.Contains(term) ||
+                    s.Mobile.Contains(term));
             }
 
-            if (queryParams.BoardId.HasValue && queryParams.BoardId.Value > 0)
+            // Department filter (ID or Name)
+            if (queryParams.DepartmentId.HasValue && queryParams.DepartmentId.Value > 0)
             {
-                whereClauses.Add("f.BoardId = @boardId");
-                param.Add("boardId", queryParams.BoardId.Value);
+                query = query.Where(s => s.DepartmentId == queryParams.DepartmentId.Value);
             }
-            else if (!string.IsNullOrWhiteSpace(queryParams.BoardName) && !string.Equals(queryParams.BoardName, "All", StringComparison.OrdinalIgnoreCase))
+            else if (!string.IsNullOrWhiteSpace(queryParams.Department) && !queryParams.Department.Equals("All Departments", StringComparison.OrdinalIgnoreCase))
             {
-                whereClauses.Add("(b.BoardName = @boardName OR b.BoardCode = @boardName)");
-                param.Add("boardName", queryParams.BoardName.Trim());
-            }
-
-            if (!string.IsNullOrWhiteSpace(queryParams.StaffType) && !string.Equals(queryParams.StaffType, "All", StringComparison.OrdinalIgnoreCase))
-            {
-                whereClauses.Add("(f.StaffType = @staffType OR f.FacultyType = @staffType)");
-                param.Add("staffType", queryParams.StaffType.Trim());
+                query = query.Where(s => s.DepartmentRef != null && (s.DepartmentRef.DepartmentName == queryParams.Department || s.DepartmentRef.DepartmentCode == queryParams.Department));
             }
 
+            // Designation filter (ID or Name)
             if (queryParams.DesignationId.HasValue && queryParams.DesignationId.Value > 0)
             {
-                whereClauses.Add("f.DesignationId = @desigId");
-                param.Add("desigId", queryParams.DesignationId.Value);
+                query = query.Where(s => s.DesignationId == queryParams.DesignationId.Value);
             }
-            else if (!string.IsNullOrWhiteSpace(queryParams.Designation))
+            else if (!string.IsNullOrWhiteSpace(queryParams.Designation) && !queryParams.Designation.Equals("All Designations", StringComparison.OrdinalIgnoreCase))
             {
-                whereClauses.Add("f.Designation = @desig");
-                param.Add("desig", queryParams.Designation.Trim());
+                query = query.Where(s => s.Designation == queryParams.Designation || (s.DesignationRef != null && s.DesignationRef.Name == queryParams.Designation));
             }
 
-            if (!string.IsNullOrWhiteSpace(queryParams.Department))
+            // Board filter
+            if (queryParams.BoardId.HasValue && queryParams.BoardId.Value > 0)
             {
-                whereClauses.Add("(d.DepartmentName = @dept OR d.DepartmentCode = @dept)");
-                param.Add("dept", queryParams.Department.Trim());
+                query = query.Where(s => s.BoardId == queryParams.BoardId.Value);
             }
-
-            if (!string.IsNullOrWhiteSpace(queryParams.Status) && !string.Equals(queryParams.Status, "All Status", StringComparison.OrdinalIgnoreCase))
+            else if (!string.IsNullOrWhiteSpace(queryParams.BoardName) && !queryParams.BoardName.Equals("All Boards", StringComparison.OrdinalIgnoreCase))
             {
-                whereClauses.Add("f.Status = @status");
-                param.Add("status", queryParams.Status.Trim());
+                query = query.Where(s => s.BoardRef != null && s.BoardRef.BoardName == queryParams.BoardName);
             }
 
-            var whereSql = string.Join(" AND ", whereClauses);
+            // Staff Type filter (Teaching / Non-Teaching)
+            if (!string.IsNullOrWhiteSpace(queryParams.StaffType) && !queryParams.StaffType.Equals("All", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(s => s.StaffType == queryParams.StaffType);
+            }
 
-            var countSql = $@"
-                SELECT COUNT(*) 
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE {whereSql};";
+            // Employment Status filter (Active / Inactive)
+            if (!string.IsNullOrWhiteSpace(queryParams.Status) && !queryParams.Status.Equals("All Status", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(s => s.Status == queryParams.Status);
+            }
 
-            var total = await Connection.ExecuteScalarAsync<int>(countSql, param);
+            // Profile Status filter (Completed, PendingLink, LinkSent, InProgress, NeedsCorrection, Submitted)
+            if (!string.IsNullOrWhiteSpace(queryParams.ProfileStatus) && !queryParams.ProfileStatus.Equals("All", StringComparison.OrdinalIgnoreCase))
+            {
+                if (queryParams.ProfileStatus.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(s => s.ProfileStatus == "Completed" || s.ProfileStatus == "Approved");
+                }
+                else if (queryParams.ProfileStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase) || queryParams.ProfileStatus.Equals("Pending Profile Completion", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(s => s.ProfileStatus != "Completed" && s.ProfileStatus != "Approved");
+                }
+                else
+                {
+                    query = query.Where(s => s.ProfileStatus == queryParams.ProfileStatus);
+                }
+            }
 
-            var pageNumber = queryParams.PageNumber > 0 ? queryParams.PageNumber : 1;
-            var pageSize = queryParams.PageSize > 0 ? queryParams.PageSize : 10;
-            var offset = (pageNumber - 1) * pageSize;
+            // Pending Sub-tab filter (LinkSent, InProgress, NeedsCorrection, Submitted)
+            if (!string.IsNullOrWhiteSpace(queryParams.PendingSubTab))
+            {
+                var subTab = queryParams.PendingSubTab.Trim();
+                if (subTab.Equals("LinkSent", StringComparison.OrdinalIgnoreCase) || subTab.Equals("Link Sent", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(s => s.ProfileStatus == "LinkSent" || s.ProfileStatus == "PendingLink" || s.ProfileStatus == null);
+                }
+                else if (subTab.Equals("InProgress", StringComparison.OrdinalIgnoreCase) || subTab.Equals("In Progress", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(s => s.ProfileStatus == "InProgress");
+                }
+                else if (subTab.Equals("NeedsCorrection", StringComparison.OrdinalIgnoreCase) || subTab.Equals("Needs Correction", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(s => s.ProfileStatus == "NeedsCorrection");
+                }
+                else if (subTab.Equals("Submitted", StringComparison.OrdinalIgnoreCase))
+                {
+                    query = query.Where(s => s.ProfileStatus == "Submitted");
+                }
+            }
 
-            param.Add("offset", offset);
-            param.Add("limit", pageSize);
+            var totalCount = await query.CountAsync();
 
-            var itemsSql = $@"
-                SELECT 
-                    f.Id, f.EmployeeId, f.FirstName, f.LastName, f.Gender, f.DateOfBirth,
-                    f.Aadhaar, f.Mobile, f.Email, f.BloodGroup, f.Qualification, f.Designation,
-                    f.DesignationId, IFNULL(f.StaffType, 'Teaching') AS StaffType, f.DepartmentId,
-                    d.DepartmentName AS Department,
-                    f.BoardId,
-                    b.BoardName AS Board,
-                    b.BoardName AS BoardName,
-                    f.JoiningDate, f.Experience, f.Status, f.PhotoPath, f.CreatedAt, f.UpdatedAt, f.IsDeleted
-                FROM Staffs f
-                LEFT JOIN Departments d ON d.DepartmentId = f.DepartmentId
-                LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                WHERE {whereSql}
-                ORDER BY f.Id DESC
-                LIMIT @limit OFFSET @offset;";
+            // Sorting
+            query = (queryParams.SortBy?.ToLowerInvariant(), queryParams.SortOrder?.ToUpperInvariant()) switch
+            {
+                ("firstname", "ASC") => query.OrderBy(s => s.FirstName),
+                ("firstname", _) => query.OrderByDescending(s => s.FirstName),
+                ("employeeid", "ASC") => query.OrderBy(s => s.EmployeeId),
+                ("employeeid", _) => query.OrderByDescending(s => s.EmployeeId),
+                ("joiningdate", "ASC") => query.OrderBy(s => s.JoiningDate),
+                ("joiningdate", _) => query.OrderByDescending(s => s.JoiningDate),
+                ("profilecompletionpercentage", "ASC") => query.OrderBy(s => s.ProfileCompletionPercentage),
+                ("profilecompletionpercentage", _) => query.OrderByDescending(s => s.ProfileCompletionPercentage),
+                ("id", "ASC") => query.OrderBy(s => s.Id),
+                _ => query.OrderByDescending(s => s.Id)
+            };
 
-            var records = (await Connection.QueryAsync<Staff>(itemsSql, param)).ToList();
-            return (records, total);
+            var items = await query
+                .Skip((queryParams.PageNumber - 1) * queryParams.PageSize)
+                .Take(queryParams.PageSize)
+                .ToListAsync();
+
+            // Populate navigation names
+            foreach (var item in items)
+            {
+                if (item.DepartmentRef != null) item.Department = item.DepartmentRef.DepartmentName;
+                if (item.BoardRef != null) item.BoardName = item.BoardRef.BoardName;
+                if (item.DesignationRef != null && string.IsNullOrWhiteSpace(item.Designation)) item.Designation = item.DesignationRef.Name;
+            }
+
+            return (items, totalCount);
         }
 
         public async Task<IEnumerable<StaffDropdownDto>> GetStaffDropdownAsync(string? staffType = null)
         {
-            try
+            var query = _context.Staffs.AsNoTracking().Where(s => !s.IsDeleted && s.Status == "Active");
+            if (!string.IsNullOrWhiteSpace(staffType))
             {
-                return await Connection.QueryAsync<StaffDropdownDto>(
-                    "sp_GetStaffDropdown",
-                    new { p_StaffType = staffType },
-                    commandType: CommandType.StoredProcedure);
+                query = query.Where(s => s.StaffType == staffType);
             }
-            catch
-            {
-                var sql = @"
-                    SELECT 
-                        f.Id,
-                        f.EmployeeId,
-                        CONCAT(f.FirstName, ' ', f.LastName) AS FullName,
-                        f.Designation,
-                        f.DesignationId,
-                        f.BoardId,
-                        b.BoardName,
-                        b.BoardName AS Board,
-                        IFNULL(f.StaffType, 'Teaching') AS StaffType
-                    FROM Staffs f
-                    LEFT JOIN Boards b ON b.BoardId = f.BoardId
-                    WHERE (f.IsDeleted = 0 OR f.IsDeleted IS NULL) AND f.Status = 'Active'
-                      AND (@staffType IS NULL OR @staffType = '' OR @staffType = 'All' OR f.StaffType = @staffType OR f.FacultyType = @staffType)
-                    ORDER BY f.FirstName ASC;";
 
-                return await Connection.QueryAsync<StaffDropdownDto>(sql, new { staffType });
-            }
+            return await query
+                .OrderBy(s => s.FirstName)
+                .Select(s => new StaffDropdownDto
+                {
+                    Id = s.Id,
+                    EmployeeId = s.EmployeeId,
+                    FullName = $"{s.FirstName} {s.LastName}".Trim(),
+                    Designation = s.Designation,
+                    Department = s.DepartmentRef != null ? s.DepartmentRef.DepartmentName : s.Department,
+                    StaffType = s.StaffType
+                })
+                .ToListAsync();
         }
 
         public async Task<string> GenerateNextEmployeeIdAsync(string staffType)
         {
-            var isNonTeaching = string.Equals(staffType?.Trim(), "Non-Teaching", StringComparison.OrdinalIgnoreCase);
-            var prefix = isNonTeaching ? "PJCNTCH" : "PJCTCH";
+            var isTeaching = !string.Equals(staffType, "Non-Teaching", StringComparison.OrdinalIgnoreCase);
+            var prefix = isTeaching ? "PCTCH" : "PCNT";
 
-            try
-            {
-                var nextId = await Connection.QueryFirstOrDefaultAsync<string>(
-                    "sp_GenerateStaffEmployeeId",
-                    new { p_StaffType = isNonTeaching ? "Non-Teaching" : "Teaching" },
-                    commandType: CommandType.StoredProcedure);
+            // Find maximum existing sequential numeric suffix
+            var existingIds = await _context.Staffs
+                .Where(s => s.EmployeeId.StartsWith(prefix))
+                .Select(s => s.EmployeeId)
+                .ToListAsync();
 
-                if (!string.IsNullOrWhiteSpace(nextId))
-                    return nextId;
-            }
-            catch
-            {
-            }
-
-            var sql = "SELECT EmployeeId FROM Staffs WHERE EmployeeId LIKE @pattern;";
-            var existingIds = (await Connection.QueryAsync<string>(sql, new { pattern = $"{prefix}%" })).ToList();
-
-            int maxSeq = 0;
+            int maxNumber = 0;
             foreach (var id in existingIds)
             {
-                if (id.Length > prefix.Length)
+                var numPart = id.Substring(prefix.Length);
+                if (int.TryParse(numPart, out int parsedNum) && parsedNum > maxNumber)
                 {
-                    var suffix = id.Substring(prefix.Length);
-                    if (int.TryParse(suffix, out int num) && num > maxSeq)
-                    {
-                        maxSeq = num;
-                    }
+                    maxNumber = parsedNum;
                 }
             }
 
-            return $"{prefix}{(maxSeq + 1).ToString("D4")}";
+            return $"{prefix}{(maxNumber + 1):D4}";
         }
 
-        private async Task<int?> ResolveBoardIdAsync(int? boardId, string? boardName)
+        public async Task<StaffDashboardStatsDto> GetDashboardStatsAsync()
         {
-            if (boardId.HasValue && boardId.Value > 0) return boardId.Value;
-            if (string.IsNullOrWhiteSpace(boardName)) return null;
+            var activeStaff = await _context.Staffs
+                .AsNoTracking()
+                .Where(s => !s.IsDeleted)
+                .ToListAsync();
 
-            var name = boardName.Trim();
-            try
-            {
-                var id = await Connection.QueryFirstOrDefaultAsync<int?>(@"
-                    SELECT BoardId FROM `Boards` 
-                    WHERE (IsActive = 1 OR IsActive IS NULL)
-                      AND (LOWER(TRIM(BoardName)) = LOWER(TRIM(@name)) OR LOWER(TRIM(BoardCode)) = LOWER(TRIM(@name)))
-                    LIMIT 1;", new { name });
+            var totalStaff = activeStaff.Count;
+            var teachingStaff = activeStaff.Count(s => string.Equals(s.StaffType, "Teaching", StringComparison.OrdinalIgnoreCase));
+            var nonTeachingStaff = activeStaff.Count(s => string.Equals(s.StaffType, "Non-Teaching", StringComparison.OrdinalIgnoreCase));
+            
+            var completedCount = activeStaff.Count(s => string.Equals(s.ProfileStatus, "Completed", StringComparison.OrdinalIgnoreCase) || string.Equals(s.ProfileStatus, "Approved", StringComparison.OrdinalIgnoreCase));
+            var pendingCount = totalStaff - completedCount;
 
-                return id;
-            }
-            catch
+            var inProgressCount = activeStaff.Count(s => string.Equals(s.ProfileStatus, "InProgress", StringComparison.OrdinalIgnoreCase));
+            var needsCorrectionCount = activeStaff.Count(s => string.Equals(s.ProfileStatus, "NeedsCorrection", StringComparison.OrdinalIgnoreCase));
+            var submittedCount = activeStaff.Count(s => string.Equals(s.ProfileStatus, "Submitted", StringComparison.OrdinalIgnoreCase));
+            var linkSentCount = activeStaff.Count(s => string.Equals(s.ProfileStatus, "LinkSent", StringComparison.OrdinalIgnoreCase) || string.Equals(s.ProfileStatus, "PendingLink", StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(s.ProfileStatus));
+
+            return new StaffDashboardStatsDto
             {
-                return null;
-            }
+                TotalStaff = totalStaff,
+                TeachingStaff = teachingStaff,
+                NonTeachingStaff = nonTeachingStaff,
+                PendingProfileCompletion = pendingCount,
+                CompletedProfiles = completedCount,
+                
+                Completed = completedCount,
+                Pending = linkSentCount,
+                InProgress = inProgressCount,
+                NeedsCorrection = needsCorrectionCount,
+                Submitted = submittedCount
+            };
         }
 
         public async Task<Staff> AddAsync(Staff staff)
         {
-            if (!staff.BoardId.HasValue || staff.BoardId.Value <= 0)
-            {
-                staff.BoardId = await ResolveBoardIdAsync(staff.BoardId, staff.BoardName);
-            }
-
-            try
-            {
-                var id = await Connection.ExecuteScalarAsync<int>(
-                    "sp_CreateStaff",
-                    new
-                    {
-                        p_EmployeeId = staff.EmployeeId,
-                        p_FirstName = staff.FirstName,
-                        p_LastName = staff.LastName,
-                        p_Gender = staff.Gender,
-                        p_DateOfBirth = staff.DateOfBirth,
-                        p_Aadhaar = staff.Aadhaar,
-                        p_Mobile = staff.Mobile,
-                        p_Email = staff.Email,
-                        p_BloodGroup = staff.BloodGroup,
-                        p_Qualification = staff.Qualification,
-                        p_Designation = staff.Designation,
-                        p_DesignationId = staff.DesignationId,
-                        p_StaffType = staff.StaffType,
-                        p_DepartmentId = staff.DepartmentId,
-                        p_JoiningDate = staff.JoiningDate,
-                        p_Experience = staff.Experience,
-                        p_Status = staff.Status,
-                        p_PhotoPath = staff.PhotoPath
-                    },
-                    commandType: CommandType.StoredProcedure);
-
-                if (id > 0)
-                {
-                    staff.Id = id;
-                    if (staff.BoardId.HasValue)
-                    {
-                        try
-                        {
-                            await Connection.ExecuteAsync("UPDATE Staffs SET BoardId = @BoardId WHERE Id = @Id;", staff);
-                        }
-                        catch { }
-                    }
-                    return staff;
-                }
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                INSERT INTO Staffs (
-                    EmployeeId, FirstName, LastName, Gender, DateOfBirth,
-                    Aadhaar, Mobile, Email, BloodGroup, Qualification,
-                    Designation, DesignationId, StaffType, FacultyType,
-                    DepartmentId, BoardId, JoiningDate, Experience, Status, PhotoPath,
-                    CreatedAt, IsDeleted
-                ) VALUES (
-                    @EmployeeId, @FirstName, @LastName, @Gender, @DateOfBirth,
-                    @Aadhaar, @Mobile, @Email, @BloodGroup, @Qualification,
-                    @Designation, @DesignationId, @StaffType, @StaffType,
-                    @DepartmentId, @BoardId, @JoiningDate, @Experience, @Status, @PhotoPath,
-                    UTC_TIMESTAMP(), 0
-                );
-                SELECT LAST_INSERT_ID();";
-
-            try
-            {
-                staff.Id = await Connection.ExecuteScalarAsync<int>(sql, staff);
-            }
-            catch
-            {
-                // Fallback if BoardId column is not yet present
-                var fallbackSql = @"
-                    INSERT INTO Staffs (
-                        EmployeeId, FirstName, LastName, Gender, DateOfBirth,
-                        Aadhaar, Mobile, Email, BloodGroup, Qualification,
-                        Designation, DesignationId, StaffType, FacultyType,
-                        DepartmentId, JoiningDate, Experience, Status, PhotoPath,
-                        CreatedAt, IsDeleted
-                    ) VALUES (
-                        @EmployeeId, @FirstName, @LastName, @Gender, @DateOfBirth,
-                        @Aadhaar, @Mobile, @Email, @BloodGroup, @Qualification,
-                        @Designation, @DesignationId, @StaffType, @StaffType,
-                        @DepartmentId, @JoiningDate, @Experience, @Status, @PhotoPath,
-                        UTC_TIMESTAMP(), 0
-                    );
-                    SELECT LAST_INSERT_ID();";
-
-                staff.Id = await Connection.ExecuteScalarAsync<int>(fallbackSql, staff);
-            }
-
+            _context.Staffs.Add(staff);
+            await _context.SaveChangesAsync();
             return staff;
+        }
+
+        public async Task AddRangeAsync(IEnumerable<Staff> staffs)
+        {
+            _context.Staffs.AddRange(staffs);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Staff staff)
         {
-            if (!staff.BoardId.HasValue || staff.BoardId.Value <= 0)
-            {
-                staff.BoardId = await ResolveBoardIdAsync(staff.BoardId, staff.BoardName);
-            }
-
-            try
-            {
-                await Connection.ExecuteAsync(
-                    "sp_UpdateStaff",
-                    new
-                    {
-                        p_Id = staff.Id,
-                        p_FirstName = staff.FirstName,
-                        p_LastName = staff.LastName,
-                        p_Gender = staff.Gender,
-                        p_DateOfBirth = staff.DateOfBirth,
-                        p_Aadhaar = staff.Aadhaar,
-                        p_Mobile = staff.Mobile,
-                        p_Email = staff.Email,
-                        p_BloodGroup = staff.BloodGroup,
-                        p_Qualification = staff.Qualification,
-                        p_Designation = staff.Designation,
-                        p_DesignationId = staff.DesignationId,
-                        p_StaffType = staff.StaffType,
-                        p_DepartmentId = staff.DepartmentId,
-                        p_JoiningDate = staff.JoiningDate,
-                        p_Experience = staff.Experience,
-                        p_Status = staff.Status,
-                        p_PhotoPath = staff.PhotoPath
-                    },
-                    commandType: CommandType.StoredProcedure);
-            }
-            catch
-            {
-            }
-
-            var sql = @"
-                UPDATE Staffs SET
-                    FirstName = @FirstName,
-                    LastName = @LastName,
-                    Gender = @Gender,
-                    DateOfBirth = @DateOfBirth,
-                    Aadhaar = @Aadhaar,
-                    Mobile = @Mobile,
-                    Email = @Email,
-                    BloodGroup = @BloodGroup,
-                    Qualification = @Qualification,
-                    Designation = @Designation,
-                    DesignationId = @DesignationId,
-                    StaffType = @StaffType,
-                    FacultyType = @StaffType,
-                    DepartmentId = @DepartmentId,
-                    BoardId = @BoardId,
-                    JoiningDate = @JoiningDate,
-                    Experience = @Experience,
-                    Status = @Status,
-                    PhotoPath = @PhotoPath,
-                    UpdatedAt = UTC_TIMESTAMP()
-                WHERE Id = @Id;";
-
-            try
-            {
-                await Connection.ExecuteAsync(sql, staff);
-            }
-            catch
-            {
-                var fallbackSql = @"
-                    UPDATE Staffs SET
-                        FirstName = @FirstName,
-                        LastName = @LastName,
-                        Gender = @Gender,
-                        DateOfBirth = @DateOfBirth,
-                        Aadhaar = @Aadhaar,
-                        Mobile = @Mobile,
-                        Email = @Email,
-                        BloodGroup = @BloodGroup,
-                        Qualification = @Qualification,
-                        Designation = @Designation,
-                        DesignationId = @DesignationId,
-                        StaffType = @StaffType,
-                        FacultyType = @StaffType,
-                        DepartmentId = @DepartmentId,
-                        JoiningDate = @JoiningDate,
-                        Experience = @Experience,
-                        Status = @Status,
-                        PhotoPath = @PhotoPath,
-                        UpdatedAt = UTC_TIMESTAMP()
-                    WHERE Id = @Id;";
-
-                await Connection.ExecuteAsync(fallbackSql, staff);
-            }
+            staff.UpdatedAt = DateTime.UtcNow;
+            _context.Staffs.Update(staff);
+            await _context.SaveChangesAsync();
         }
 
         public async Task UpdatePhotoPathAsync(int id, string photoPath)
         {
-            try
+            var staff = await _context.Staffs.FindAsync(id);
+            if (staff != null)
             {
-                await Connection.ExecuteAsync(
-                    "sp_UpdateStaffPhotoPath",
-                    new
-                    {
-                        p_Id = id,
-                        p_PhotoPath = photoPath
-                    },
-                    commandType: CommandType.StoredProcedure);
-            }
-            catch
-            {
-                var sql = "UPDATE Staffs SET PhotoPath = @photoPath, UpdatedAt = UTC_TIMESTAMP() WHERE Id = @id;";
-                await Connection.ExecuteAsync(sql, new { id, photoPath });
+                staff.PhotoPath = photoPath;
+                staff.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
             }
         }
 
         public async Task SoftDeleteAsync(Staff staff)
         {
-            try
+            staff.IsDeleted = true;
+            staff.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task BulkUpdateLinkSentAsync(List<int> staffIds, DateTime sentAt, DateTime expiresAt)
+        {
+            var staffs = await _context.Staffs.Where(s => staffIds.Contains(s.Id) && !s.IsDeleted).ToListAsync();
+            foreach (var staff in staffs)
             {
-                await Connection.ExecuteAsync(
-                    "sp_SoftDeleteStaff",
-                    new { p_Id = staff.Id },
-                    commandType: CommandType.StoredProcedure);
+                if (string.IsNullOrWhiteSpace(staff.ProfileLinkToken))
+                {
+                    staff.ProfileLinkToken = Guid.NewGuid().ToString("N");
+                }
+                staff.ProfileLinkSentAt = sentAt;
+                staff.ProfileLinkExpiresAt = expiresAt;
+                if (staff.ProfileStatus == "PendingLink" || string.IsNullOrWhiteSpace(staff.ProfileStatus))
+                {
+                    staff.ProfileStatus = "LinkSent";
+                }
+                staff.UpdatedAt = DateTime.UtcNow;
             }
-            catch
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateProfileStatusAsync(int staffId, string profileStatus, int completionPercentage, string? correctionNotes = null)
+        {
+            var staff = await _context.Staffs.FindAsync(staffId);
+            if (staff != null)
             {
-                var sql = "UPDATE Staffs SET IsDeleted = 1, UpdatedAt = UTC_TIMESTAMP() WHERE Id = @Id;";
-                await Connection.ExecuteAsync(sql, new { staff.Id });
+                staff.ProfileStatus = profileStatus;
+                staff.ProfileCompletionPercentage = completionPercentage;
+                if (correctionNotes != null)
+                {
+                    staff.CorrectionNotes = correctionNotes;
+                    staff.CorrectionRequestedAt = DateTime.UtcNow;
+                }
+                if (profileStatus == "Submitted")
+                {
+                    staff.SubmittedAt = DateTime.UtcNow;
+                }
+                else if (profileStatus == "Completed" || profileStatus == "Approved")
+                {
+                    staff.ApprovedAt = DateTime.UtcNow;
+                }
+                staff.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
             }
         }
     }

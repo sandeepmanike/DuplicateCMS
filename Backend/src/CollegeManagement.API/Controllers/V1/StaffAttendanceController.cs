@@ -74,6 +74,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Generates Staff Monthly Calendar Matrix Grid Report via GET query string.
         /// </summary>
         [HttpGet("monthly-report")]
+        [AllowAnonymous]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetStaffMonthlyReportGridGet([FromQuery] StaffMonthlyReportRequest request)

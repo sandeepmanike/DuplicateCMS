@@ -18,6 +18,8 @@ namespace CollegeManagement.API.Controllers.V1;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/reports")]
+[Route("api/v1/reports")]
+[Route("api/reports")]
 [EnableCors("AllowFrontend")]
 [AllowAnonymous]
 [Produces("application/json")]
@@ -46,7 +48,9 @@ public class ReportsController : ControllerBase
             .Select(x => new
             {
                 id = x.BoardId,
+                boardId = x.BoardId,
                 name = x.BoardName,
+                boardName = x.BoardName,
                 code = x.BoardCode
             })
             .ToListAsync(ct);
@@ -64,7 +68,9 @@ public class ReportsController : ControllerBase
             .Select(x => new
             {
                 id = x.AcademicYearId,
+                academicYearId = x.AcademicYearId,
                 name = x.AcademicYearName,
+                academicYearName = x.AcademicYearName,
                 startDate = x.StartDate,
                 endDate = x.EndDate
             })
@@ -78,7 +84,7 @@ public class ReportsController : ControllerBase
     {
         IQueryable<AcademicLevel> query = _db.AcademicLevels.AsNoTracking().Where(x => x.IsActive);
 
-        if (boardId.HasValue)
+        if (boardId.HasValue && boardId.Value > 0)
         {
             query = query.Where(level =>
                 _db.BoardAcademicLevels.Any(map =>
@@ -93,10 +99,29 @@ public class ReportsController : ControllerBase
             .Select(x => new
             {
                 id = x.AcademicLevelId,
+                academicLevelId = x.AcademicLevelId,
                 name = x.LevelName,
+                levelName = x.LevelName,
                 code = x.LevelCode
             })
             .ToListAsync(ct);
+
+        if (!result.Any())
+        {
+            result = await _db.AcademicLevels.AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.LevelName)
+                .Select(x => new
+                {
+                    id = x.AcademicLevelId,
+                    academicLevelId = x.AcademicLevelId,
+                    name = x.LevelName,
+                    levelName = x.LevelName,
+                    code = x.LevelCode
+                })
+                .ToListAsync(ct);
+        }
 
         return Ok(result);
     }
@@ -129,8 +154,11 @@ public class ReportsController : ControllerBase
             .Select(x => new
             {
                 id = x.GroupId,
+                groupId = x.GroupId,
                 name = x.GroupName,
+                groupName = x.GroupName,
                 code = x.GroupCode,
+                groupCode = x.GroupCode,
                 academicYearId = x.AcademicYearId,
                 academicLevel = x.AcademicLevelNavigation != null ? x.AcademicLevelNavigation.LevelName : string.Empty,
                 board = x.BoardNavigation != null ? x.BoardNavigation.BoardName : string.Empty
@@ -145,8 +173,11 @@ public class ReportsController : ControllerBase
                 .Select(x => new
                 {
                     id = x.GroupId,
+                    groupId = x.GroupId,
                     name = x.GroupName,
+                    groupName = x.GroupName,
                     code = x.GroupCode,
+                    groupCode = x.GroupCode,
                     academicYearId = x.AcademicYearId,
                     academicLevel = x.AcademicLevelNavigation != null ? x.AcademicLevelNavigation.LevelName : string.Empty,
                     board = x.BoardNavigation != null ? x.BoardNavigation.BoardName : string.Empty
@@ -175,15 +206,12 @@ public class ReportsController : ControllerBase
 
         if (boardId.HasValue && boardId.Value > 0)
         {
-            var boardName = await _db.Boards.AsNoTracking().Where(b => b.BoardId == boardId.Value).Select(b => b.BoardName).FirstOrDefaultAsync(ct);
-            query = query.Where(x => x.BoardId == boardId.Value || x.BoardId == null || x.Board == boardName || _db.StudentAdmissions.Any(a => a.IsActive && a.SectionId == x.SectionId && a.BoardId == boardId.Value));
+            query = query.Where(x => x.BoardId == boardId.Value || x.BoardId == null || _db.StudentAdmissions.Any(a => a.IsActive && a.SectionId == x.SectionId && a.BoardId == boardId.Value));
         }
 
         if (academicLevelId.HasValue && academicLevelId.Value > 0)
         {
-            var levelName = await _db.AcademicLevels.AsNoTracking().Where(x => x.AcademicLevelId == academicLevelId.Value).Select(x => x.LevelName).FirstOrDefaultAsync(ct);
-            if (!string.IsNullOrWhiteSpace(levelName))
-                query = query.Where(x => x.AcademicLevel == levelName || string.IsNullOrEmpty(x.AcademicLevel));
+            query = query.Where(x => x.AcademicLevelId == academicLevelId.Value || x.AcademicLevelId == null);
         }
 
         var result = await query
@@ -191,13 +219,15 @@ public class ReportsController : ControllerBase
             .Select(x => new
             {
                 id = x.SectionId,
+                sectionId = x.SectionId,
                 name = x.SectionName,
+                sectionName = x.SectionName,
                 groupId = x.GroupId,
-                groupName = x.Group,
+                groupName = x.GroupNavigation != null ? x.GroupNavigation.GroupName : string.Empty,
                 boardId = x.BoardId,
-                board = x.Board,
+                board = x.BoardNavigation != null ? x.BoardNavigation.BoardName : string.Empty,
                 academicYearId = x.AcademicYearId,
-                academicLevel = x.AcademicLevel,
+                academicLevel = x.AcademicLevelNavigation != null ? x.AcademicLevelNavigation.LevelName : string.Empty,
                 maximumStrength = x.MaximumStrength
             })
             .ToListAsync(ct);
@@ -210,13 +240,15 @@ public class ReportsController : ControllerBase
                 .Select(x => new
                 {
                     id = x.SectionId,
+                    sectionId = x.SectionId,
                     name = x.SectionName,
+                    sectionName = x.SectionName,
                     groupId = x.GroupId,
-                    groupName = x.Group,
+                    groupName = x.GroupNavigation != null ? x.GroupNavigation.GroupName : string.Empty,
                     boardId = x.BoardId,
-                    board = x.Board,
+                    board = x.BoardNavigation != null ? x.BoardNavigation.BoardName : string.Empty,
                     academicYearId = x.AcademicYearId,
-                    academicLevel = x.AcademicLevel,
+                    academicLevel = x.AcademicLevelNavigation != null ? x.AcademicLevelNavigation.LevelName : string.Empty,
                     maximumStrength = x.MaximumStrength
                 })
                 .ToListAsync(ct);
@@ -230,13 +262,15 @@ public class ReportsController : ControllerBase
                 .Select(x => new
                 {
                     id = x.SectionId,
+                    sectionId = x.SectionId,
                     name = x.SectionName,
+                    sectionName = x.SectionName,
                     groupId = x.GroupId,
-                    groupName = x.Group,
+                    groupName = x.GroupNavigation != null ? x.GroupNavigation.GroupName : string.Empty,
                     boardId = x.BoardId,
-                    board = x.Board,
+                    board = x.BoardNavigation != null ? x.BoardNavigation.BoardName : string.Empty,
                     academicYearId = x.AcademicYearId,
-                    academicLevel = x.AcademicLevel,
+                    academicLevel = x.AcademicLevelNavigation != null ? x.AcademicLevelNavigation.LevelName : string.Empty,
                     maximumStrength = x.MaximumStrength
                 })
                 .ToListAsync(ct);
@@ -257,7 +291,7 @@ public class ReportsController : ControllerBase
     }
 
     // =========================================================================
-    // 3. 10 DETAILED REPORT QUERIES
+    // 3. 10+ DETAILED REPORT QUERIES (FULL RECORDS + COUNTS)
     // =========================================================================
 
     // 1. Admissions Details
@@ -265,9 +299,16 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> AdmissionsDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.AdmissionsAsync(filter, ct);
+        var approved = data.Count(x => x.IsApproved || string.Equals(x.Status, "Approved", StringComparison.OrdinalIgnoreCase));
+        var rejected = data.Count(x => x.IsRejected || string.Equals(x.Status, "Rejected", StringComparison.OrdinalIgnoreCase));
+        var pending = data.Count(x => (!x.IsApproved && !x.IsRejected) || string.Equals(x.Status, "Pending", StringComparison.OrdinalIgnoreCase));
+
         return Ok(new
         {
             total = data.Count,
+            approved,
+            rejected,
+            pending,
             details = data
         });
     }
@@ -277,9 +318,18 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> AttendanceDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.AttendanceAsync(filter, ct);
+        var totalPresent = data.Sum(x => x.Present);
+        var totalAbsent = data.Sum(x => x.Absent);
+        var totalLate = data.Sum(x => x.Late);
+        var totalLeave = data.Sum(x => x.Leave);
         return Ok(new
         {
             totalDays = data.Count,
+            totalRecords = data.Count,
+            totalPresent,
+            totalAbsent,
+            totalLate,
+            totalLeave,
             overallPercentage = data.Any() ? Math.Round(data.Average(x => (double)x.AttendancePercentage), 2) : 0,
             details = data
         });
@@ -287,12 +337,15 @@ public class ReportsController : ControllerBase
 
     // 3. Staff Attendance Details
     [HttpGet("details/staff-attendance")]
+    [HttpGet("details/faculty-attendance")]
     public async Task<IActionResult> FacultyAttendanceDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.FacultyAttendanceAsync(filter, ct);
+        var avgPct = data.Any() ? Math.Round(data.Average(x => (double)x.AttendancePercentage), 2) : 0;
         return Ok(new
         {
             totalFaculty = data.Count,
+            averageAttendancePercentage = avgPct,
             details = data
         });
     }
@@ -302,11 +355,16 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> FeeCollectionDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.FeeCollectionAsync(filter, ct);
-        var totalCollected = data.Sum(x => x.Collected);
+        var totalCollected = data.Sum(x => x.PaidAmount > 0 ? x.PaidAmount : x.Collected);
+        var totalDiscount = data.Sum(x => x.Discount);
+        var totalFine = data.Sum(x => x.Fine);
         return Ok(new
         {
             totalCollected,
+            totalDiscount,
+            totalFine,
             transactions = data.Count,
+            totalTransactions = data.Count,
             details = data
         });
     }
@@ -317,10 +375,15 @@ public class ReportsController : ControllerBase
     {
         var data = await _reportService.OutstandingFeesAsync(filter, ct);
         var totalDue = data.Sum(x => x.DueAmount);
+        var totalFee = data.Sum(x => x.TotalAmount);
+        var totalPaid = data.Sum(x => x.PaidAmount);
         return Ok(new
         {
             totalDue,
+            totalFeeAmount = totalFee,
+            totalPaidAmount = totalPaid,
             studentsWithDue = data.Count,
+            totalStudentsWithDue = data.Count,
             details = data
         });
     }
@@ -342,24 +405,34 @@ public class ReportsController : ControllerBase
     public async Task<IActionResult> ResultsDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.ResultsAsync(filter, ct);
+        var passed = data.Count(x => string.Equals(x.ResultStatus, "Pass", StringComparison.OrdinalIgnoreCase) || string.Equals(x.ResultStatus, "Passed", StringComparison.OrdinalIgnoreCase));
+        var failed = data.Count(x => string.Equals(x.ResultStatus, "Fail", StringComparison.OrdinalIgnoreCase) || string.Equals(x.ResultStatus, "Failed", StringComparison.OrdinalIgnoreCase));
+        var pct = data.Count > 0 ? Math.Round((double)passed * 100 / data.Count, 2) : 0;
         return Ok(new
         {
             total = data.Count,
-            results = data
+            passed,
+            failed,
+            passPercentage = pct,
+            results = data,
+            details = data
         });
     }
 
     // 8. Staff Workload Details
     [HttpGet("details/staff-workload")]
+    [HttpGet("details/faculty-workload")]
     public async Task<IActionResult> FacultyWorkloadDetails([FromQuery] ReportFilterDto filter, CancellationToken ct = default)
     {
         var data = await _reportService.FacultyWorkloadAsync(filter, ct);
         var totalStaff = data.Select(x => x.FacultyId).Distinct().Count();
         var totalHours = data.Sum(x => x.HoursPerWeek);
+        var totalPeriods = data.Sum(x => x.PeriodCount);
         return Ok(new
         {
             totalFaculty = totalStaff,
             totalHours,
+            totalPeriods,
             averageHoursPerFaculty = totalStaff > 0 ? Math.Round((double)totalHours / totalStaff, 2) : 0,
             details = data
         });
@@ -371,9 +444,16 @@ public class ReportsController : ControllerBase
     {
         var data = await _reportService.StudentStrengthAsync(filter, ct);
         var total = data.Sum(x => x.TotalStudents);
+        var male = data.Sum(x => x.MaleStudents);
+        var female = data.Sum(x => x.FemaleStudents);
+        var other = data.Sum(x => x.OtherStudents);
         return Ok(new
         {
             totalStudents = total,
+            maleStudents = male,
+            femaleStudents = female,
+            otherStudents = other,
+            totalSections = data.Count,
             details = data
         });
     }
@@ -405,7 +485,8 @@ public class ReportsController : ControllerBase
         return Ok(new
         {
             identified = data.Count,
-            toppers = data
+            toppers = data,
+            details = data
         });
     }
 
@@ -420,7 +501,8 @@ public class ReportsController : ControllerBase
         return Ok(new
         {
             total = data.Count,
-            records = data
+            records = data,
+            details = data
         });
     }
 

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
-    [Route("api/promotions")]
     [Route("api/v1/promotions")]
     [AllowAnonymous]
     [Produces("application/json")]
