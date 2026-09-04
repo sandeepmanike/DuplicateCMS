@@ -59,6 +59,20 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
+        /// Creates multiple sections concurrently in a batch under the same academic configuration.
+        /// </summary>
+        [HttpPost("bulk")]
+        [ProducesResponseType(typeof(BulkSectionCreationResultDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> CreateMultipleSections([FromBody] BulkCreateSectionsRequest request)
+        {
+            var result = await _sectionService.CreateMultipleSectionsAsync(request);
+            return Created(string.Empty, result);
+        }
+
+        /// <summary>
         /// Updates an existing section by ID.
         /// </summary>
         [HttpPut("{id:int}")]

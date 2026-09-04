@@ -63,6 +63,43 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
+        /// Bulk creates or generates rooms (e.g. floor-wise sequential rooms).
+        /// </summary>
+        [HttpPost("bulk")]
+        [ProducesResponseType(typeof(BulkRoomCreationResultDto), StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> BulkCreate([FromBody] BulkCreateRoomsRequest request)
+        {
+            try
+            {
+                var result = await _roomService.BulkCreateAsync(request);
+                return Created(string.Empty, result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Gets available classrooms not allocated to an active section.
+        /// </summary>
+        [HttpGet("available")]
+        [ProducesResponseType(typeof(IEnumerable<RoomResponseDto>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetAvailable([FromQuery] RoomFilterDto? filter)
+        {
+            filter ??= new RoomFilterDto();
+            filter.OnlyAvailable = true;
+            if (string.IsNullOrWhiteSpace(filter.RoomType))
+            {
+                filter.RoomType = "Classroom";
+            }
+            filter.IsActive = true;
+            var result = await _roomService.GetAllAsync(filter);
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Updates a room.
         /// </summary>
         [HttpPut("{id:int}")]

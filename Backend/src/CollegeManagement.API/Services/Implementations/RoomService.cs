@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AutoMapper;
 using CollegeManagement.API.DTOs.Timetable;
@@ -57,6 +59,114 @@ namespace CollegeManagement.API.Services.Implementations
 
             var result = await _roomRepository.AddAsync(entity);
             return _mapper.Map<RoomResponseDto>(result);
+        }
+
+        public async Task<BulkRoomCreationResultDto> BulkCreateAsync(BulkCreateRoomsRequest request)
+        {
+            var result = new BulkRoomCreationResultDto();
+
+            if (request.Rooms != null && request.Rooms.Count > 0)
+            {
+                result.TotalRequested = request.Rooms.Count;
+                foreach (var r in request.Rooms)
+                {
+                    var created = await CreateAsync(r);
+                    result.CreatedRooms.Add(created);
+                }
+                result.TotalCreated = result.CreatedRooms.Count;
+                return result;
+            }
+
+            var block = !string.IsNullOrWhiteSpace(request.BlockName) ? request.BlockName.Trim() : (!string.IsNullOrWhiteSpace(request.Building) ? request.Building.Trim() : string.Empty);
+            if (string.IsNullOrWhiteSpace(block))
+            {
+                throw new InvalidOperationException("Block Name is required for bulk room generation.");
+            }
+
+            var floor = !string.IsNullOrWhiteSpace(request.Floor) ? request.Floor.Trim() : string.Empty;
+            if (string.IsNullOrWhiteSpace(floor))
+            {
+                throw new InvalidOperationException("Floor is required for bulk room generation.");
+            }
+
+            var startRoom = !string.IsNullOrWhiteSpace(request.StartRoomNo) ? request.StartRoomNo.Trim() : (!string.IsNullOrWhiteSpace(request.Prefix) ? request.Prefix.Trim() : string.Empty);
+            if (string.IsNullOrWhiteSpace(startRoom))
+            {
+                throw new InvalidOperationException("Start Room No / Prefix is required for bulk room generation.");
+            }
+
+            var count = request.RoomCount > 0 ? request.RoomCount : (request.NumberOfRooms > 0 ? request.NumberOfRooms : 30);
+            if (count > 200)
+            {
+                throw new InvalidOperationException("Cannot generate more than 200 rooms at once.");
+            }
+
+            result.TotalRequested = count;
+
+            // Parse start room into prefix and numeric part
+            // e.g. "Block A-101" -> prefix="Block A-", number=101, digitsCount=3
+            string prefix;
+            int startNumber;
+            int digitsCount;
+
+            var match = Regex.Match(startRoom, @"^(.*?)(\d+)$");
+            if (match.Success)
+            {
+                prefix = match.Groups[1].Value;
+                var numStr = match.Groups[2].Value;
+                startNumber = int.Parse(numStr);
+                digitsCount = numStr.Length;
+            }
+            else
+            {
+                prefix = startRoom.Trim().TrimEnd('-', ' ') + "-";
+                startNumber = 1;
+                digitsCount = 1;
+            }
+
+            var roomCodes = new List<string>();
+            for (int i = 0; i < count; i++)
+            {
+                var currentNum = startNumber + i;
+                var formattedNum = currentNum.ToString().PadLeft(digitsCount, '0');
+                var code = $"{prefix}{formattedNum}".Trim();
+                roomCodes.Add(code);
+            }
+
+            // Check if any of these room codes already exist in DB
+            foreach (var code in roomCodes)
+            {
+                var existing = await _roomRepository.GetByCodeAsync(code);
+                if (existing != null)
+                {
+                    throw new InvalidOperationException($"Room code '{code}' already exists. Bulk generation aborted to prevent duplicates.");
+                }
+            }
+
+            var capacity = request.DefaultCapacity > 0 ? request.DefaultCapacity : (request.Capacity > 0 ? request.Capacity : 40);
+            var roomType = !string.IsNullOrWhiteSpace(request.RoomType) ? request.RoomType.Trim() : "Classroom";
+
+            foreach (var code in roomCodes)
+            {
+                var dto = new CreateRoomDto
+                {
+                    RoomCode = code,
+                    RoomName = code,
+                    RoomNumber = code,
+                    BlockName = block,
+                    Building = block,
+                    Floor = floor,
+                    Capacity = capacity,
+                    RoomType = roomType,
+                    IsActive = request.IsActive
+                };
+
+                var created = await CreateAsync(dto);
+                result.CreatedRooms.Add(created);
+            }
+
+            result.TotalCreated = result.CreatedRooms.Count;
+            return result;
         }
 
         public async Task<RoomResponseDto?> UpdateAsync(int id, UpdateRoomDto dto)

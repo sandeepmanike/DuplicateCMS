@@ -22,6 +22,7 @@ namespace CollegeManagement.API.DTOs.Evaluations
         public int RequiredSubjects { get; set; } = 4;
         public int ApprovedSubjects { get; set; } = 4;
         public decimal TotalMarks { get; set; }
+        public decimal Total { get => TotalMarks; set => TotalMarks = value; }
         public decimal TotalObtained { get => TotalMarks; set => TotalMarks = value; }
         public decimal OverallTotal { get => TotalMarks; set => TotalMarks = value; }
         public decimal MaxMarks { get; set; }

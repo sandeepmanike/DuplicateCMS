@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using CollegeManagement.API.DTOs.Sections;
@@ -119,6 +120,80 @@ namespace CollegeManagement.API.Services.Implementations
                 throw new InvalidOperationException("Failed to retrieve created section details.");
             }
             return createdSection;
+        }
+
+        public async Task<BulkSectionCreationResultDto> CreateMultipleSectionsAsync(BulkCreateSectionsRequest request)
+        {
+            if (request.Sections == null || request.Sections.Count == 0)
+            {
+                throw new InvalidOperationException("At least one section must be specified.");
+            }
+
+            var result = new BulkSectionCreationResultDto
+            {
+                TotalRequested = request.Sections.Count
+            };
+
+            // Check duplicate section names within the request itself
+            var duplicateNames = request.Sections
+                .GroupBy(s => NormalizeSectionName(s.SectionName).ToLowerInvariant())
+                .Where(g => g.Count() > 1)
+                .Select(g => g.First().SectionName)
+                .ToList();
+
+            if (duplicateNames.Count > 0)
+            {
+                throw new ConflictException($"Duplicate section name '{duplicateNames[0]}' found in the request.");
+            }
+
+            // Check duplicate room allocations within the request itself (if active and specified)
+            var duplicateRooms = request.Sections
+                .Where(s => s.IsActive && (s.RoomId.HasValue || !string.IsNullOrWhiteSpace(s.RoomNumber)))
+                .GroupBy(s => s.RoomId.HasValue ? s.RoomId.Value.ToString() : s.RoomNumber!.Trim().ToLowerInvariant())
+                .Where(g => g.Count() > 1)
+                .ToList();
+
+            if (duplicateRooms.Count > 0)
+            {
+                throw new ConflictException("Multiple active sections in the request cannot be assigned to the same room.");
+            }
+
+            // Iterate and create each section
+            foreach (var item in request.Sections)
+            {
+                var singleReq = new CreateSectionRequest
+                {
+                    BoardId = request.BoardId,
+                    Board = request.Board,
+                    AcademicYearId = request.AcademicYearId,
+                    AcademicLevelId = request.AcademicLevelId,
+                    AcademicLevel = request.AcademicLevel,
+                    YearOfStudy = request.YearOfStudy,
+                    GroupId = request.GroupId,
+                    Group = request.Group,
+                    ProgramId = request.ProgramId,
+                    Programme = request.Programme,
+                    Program = request.Program,
+                    GroupProgramId = request.GroupProgramId,
+                    SectionName = item.SectionName,
+                    RoomId = item.RoomId,
+                    RoomNumber = item.RoomNumber,
+                    InchargeId = item.InchargeId,
+                    ClassTeacherId = item.ClassTeacherId,
+                    TeacherId = item.TeacherId,
+                    FacultyId = item.FacultyId,
+                    Incharge = item.Incharge,
+                    MaximumStrength = item.MaximumStrength,
+                    IsActive = item.IsActive,
+                    Status = item.Status
+                };
+
+                var created = await CreateSectionAsync(singleReq);
+                result.CreatedSections.Add(created);
+            }
+
+            result.TotalCreated = result.CreatedSections.Count;
+            return result;
         }
 
         public async Task<SectionResponse> UpdateSectionAsync(int id, UpdateSectionRequest request)
