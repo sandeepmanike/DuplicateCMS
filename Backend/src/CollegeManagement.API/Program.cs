@@ -330,6 +330,7 @@ builder.Services.AddScoped<IPromotionService, PromotionService>();
 builder.Services.AddScoped<ITimetableService, TimetableService>();
 builder.Services.AddScoped<ITimetableExportService, TimetableExportService>();
 builder.Services.AddScoped<IStudentExportService, StudentExportService>();
+builder.Services.AddScoped<IStudentImportService, StudentImportService>();
 builder.Services.AddScoped<IPeriodService, PeriodService>();
 builder.Services.AddScoped<IPeriodStructureService, PeriodStructureService>();
 builder.Services.AddScoped<IBreakTypeService, BreakTypeService>();

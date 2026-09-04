@@ -69,6 +69,8 @@ namespace CollegeManagement.API.Services
         // AUTHENTICATION
         // =========================================================
 
+        Task<StudentPhotoUploadResultDto> UploadPhotoAsync(int studentId, Microsoft.AspNetCore.Http.IFormFile file, System.Threading.CancellationToken ct = default);
+        Task<StudentDocumentUploadResultDto> UploadDocumentAsync(int studentId, string documentType, Microsoft.AspNetCore.Http.IFormFile file, System.Threading.CancellationToken ct = default);
         Task<bool> ResetPasswordAsync(
             int studentId);
 

@@ -1,15 +1,19 @@
+using CollegeManagement.API.DTOs.Timetable;
+using CollegeManagement.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Asp.Versioning;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CollegeManagement.API.DTOs.Timetable;
-using CollegeManagement.API.Services.Interfaces;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
-    [Route("api/v1/timetable")]
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/timetable")]
+    [Authorize]
     public class TimetableController : ControllerBase
     {
         private readonly ITimetableService _timetableService;

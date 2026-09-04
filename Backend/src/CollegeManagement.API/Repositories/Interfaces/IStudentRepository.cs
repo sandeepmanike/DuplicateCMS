@@ -69,6 +69,8 @@ namespace CollegeManagement.API.Repositories
         // AUTHENTICATION
         // =========================================================
 
+        Task<bool> UpdatePhotoPathAsync(int studentId, string photoPath);
+        Task<bool> UpdateDocumentPathAsync(int studentId, string documentColumn, string documentPath);
         Task<bool> ResetPasswordAsync(
             int studentId);
 

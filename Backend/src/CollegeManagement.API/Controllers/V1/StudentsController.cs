@@ -1,21 +1,30 @@
+using Asp.Versioning;
 using CollegeManagement.API.DTOs.Students;
 using CollegeManagement.API.Services;
 using CollegeManagement.API.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CollegeManagement.API.Controllers.V1
 {
     [ApiController]
-    [Route("api/v1/students")]
+    [ApiVersion("1.0")]
+    [Route("api/v{version:apiVersion}/students")]
+    [Authorize]
     public class StudentsController : ControllerBase
     {
         private readonly IStudentService _service;
         private readonly IStudentExportService _exportService;
+        private readonly IStudentImportService _importService;
 
-        public StudentsController(IStudentService service, IStudentExportService exportService)
+        public StudentsController(
+            IStudentService service,
+            IStudentExportService exportService,
+            IStudentImportService importService)
         {
             _service = service;
             _exportService = exportService;
+            _importService = importService;
         }
 
 
@@ -522,5 +531,162 @@ namespace CollegeManagement.API.Controllers.V1
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // =========================================================
+        // LEGACY STUDENT BULK IMPORT — TEMPLATE GENERATION
+        // =========================================================
+
+        /// <summary>
+        /// Downloads the official 56-column Excel template for bulk legacy student import.
+        /// </summary>
+        [HttpGet("import/template")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DownloadImportTemplate(CancellationToken ct)
+        {
+            var excelBytes = await _importService.GenerateTemplateAsync(ct);
+            var fileName = $"Legacy_Student_Import_Template_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+            return File(
+                excelBytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                fileName);
+        }
+
+
+        // =========================================================
+        // LEGACY STUDENT BULK IMPORT — DRY-RUN VALIDATION
+        // =========================================================
+
+        /// <summary>
+        /// Validates the uploaded legacy student Excel spreadsheet without inserting records into the database.
+        /// </summary>
+        [HttpPost("import/validate")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StudentImportResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StudentImportResultDto), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ValidateImportExcel(IFormFile file, CancellationToken ct)
+        {
+            var result = await _importService.ValidateExcelAsync(file, ct);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+
+        // =========================================================
+        // LEGACY STUDENT BULK IMPORT — EXECUTE IMPORT
+        // =========================================================
+
+        /// <summary>
+        /// Validates and imports legacy students directly into the Students table.
+        /// </summary>
+        [HttpPost("import/excel")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StudentImportResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StudentImportResultDto), StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ImportExcel(
+            IFormFile file,
+            [FromQuery] bool allowPartial = false,
+            CancellationToken ct = default)
+        {
+            var result = await _importService.ImportExcelAsync(file, allowPartial, ct);
+            if (!result.IsSuccess)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+
+        // =========================================================
+        // LEGACY STUDENT BULK IMPORT — CREDENTIALS PDF (CATEGORY A)
+        // =========================================================
+
+        /// <summary>
+        /// Generates a printable PDF of onboarding credential slips for legacy imported students.
+        /// </summary>
+        [HttpGet("import/credentials-pdf")]
+        [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DownloadCredentialsPdf(
+            [FromQuery] StudentCredentialPdfFilterDto filter,
+            CancellationToken ct = default)
+        {
+            var pdfBytes = await _importService.GenerateCredentialsPdfAsync(filter, ct);
+            var fileName = $"Legacy_Student_Credentials_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+
+
+        // =========================================================
+        // COMMON STUDENT PHOTO UPLOAD (CATEGORY B — ALL STUDENTS)
+        // =========================================================
+
+        /// <summary>
+        /// Uploads or replaces a student's profile photograph. Available for all students.
+        /// </summary>
+        [HttpPost("{studentId:int}/photo")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StudentPhotoUploadResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UploadPhoto(
+            int studentId,
+            IFormFile file,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await _service.UploadPhotoAsync(studentId, file, ct);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
+        // =========================================================
+        // COMMON STUDENT DOCUMENT UPLOAD (CATEGORY B — ALL STUDENTS)
+        // =========================================================
+
+        /// <summary>
+        /// Uploads or replaces a student document certificate. Available for all students.
+        /// Supported types: BirthCertificate, TransferCertificate, StudyCertificate, AadhaarDocument,
+        /// CommunityCertificate, IncomeCertificate, CasteCertificate, TenthCertificate, MarksMemo.
+        /// </summary>
+        [HttpPost("{studentId:int}/documents")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StudentDocumentUploadResultDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UploadDocument(
+            int studentId,
+            [FromForm] string documentType,
+            IFormFile file,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var result = await _service.UploadDocumentAsync(studentId, documentType, file, ct);
+                return Ok(result);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
     }
 }

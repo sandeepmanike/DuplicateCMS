@@ -633,8 +633,36 @@ namespace CollegeManagement.API.Repositories
 
             return count > 0;
         }
+    
+        // =========================================================
+        // COMMON STUDENT PHOTO & DOCUMENT UPDATES (CATEGORY B)
+        // =========================================================
+
+        public async Task<bool> UpdatePhotoPathAsync(int studentId, string photoPath)
+        {
+            var connection = _context.Database.GetDbConnection();
+            var rows = await connection.ExecuteAsync(
+                "UPDATE Students SET Photo = @Photo, UpdatedAt = CURRENT_TIMESTAMP WHERE StudentId = @StudentId",
+                new { Photo = photoPath, StudentId = studentId });
+            return rows > 0;
+        }
+
+        public async Task<bool> UpdateDocumentPathAsync(int studentId, string documentColumn, string documentPath)
+        {
+            var validColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "BirthCertificate", "TransferCertificate", "StudyCertificate", "AadhaarDocument",
+                "CommunityCertificate", "IncomeCertificate", "CasteCertificate", "TenthCertificate", "MarksMemo"
+            };
+
+            if (!validColumns.TryGetValue(documentColumn, out var safeColumn))
+                throw new ArgumentException($"Invalid document column: {documentColumn}");
+
+            var connection = _context.Database.GetDbConnection();
+            var sql = $"UPDATE Students SET `{safeColumn}` = @DocumentPath, UpdatedAt = CURRENT_TIMESTAMP WHERE StudentId = @StudentId";
+            var rows = await connection.ExecuteAsync(sql, new { DocumentPath = documentPath, StudentId = studentId });
+            return rows > 0;
+        }
+
     }
-
-
-
 }
