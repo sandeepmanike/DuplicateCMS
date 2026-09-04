@@ -74,6 +74,16 @@ namespace CollegeManagement.API.Repositories.Implementations
                 );
             }
 
+            if (filter.OnlyAvailable == true || filter.ExcludeAssigned == true)
+            {
+                var assignedSql = @"
+                    SELECT DISTINCT RoomId FROM `Sections` WHERE IsActive = 1 AND RoomId IS NOT NULL
+                    UNION
+                    SELECT DISTINCT r.RoomId FROM `Sections` s JOIN Rooms r ON (s.RoomNumber = r.RoomCode OR s.RoomNumber = r.RoomNumber) WHERE s.IsActive = 1;";
+                var assignedRoomIds = (await Connection.QueryAsync<int>(assignedSql)).ToHashSet();
+                query = query.Where(r => !assignedRoomIds.Contains(r.RoomId));
+            }
+
             return query;
         }
 

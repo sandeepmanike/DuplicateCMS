@@ -12,8 +12,17 @@ namespace CollegeManagement.API.DTOs.Marks
         public string SectionName { get; set; } = string.Empty;
         public int SubjectId { get; set; }
         public string SubjectName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
         public int? FacultyId { get; set; }
-        public string Status { get; set; } = "DRAFT";
+        public string FacultyName { get; set; } = string.Empty;
+        public string FacultyCode { get; set; } = string.Empty;
+        public string Status { get; set; } = "NOT_STARTED";
+        public string Mode { get; set; } = "REGULAR";
+        public decimal MaxMarks { get; set; } = 100;
+        public decimal InternalMax { get; set; } = 30;
+        public decimal PracticalMax { get; set; } = 0;
+        public decimal TheoryMax { get; set; } = 70;
+        public decimal PassPercentage { get; set; } = 35;
         public string? RejectionReason { get; set; }
         public int ResubmissionCount { get; set; }
         public int RowVersion { get; set; } = 1;
@@ -28,12 +37,18 @@ namespace CollegeManagement.API.DTOs.Marks
         public string SectionName { get; set; } = string.Empty;
         public int SubjectId { get; set; }
         public string SubjectName { get; set; } = string.Empty;
+        public string SubjectCode { get; set; } = string.Empty;
+        public int? FacultyId { get; set; }
+        public string FacultyName { get; set; } = string.Empty;
+        public string FacultyCode { get; set; } = string.Empty;
+        public string Mode { get; set; } = "REGULAR";
         public decimal MaxMarks { get; set; } = 100;
         public decimal TheoryMax { get; set; } = 70;
-        public decimal PracticalMax { get; set; } = 20;
-        public decimal InternalMax { get; set; } = 10;
+        public decimal PracticalMax { get; set; } = 0;
+        public decimal InternalMax { get; set; } = 30;
+        public decimal PassPercentage { get; set; } = 35;
         public bool IsPracticalApplicable { get; set; }
-        public string Status { get; set; } = "DRAFT";
+        public string Status { get; set; } = "NOT_STARTED";
         public string? RejectionReason { get; set; }
         public int RowVersion { get; set; } = 1;
         public List<FacultyStudentMarkRowDto> Students { get; set; } = new();
