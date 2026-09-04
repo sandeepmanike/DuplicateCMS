@@ -20,6 +20,7 @@ namespace CollegeManagement.API.DTOs.Staff
 
         public string? SearchTerm { get; set; }
         public string? Department { get; set; }
+        public int? DepartmentId { get; set; }
         public string? Designation { get; set; }
         public int? DesignationId { get; set; }
         public int? BoardId { get; set; }
@@ -36,6 +37,8 @@ namespace CollegeManagement.API.DTOs.Staff
             set => StaffType = value;
         }
         public string? Status { get; set; }
+        public string? ProfileStatus { get; set; }
+        public string? PendingSubTab { get; set; } // "LinkSent", "InProgress", "NeedsCorrection", "Submitted"
         public string? SortBy { get; set; } = "Id";
         public string? SortOrder { get; set; } = "DESC";
     }
@@ -49,4 +52,3 @@ namespace CollegeManagement.API.DTOs.Staff
         public int TotalPages => PageSize > 0 ? (int)System.Math.Ceiling((double)TotalCount / PageSize) : 0;
     }
 }
-

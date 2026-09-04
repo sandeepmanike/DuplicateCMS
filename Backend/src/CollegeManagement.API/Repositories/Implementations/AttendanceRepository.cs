@@ -252,6 +252,97 @@ namespace CollegeManagement.API.Repositories.Implementations
                 commandType: CommandType.StoredProcedure);
         }
 
+        public async Task<IEnumerable<StudentAttendanceResponse>> GetAdminStudentsForAttendanceAsync(AttendanceSearchRequest request)
+        {
+            DateTime date = DateTime.UtcNow.Date;
+            if (request.FromDate.HasValue) date = request.FromDate.Value.Date;
+            else if (!string.IsNullOrEmpty(request.AttendanceDate)) date = DateTime.Parse(request.AttendanceDate).Date;
+            else if (!string.IsNullOrEmpty(request.Date)) date = DateTime.Parse(request.Date).Date;
+
+            var session = request.Session;
+
+            // Base query for students matching the criteria
+            var studentsQuery = _context.Students.Where(s => s.IsActive);
+
+            if (request.BoardId.HasValue) studentsQuery = studentsQuery.Where(s => s.BoardId == request.BoardId);
+            if (request.AcademicYearId.HasValue) studentsQuery = studentsQuery.Where(s => s.AcademicYearId == request.AcademicYearId);
+            if (request.GroupId.HasValue) studentsQuery = studentsQuery.Where(s => s.GroupId == request.GroupId);
+            if (request.SectionId.HasValue) studentsQuery = studentsQuery.Where(s => s.SectionId == request.SectionId);
+            if (request.StudentId.HasValue) studentsQuery = studentsQuery.Where(s => s.StudentId == request.StudentId);
+            
+            if (!string.IsNullOrEmpty(request.SearchText))
+            {
+                studentsQuery = studentsQuery.Where(s => 
+                    s.StudentName.Contains(request.SearchText) || 
+                    s.RollNo.Contains(request.SearchText) || 
+                    s.AdmissionNo.Contains(request.SearchText));
+            }
+
+            var students = await studentsQuery
+                .OrderBy(s => s.RollNo)
+                .ThenBy(s => s.StudentName)
+                .Select(s => new 
+                {
+                    s.StudentId,
+                    s.AdmissionNo,
+                    s.RollNo,
+                    s.StudentName
+                })
+                .ToListAsync();
+
+            var studentIds = students.Select(s => s.StudentId).ToList();
+            
+            var attendancesQuery = _context.Attendances
+                .Where(a => a.IsActive && 
+                            a.AttendanceDate.Date == date && 
+                            studentIds.Contains(a.StudentId));
+
+            if (session.HasValue)
+            {
+                attendancesQuery = attendancesQuery.Where(a => a.Session == session.Value);
+            }
+
+            var existingAttendances = await attendancesQuery
+                .Select(a => new 
+                {
+                    a.AttendanceId,
+                    a.StudentId,
+                    a.Status,
+                    a.Remarks,
+                    a.Session,
+                    a.ModifiedByUserId,
+                    a.ModifiedAt
+                })
+                .ToListAsync();
+
+            var userIds = existingAttendances.Where(a => a.ModifiedByUserId.HasValue).Select(a => a.ModifiedByUserId!.Value).Distinct().ToList();
+            var users = await _context.Users.Where(u => userIds.Contains(u.UserId)).ToDictionaryAsync(u => u.UserId, u => u.FullName);
+
+            var result = new List<StudentAttendanceResponse>();
+            
+            foreach (var student in students)
+            {
+                var att = existingAttendances.FirstOrDefault(a => a.StudentId == student.StudentId);
+                
+                result.Add(new StudentAttendanceResponse
+                {
+                    StudentId = student.StudentId,
+                    AdmissionNumber = student.AdmissionNo ?? "",
+                    RollNumber = student.RollNo ?? "",
+                    StudentName = student.StudentName,
+                    Status = att?.Status,
+                    Remarks = att?.Remarks,
+                    IsAttendanceMarked = att != null,
+                    Session = att?.Session,
+                    AttendanceId = att?.AttendanceId,
+                    ModifiedByUserName = att?.ModifiedByUserId.HasValue == true && users.ContainsKey(att.ModifiedByUserId.Value) ? users[att.ModifiedByUserId.Value] : null,
+                    ModifiedAt = att?.ModifiedAt
+                });
+            }
+
+            return result;
+        }
+
         /// <summary>
         /// Retrieves statistical summary metrics for the specified filters using stored procedure sp_GetAttendanceSummary.
         /// </summary>
@@ -578,7 +669,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     }
                 }
 
-                double percentage = workingDaysCount > 0 ? Math.Round((double)(presentCount + lateCount) / workingDaysCount * 100, 1) : 0;
+                int markedCount = presentCount + absentCount + lateCount + leaveCount;
+                double percentage = markedCount > 0 ? Math.Round((double)(presentCount + lateCount) / markedCount * 100, 1) : 0;
 
                 studentRows.Add(new StudentMonthlyGridRowDto
                 {
@@ -600,8 +692,9 @@ namespace CollegeManagement.API.Repositories.Implementations
             }
 
             int totalStudents = studentRows.Count;
-            double overallPercentage = (totalStudents > 0 && workingDaysCount > 0)
-                ? Math.Round((double)totalPresentAll / (totalStudents * workingDaysCount) * 100, 1)
+            int totalMarkedAll = totalPresentAll + totalAbsentAll + studentRows.Sum(r => r.LateCount + r.LeaveCount);
+            double overallPercentage = totalMarkedAll > 0
+                ? Math.Round((double)(totalPresentAll + studentRows.Sum(r => r.LateCount)) / totalMarkedAll * 100, 1)
                 : 0;
 
             string groupName = "All Groups";

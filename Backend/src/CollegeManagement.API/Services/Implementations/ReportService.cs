@@ -1,5 +1,11 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using CollegeManagement.API.DTOs.Reports;
 using CollegeManagement.API.Models.Reports;
 using CollegeManagement.API.Repositories.Interfaces;
@@ -134,9 +140,9 @@ public class ReportService : IReportService
             "admissions" or "admission" => await AdmissionsAsync(request, ct),
             "student-strength" or "studentstrength" => await StudentStrengthAsync(request, ct),
             "attendance" => await AttendanceAsync(request, ct),
-            "faculty-attendance" => await FacultyAttendanceAsync(request, ct),
+            "faculty-attendance" or "staff-attendance" => await FacultyAttendanceAsync(request, ct),
             "fees" or "fee-collection" => await FeeCollectionAsync(request, ct),
-            "outstanding" or "outstanding-fees" => await OutstandingFeesAsync(request, ct),
+            "outstanding" or "outstanding-fees" or "due-fees" => await OutstandingFeesAsync(request, ct),
             "examinations" or "exams" => await ExaminationsAsync(request, ct),
             "results" => await ResultsAsync(request, ct),
             "pass-percentage" or "pass" => await PassPercentageAsync(request, ct),
@@ -144,7 +150,7 @@ public class ReportService : IReportService
             "subjects" or "subject-wise" => await SubjectsAsync(request, ct),
             "groups" or "group-wise" => await GroupsAsync(request, ct),
             "sections" or "section-wise" => await SectionsAsync(request, ct),
-            "faculty-workload" => await FacultyWorkloadAsync(request, ct),
+            "faculty-workload" or "staff-workload" => await FacultyWorkloadAsync(request, ct),
             "student-performance" => await StudentPerformanceAsync(request, ct),
             "audit-logs" or "audit" => await AuditLogsAsync(request, ct),
             _ => new { Message = "Unsupported report type" }
@@ -396,95 +402,265 @@ public class ReportService : IReportService
                 break;
 
             case IReadOnlyList<AdmissionReportDto> adm:
-                title = "Student Admissions Report";
-                headers = new[] { "S.No", "Period / Academic Session", "Total Admissions", "Approved", "Pending", "Rejected" };
+                title = "Student Admissions Detailed Report";
+                headers = new[] { "S.No", "Admission No", "Student Name", "Board", "Group", "Section", "Admission Date", "Status" };
+                kpis.Add(("Total Admissions", $"{adm.Count}"));
+                kpis.Add(("Approved", $"{adm.Count(x => x.IsApproved || x.Status == "Approved")}"));
+                kpis.Add(("Pending", $"{adm.Count(x => (!x.IsApproved && !x.IsRejected) || x.Status == "Pending")}"));
+                kpis.Add(("Rejected", $"{adm.Count(x => x.IsRejected || x.Status == "Rejected")}"));
                 int aIdx = 1;
                 foreach (var a in adm)
-                    rows.Add(new[] { $"{aIdx++}", a.Period ?? "—", $"{a.Admissions}", $"{a.Approved}", $"{a.Pending}", $"{a.Rejected}" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{aIdx++}",
+                        a.AdmissionNo ?? $"ADM-{a.AdmissionId}",
+                        a.StudentName ?? "—",
+                        a.BoardName ?? a.Board ?? "—",
+                        a.GroupName ?? a.Group ?? "—",
+                        a.SectionName ?? a.Section ?? "—",
+                        a.AdmissionDate?.ToString("dd-MM-yyyy") ?? a.Period ?? "—",
+                        a.Status ?? (a.IsApproved ? "Approved" : "Pending")
+                    });
+                }
                 break;
 
-            case StudentStrengthReportDto ss:
+            case IReadOnlyList<StudentStrengthReportDto> ssList:
                 title = "Student Strength Breakdown Report";
-                headers = new[] { "S.No", "Student ID", "Student Name", "Gender", "Group", "Section" };
-                kpis.Add(("Total Students", $"{ss.TotalStudents}"));
-                kpis.Add(("Male Students", $"{ss.MaleStudents}"));
-                kpis.Add(("Female Students", $"{ss.FemaleStudents}"));
-                kpis.Add(("Other Students", $"{ss.OtherStudents}"));
+                headers = new[] { "S.No", "Group", "Section", "Male Students", "Female Students", "Total Strength" };
+                var totS = ssList.Sum(x => x.TotalStudents);
+                var totM = ssList.Sum(x => x.MaleStudents);
+                var totF = ssList.Sum(x => x.FemaleStudents);
+                kpis.Add(("Total Students", $"{totS}"));
+                kpis.Add(("Male Students", $"{totM}"));
+                kpis.Add(("Female Students", $"{totF}"));
                 int ssIdx = 1;
-                foreach (var s in ss.Students)
-                    rows.Add(new[] { $"{ssIdx++}", $"{s.StudentId}", s.StudentName ?? "—", s.Gender ?? "—", s.GroupName ?? "—", s.SectionName ?? "—" });
+                foreach (var s in ssList)
+                {
+                    rows.Add(new[]
+                    {
+                        $"{ssIdx++}",
+                        s.GroupName ?? "—",
+                        s.SectionName ?? "—",
+                        $"{s.MaleStudents}",
+                        $"{s.FemaleStudents}",
+                        $"{s.TotalStudents}"
+                    });
+                }
                 break;
 
             case IReadOnlyList<AttendanceReportDto> att:
-                title = "Student Attendance Report";
-                headers = new[] { "S.No", "Period / Date", "Present", "Absent", "Late", "Leave", "Attendance %" };
+                title = "Student Attendance Detailed Report";
+                headers = new[] { "S.No", "Date", "Present", "Absent", "Late", "Leave", "Total Students", "Attendance %" };
+                var avgAtt = att.Any() ? Math.Round(att.Average(x => x.AttendancePercentage), 2) : 0;
+                kpis.Add(("Total Log Days", $"{att.Count}"));
+                kpis.Add(("Average Attendance", $"{avgAtt}%"));
                 int attIdx = 1;
                 foreach (var a in att)
-                    rows.Add(new[] { $"{attIdx++}", a.Period ?? "—", $"{a.Present}", $"{a.Absent}", $"{a.Late}", $"{a.Leave}", $"{a.AttendancePercentage:F1}%" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{attIdx++}",
+                        a.AttendanceDate?.ToString("dd-MM-yyyy") ?? a.Period ?? "—",
+                        $"{a.Present}",
+                        $"{a.Absent}",
+                        $"{a.Late}",
+                        $"{a.Leave}",
+                        $"{a.TotalStudents}",
+                        $"{a.AttendancePercentage:F1}%"
+                    });
+                }
                 break;
 
             case IReadOnlyList<FacultyAttendanceReportDto> fa:
                 title = "Faculty & Staff Attendance Report";
-                headers = new[] { "S.No", "Faculty ID", "Faculty Name", "Present", "Absent", "Late", "Leave", "Attendance %" };
+                headers = new[] { "S.No", "Faculty Name", "Department", "Present Days", "Absent", "Leave", "Attendance %" };
+                kpis.Add(("Total Faculty", $"{fa.Count}"));
                 int faIdx = 1;
                 foreach (var f in fa)
-                    rows.Add(new[] { $"{faIdx++}", $"{f.FacultyId}", f.FacultyName ?? "—", $"{f.Present}", $"{f.Absent}", $"{f.Late}", $"{f.Leave}", $"{f.AttendancePercentage:F1}%" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{faIdx++}",
+                        f.FacultyName ?? "—",
+                        f.DepartmentName ?? "Academics",
+                        $"{f.Present}",
+                        $"{f.Absent}",
+                        $"{f.Leave}",
+                        $"{f.AttendancePercentage:F1}%"
+                    });
+                }
                 break;
 
             case IReadOnlyList<FeeCollectionReportDto> fees:
-                title = "Fee Collection & Transactions Report";
-                headers = new[] { "S.No", "Period / Date", "Collected Amount", "Discounts", "Fines", "Transactions" };
+                title = "Fee Collection & Transactions Detailed Report";
+                headers = new[] { "S.No", "Receipt / ID", "Admission No", "Student Name", "Group", "Section", "Paid Amount", "Date", "Payment Mode", "Status" };
+                var sumCollected = fees.Sum(x => x.PaidAmount > 0 ? x.PaidAmount : x.Collected);
+                kpis.Add(("Total Collected", $"₹{sumCollected:N2}"));
+                kpis.Add(("Transactions", $"{fees.Count}"));
                 int feeIdx = 1;
                 foreach (var f in fees)
-                    rows.Add(new[] { $"{feeIdx++}", f.Period ?? "—", $"₹{f.Collected:N2}", $"₹{f.Discount:N2}", $"₹{f.Fine:N2}", $"{f.Transactions}" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{feeIdx++}",
+                        f.ReceiptNo ?? $"REC-{f.PaymentId}",
+                        f.AdmissionNo ?? "—",
+                        f.StudentName ?? "—",
+                        f.GroupName ?? "—",
+                        f.SectionName ?? "—",
+                        $"₹{(f.PaidAmount > 0 ? f.PaidAmount : f.Collected):N2}",
+                        f.PaymentDate?.ToString("dd-MM-yyyy") ?? f.Period ?? "—",
+                        f.PaymentMode ?? "Online",
+                        f.Status ?? "Paid"
+                    });
+                }
                 break;
 
             case IReadOnlyList<OutstandingFeeReportDto> dues:
                 title = "Outstanding Due Fees & Defaulters Report";
-                headers = new[] { "S.No", "Admission No", "Roll No", "Student Name", "Total Fee", "Paid Fee", "Due Amount", "Fee Status" };
+                headers = new[] { "S.No", "Admission No", "Roll No", "Student Name", "Group", "Section", "Total Fee", "Paid Fee", "Due Amount", "Status" };
+                var sumDue = dues.Sum(x => x.DueAmount);
+                var sumPaid = dues.Sum(x => x.PaidAmount);
+                var sumTotal = dues.Sum(x => x.TotalAmount);
+                kpis.Add(("Students With Dues", $"{dues.Count}"));
+                kpis.Add(("Total Fee Amount", $"₹{sumTotal:N2}"));
+                kpis.Add(("Total Paid Amount", $"₹{sumPaid:N2}"));
+                kpis.Add(("Total Due Amount", $"₹{sumDue:N2}"));
                 int dueIdx = 1;
                 foreach (var d in dues)
-                    rows.Add(new[] { $"{dueIdx++}", d.AdmissionNo ?? "—", d.RollNo ?? "—", d.StudentName ?? "—", $"₹{d.TotalAmount:N2}", $"₹{d.PaidAmount:N2}", $"₹{d.DueAmount:N2}", d.FeeStatus ?? "—" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{dueIdx++}",
+                        d.AdmissionNo ?? "—",
+                        d.RollNo ?? "—",
+                        d.StudentName ?? "—",
+                        d.GroupName ?? "—",
+                        d.SectionName ?? "—",
+                        $"₹{d.TotalAmount:N2}",
+                        $"₹{d.PaidAmount:N2}",
+                        $"₹{d.DueAmount:N2}",
+                        d.FeeStatus ?? "Due"
+                    });
+                }
                 break;
 
             case IReadOnlyList<ExaminationReportDto> exams:
                 title = "Examinations Master & Schedules Report";
                 headers = new[] { "S.No", "Exam Code", "Exam Name", "Academic Year", "Group", "Type", "Start Date", "End Date", "Status", "Eligible", "Pass %" };
+                kpis.Add(("Total Examinations", $"{exams.Count}"));
                 int exIdx = 1;
                 foreach (var e in exams)
-                    rows.Add(new[] { $"{exIdx++}", e.ExamCode ?? "—", e.ExamName ?? "—", e.AcademicYear ?? "—", e.GroupName ?? "—", e.ExamType ?? "—", e.StartDate ?? "—", e.EndDate ?? "—", e.Status ?? "—", $"{e.TotalEligibleStudents}", $"{e.PassPercentage:F1}%" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{exIdx++}",
+                        e.ExamCode ?? "—",
+                        e.ExamName ?? "—",
+                        e.AcademicYear ?? "—",
+                        e.GroupName ?? "—",
+                        e.ExamType ?? "—",
+                        e.StartDate ?? "—",
+                        e.EndDate ?? "—",
+                        e.Status ?? "—",
+                        $"{e.TotalEligibleStudents}",
+                        $"{e.PassPercentage:F1}%"
+                    });
+                }
                 break;
 
             case IReadOnlyList<ResultAnalysisReportDto> results:
-                title = "Examination Results Analysis Report";
-                headers = new[] { "S.No", "Exam Name", "Total Results", "Passed", "Failed", "Average Score %" };
+                title = "Examination Results Detailed Analysis Report";
+                headers = new[] { "S.No", "Roll No", "Student Name", "Exam Name", "Subject", "Total Marks", "Grade", "Result", "Date" };
+                var passCount = results.Count(x => x.ResultStatus == "Pass" || x.ResultStatus == "Passed");
+                var failCount = results.Count(x => x.ResultStatus == "Fail" || x.ResultStatus == "Failed");
+                kpis.Add(("Total Results", $"{results.Count}"));
+                kpis.Add(("Passed", $"{passCount}"));
+                kpis.Add(("Failed", $"{failCount}"));
+                kpis.Add(("Pass %", results.Count > 0 ? $"{Math.Round((decimal)passCount * 100m / results.Count, 1)}%" : "0%"));
                 int resIdx = 1;
                 foreach (var r in results)
-                    rows.Add(new[] { $"{resIdx++}", r.ExamName ?? "—", $"{r.TotalResults}", $"{r.Passed}", $"{r.Failed}", $"{r.AveragePercentage:F1}%" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{resIdx++}",
+                        r.RollNo ?? "—",
+                        r.StudentName ?? "—",
+                        r.ExamName ?? "—",
+                        r.SubjectName ?? "—",
+                        $"{r.TotalMarks:F1}",
+                        r.Grade ?? "—",
+                        r.ResultStatus ?? "Pass",
+                        r.PublishedDate?.ToString("dd-MM-yyyy") ?? "—"
+                    });
+                }
                 break;
 
             case IReadOnlyList<PassPercentageReportDto> pp:
                 title = "Academic Pass Percentage Report";
-                headers = new[] { "S.No", "Exam Name", "Passed", "Failed", "Pass Percentage %" };
+                headers = new[] { "S.No", "Exam Name", "Group", "Appeared", "Passed", "Failed", "Pass Percentage %" };
+                var totApp = pp.Sum(x => x.TotalAppeared);
+                var totPass = pp.Sum(x => x.Passed);
+                kpis.Add(("Total Appeared", $"{totApp}"));
+                kpis.Add(("Total Passed", $"{totPass}"));
+                kpis.Add(("Overall Pass %", totApp > 0 ? $"{Math.Round((decimal)totPass * 100m / totApp, 1)}%" : "0%"));
                 int ppIdx = 1;
                 foreach (var p in pp)
-                    rows.Add(new[] { $"{ppIdx++}", p.ExamName ?? "—", $"{p.Passed}", $"{p.Failed}", $"{p.PassPercentage:F1}%" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{ppIdx++}",
+                        p.ExamName ?? "—",
+                        p.GroupName ?? "—",
+                        $"{p.TotalAppeared}",
+                        $"{p.Passed}",
+                        $"{p.Failed}",
+                        $"{p.PassPercentage:F1}%"
+                    });
+                }
                 break;
 
             case IReadOnlyList<TopperReportDto> tops:
                 title = "Student Toppers & Rankers Leaderboard";
                 headers = new[] { "Rank", "Student Name", "Roll No", "Group", "Section", "Total Marks", "Percentage %", "Passed Subjects" };
+                kpis.Add(("Toppers Identified", $"{tops.Count}"));
                 int tIdx = 1;
                 foreach (var t in tops)
-                    rows.Add(new[] { t.Rank > 0 ? $"{t.Rank}" : $"{tIdx++}", t.StudentName ?? "—", t.RollNo ?? "—", t.GroupName ?? "—", t.SectionName ?? "—", $"{t.TotalMarks:F0}", $"{t.Percentage:F1}%", $"{t.PassedSubjects}" });
+                {
+                    rows.Add(new[]
+                    {
+                        t.Rank > 0 ? $"#{t.Rank}" : $"{tIdx++}",
+                        t.StudentName ?? "—",
+                        t.RollNo ?? "—",
+                        t.GroupName ?? "—",
+                        t.SectionName ?? "—",
+                        $"{t.TotalMarks:F0}",
+                        $"{t.Percentage:F1}%",
+                        $"{t.PassedSubjects}"
+                    });
+                }
                 break;
 
             case IReadOnlyList<FacultyWorkloadReportDto> fw:
                 title = "Faculty Workload & Allocation Report";
-                headers = new[] { "S.No", "Faculty ID", "Faculty Name", "Assigned Periods", "Weekly Hours" };
+                headers = new[] { "S.No", "Employee ID", "Faculty Name", "Department", "Assigned Periods", "Weekly Hours" };
+                var sumHours = fw.Sum(x => x.HoursPerWeek);
+                kpis.Add(("Total Faculty", $"{fw.Count}"));
+                kpis.Add(("Total Teaching Hours", $"{sumHours:F1} hrs"));
                 int fwIdx = 1;
                 foreach (var f in fw)
-                    rows.Add(new[] { $"{fwIdx++}", $"{f.FacultyId}", f.FacultyName ?? "—", $"{f.PeriodCount}", $"{f.HoursPerWeek:F1} hrs" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{fwIdx++}",
+                        f.FacultyEmployeeId ?? $"EMP-{f.FacultyId}",
+                        f.FacultyName ?? "—",
+                        f.DepartmentName ?? "Academics",
+                        $"{f.PeriodCount}",
+                        $"{f.HoursPerWeek:F1} hrs"
+                    });
+                }
                 break;
 
             case IReadOnlyList<StudentPerformanceReportDto> sp:
@@ -492,15 +668,39 @@ public class ReportService : IReportService
                 headers = new[] { "S.No", "Admission No", "Roll No", "Student Name", "Average %", "Passed", "Failed", "Attendance %", "Grade" };
                 int spIdx = 1;
                 foreach (var s in sp)
-                    rows.Add(new[] { $"{spIdx++}", s.AdmissionNo ?? "—", s.RollNo ?? "—", s.StudentName ?? "—", $"{s.AveragePercentage:F1}%", $"{s.PassedSubjects}", $"{s.FailedSubjects}", $"{s.AttendancePercentage:F1}%", s.Grade ?? "—" });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{spIdx++}",
+                        s.AdmissionNo ?? "—",
+                        s.RollNo ?? "—",
+                        s.StudentName ?? "—",
+                        $"{s.AveragePercentage:F1}%",
+                        $"{s.PassedSubjects}",
+                        $"{s.FailedSubjects}",
+                        $"{s.AttendancePercentage:F1}%",
+                        s.Grade ?? "—"
+                    });
+                }
                 break;
 
             case IReadOnlyList<AuditLogDto> logs:
                 title = "System Security & User Activity Audit Logs";
                 headers = new[] { "S.No", "User", "Action", "Entity", "Description", "Timestamp" };
+                kpis.Add(("Total Audit Logs", $"{logs.Count}"));
                 int logIdx = 1;
                 foreach (var l in logs)
-                    rows.Add(new[] { $"{logIdx++}", l.UserName ?? "System", l.Action ?? "—", l.EntityName ?? "—", l.Description ?? "—", l.CreatedAt.ToString("dd-MM-yyyy HH:mm") });
+                {
+                    rows.Add(new[]
+                    {
+                        $"{logIdx++}",
+                        l.UserName ?? "System",
+                        l.Action ?? "—",
+                        l.EntityName ?? "—",
+                        l.Description ?? "—",
+                        l.CreatedAt.ToString("dd-MM-yyyy HH:mm")
+                    });
+                }
                 break;
 
             default:

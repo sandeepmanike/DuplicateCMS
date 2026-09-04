@@ -100,6 +100,11 @@ namespace CollegeManagement.API.Repositories.Interfaces
         Task<IEnumerable<StudentAttendanceResponse>> GetStudentsForAttendanceAsync(AttendanceSearchRequest request);
 
         /// <summary>
+        /// Retrieves students for Admin attendance marking (session-based).
+        /// </summary>
+        Task<IEnumerable<StudentAttendanceResponse>> GetAdminStudentsForAttendanceAsync(AttendanceSearchRequest request);
+
+        /// <summary>
         /// Retrieves Board and Academic Year metadata for the specified Group and Section.
         /// </summary>
         Task<AcademicContextResponse?> GetAcademicContextAsync(int groupId, int sectionId);

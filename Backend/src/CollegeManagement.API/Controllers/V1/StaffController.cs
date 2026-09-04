@@ -14,9 +14,6 @@ using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using QuestPDF.Fluent;
-using QuestPDF.Helpers;
-using QuestPDF.Infrastructure;
 
 namespace CollegeManagement.API.Controllers.V1
 {
@@ -37,8 +34,21 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 1. GET /api/v1/staff or /api/v1/faculty
-        /// Get paged, searched, filtered (by StaffType, Department, Designation, Status) list of staff.
+        /// 1. GET /api/v1/staff/dashboard-stats
+        /// Returns real database aggregated counts for summary cards and completion overview.
+        /// </summary>
+        [HttpGet("dashboard-stats")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffDashboardStatsDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            var stats = await _staffService.GetDashboardStatsAsync();
+            return Ok(stats);
+        }
+
+        /// <summary>
+        /// 2. GET /api/v1/staff
+        /// Get paged, searched, filtered list of staff members.
         /// </summary>
         [HttpGet]
         [AllowAnonymous]
@@ -50,8 +60,8 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 2. GET /api/v1/staff/next-employee-id?staffType=Teaching
-        /// Generates the next sequential Employee ID (PJCTCH0001 / PJCNTCH0001).
+        /// 3. GET /api/v1/staff/next-employee-id?staffType=Teaching
+        /// Generates the next sequential Employee ID (PCTCH0001 / PCNT0001).
         /// </summary>
         [HttpGet("next-employee-id")]
         [AllowAnonymous]
@@ -64,7 +74,7 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 3. GET /api/v1/staff/dropdown
+        /// 4. GET /api/v1/staff/dropdown
         /// Get list of staff for dropdown selection with optional staffType filter.
         /// </summary>
         [HttpGet("dropdown")]
@@ -78,69 +88,35 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 4. GET /api/v1/staff/{id}
-        /// Get detailed staff record by ID.
+        /// 5. GET /api/v1/staff/{id}
+        /// Get complete staff profile details by ID.
         /// </summary>
         [HttpGet("{id:int}")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetStaffById(int id)
         {
-            var result = await _staffService.GetStaffByIdAsync(id);
+            var result = await _staffService.GetStaffProfileFullAsync(id);
             return Ok(result);
         }
 
         /// <summary>
-        /// 4.1. GET /api/v1/staff/{id}/print-details
-        /// Get complete individual staff profile formatted for printable ID card or detail profile.
+        /// 6. GET /api/v1/staff/token/{token}
+        /// Retrieve staff profile securely by unique link token.
         /// </summary>
-        [HttpGet("{id:int}/print-details")]
+        [HttpGet("token/{token}")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetStaffPrintDetails(int id, CancellationToken ct = default)
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetStaffByToken(string token)
         {
-            var staff = await _db.Staffs
-                .AsNoTracking()
-                .Include(s => s.DepartmentRef)
-                .Include(s => s.DesignationRef)
-                .Include(s => s.BoardRef)
-                .FirstOrDefaultAsync(s => s.Id == id && !s.IsDeleted, ct);
-
-            if (staff == null)
-            {
-                return NotFound(new { message = $"Staff with ID {id} not found." });
-            }
-
-            var fullName = $"{staff.FirstName} {staff.LastName}".Trim();
-            var result = new
-            {
-                staff.Id,
-                staff.EmployeeId,
-                staff.FirstName,
-                staff.LastName,
-                FullName = fullName,
-                staff.Gender,
-                DateOfBirth = staff.DateOfBirth.ToString("yyyy-MM-dd"),
-                staff.BloodGroup,
-                staff.Mobile,
-                staff.Email,
-                AadhaarNumber = staff.Aadhaar,
-                staff.Qualification,
-                BoardName = staff.BoardRef?.BoardName ?? staff.BoardName ?? "Board of Intermediate Education",
-                Department = staff.DepartmentRef?.DepartmentName ?? staff.Department ?? "General",
-                Designation = staff.DesignationRef?.DesignationName ?? staff.Designation ?? "Lecturer",
-                JoiningDate = staff.JoiningDate.ToString("yyyy-MM-dd"),
-                ExperienceYears = staff.Experience,
-                Status = staff.Status ?? "Active",
-                StaffType = staff.StaffType ?? "Teaching",
-                PhotoUrl = !string.IsNullOrWhiteSpace(staff.PhotoPath) ? $"/api/v1/staff/photo/{staff.Id}" : null
-            };
-
+            var result = await _staffService.GetStaffProfileByTokenAsync(token);
             return Ok(result);
         }
 
         /// <summary>
-        /// 5. POST /api/v1/staff
+        /// 7. POST /api/v1/staff
         /// Create a new staff member (Teaching or Non-Teaching).
         /// </summary>
         [HttpPost]
@@ -155,7 +131,7 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 6. PUT /api/v1/staff/{id}
+        /// 8. PUT /api/v1/staff/{id}
         /// Update an existing staff member.
         /// </summary>
         [HttpPut("{id:int}")]
@@ -171,7 +147,7 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 7. DELETE /api/v1/staff/{id}
+        /// 9. DELETE /api/v1/staff/{id}
         /// Soft delete a staff member record.
         /// </summary>
         [HttpDelete("{id:int}")]
@@ -185,15 +161,208 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 8. POST /api/v1/staff/upload-photo
+        /// 10. POST /api/v1/staff/{id}/send-link
+        /// Generates token, dispatches profile completion link via email/SMS.
+        /// </summary>
+        [HttpPost("{id:int}/send-link")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(SendProfileLinkResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SendProfileLink(int id, [FromBody] SendProfileLinkRequestDto dto)
+        {
+            var result = await _staffService.SendProfileLinkAsync(id, dto);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 11. POST /api/v1/staff/bulk-send-links
+        /// Bulk sends profile completion links to multiple staff members.
+        /// </summary>
+        [HttpPost("bulk-send-links")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffBulkSendResultDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> BulkSendProfileLinks([FromBody] StaffBulkSendLinksDto dto)
+        {
+            var result = await _staffService.BulkSendProfileLinksAsync(dto);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 12. POST /api/v1/staff/{id}/save-profile-draft
+        /// Saves profile section draft by staff ID.
+        /// </summary>
+        [HttpPost("{id:int}/save-profile-draft")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SaveProfileDraft(int id, [FromBody] UpdateStaffProfileSectionDto dto)
+        {
+            var result = await _staffService.SaveProfileDraftAsync(id, dto);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 13. POST /api/v1/staff/token/{token}/save-profile-draft
+        /// Saves profile section draft by secure token.
+        /// </summary>
+        [HttpPost("token/{token}/save-profile-draft")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SaveProfileDraftByToken(string token, [FromBody] UpdateStaffProfileSectionDto dto)
+        {
+            var result = await _staffService.SaveProfileDraftByTokenAsync(token, dto);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 14. POST /api/v1/staff/{id}/submit-profile
+        /// Final submission of staff profile.
+        /// </summary>
+        [HttpPost("{id:int}/submit-profile")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SubmitProfile(int id)
+        {
+            var result = await _staffService.SubmitProfileAsync(id);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 15. POST /api/v1/staff/token/{token}/submit-profile
+        /// Final submission of staff profile via secure token.
+        /// </summary>
+        [HttpPost("token/{token}/submit-profile")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SubmitProfileByToken(string token)
+        {
+            var result = await _staffService.SubmitProfileByTokenAsync(token);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 16. POST /api/v1/staff/{id}/admin-review
+        /// Admin review action: Approve or Request Correction.
+        /// </summary>
+        [HttpPost("{id:int}/admin-review")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> AdminReviewProfile(int id, [FromBody] AdminReviewStaffDto dto)
+        {
+            var result = await _staffService.AdminReviewProfileAsync(id, dto);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 17. POST /api/v1/staff/import-excel
+        /// Import Staff from Excel workbook (.xlsx) with auto-segregation and row-level validation.
+        /// </summary>
+        [HttpPost("import-excel")]
+        [AllowAnonymous]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StaffImportResultDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> ImportExcel([FromForm] StaffImportExcelRequestDto dto)
+        {
+            var result = await _staffService.ImportStaffFromExcelAsync(dto.File, dto.DefaultStaffType);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 18. GET /api/v1/staff/export-excel
+        /// Exports filtered or all staff members to Excel (.xlsx).
+        /// </summary>
+        [HttpGet("export-excel")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ExportExcel([FromQuery] StaffQueryParams queryParams)
+        {
+            var (bytes, contentType, fileName) = await _staffService.ExportStaffExcelAsync(queryParams);
+            return File(bytes, contentType, fileName);
+        }
+
+        /// <summary>
+        /// 19. GET /api/v1/staff/export-template
+        /// Download sample Excel template for staff import.
+        /// </summary>
+        [HttpGet("export-template")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DownloadTemplate([FromQuery] string? staffType = null)
+        {
+            var (bytes, contentType, fileName) = await _staffService.GenerateTemplateExcelAsync(staffType);
+            return File(bytes, contentType, fileName);
+        }
+
+        /// <summary>
+        /// 20. GET /api/v1/staff/{id}/print-pdf
+        /// Generates and streams QuestPDF printable staff profile document.
+        /// </summary>
+        [HttpGet("{id:int}/print-pdf")]
+        [AllowAnonymous]
+        public async Task<IActionResult> PrintProfilePdf(int id)
+        {
+            var (bytes, contentType, fileName) = await _staffService.GenerateProfilePdfAsync(id);
+            return File(bytes, contentType, fileName);
+        }
+
+        /// <summary>
+        /// 21. POST /api/v1/staff/{id}/documents/upload
+        /// Uploads an individual document for a staff member.
+        /// </summary>
+        [HttpPost("{id:int}/documents/upload")]
+        [AllowAnonymous]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> UploadDocument(int id, [FromForm] UploadStaffDocumentDto dto)
+        {
+            var result = await _staffService.UploadDocumentAsync(id, dto.DocumentType, dto.File);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 22. POST /api/v1/staff/token/{token}/documents/upload
+        /// Uploads an individual document via secure token.
+        /// </summary>
+        [HttpPost("token/{token}/documents/upload")]
+        [AllowAnonymous]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> UploadDocumentByToken(string token, [FromForm] UploadStaffDocumentDto dto)
+        {
+            var result = await _staffService.UploadDocumentByTokenAsync(token, dto.DocumentType, dto.File);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 23. DELETE /api/v1/staff/{id}/documents/{documentType}
+        /// Removes an individual uploaded document.
+        /// </summary>
+        [HttpDelete("{id:int}/documents/{documentType}")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DeleteDocument(int id, string documentType)
+        {
+            var result = await _staffService.DeleteDocumentAsync(id, documentType);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 24. DELETE /api/v1/staff/token/{token}/documents/{documentType}
+        /// Removes an individual uploaded document via secure token.
+        /// </summary>
+        [HttpDelete("token/{token}/documents/{documentType}")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(StaffProfileFullDto), StatusCodes.Status200OK)]
+        public async Task<IActionResult> DeleteDocumentByToken(string token, string documentType)
+        {
+            var result = await _staffService.DeleteDocumentByTokenAsync(token, documentType);
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// 25. POST /api/v1/staff/upload-photo
         /// Upload or replace staff member photo.
         /// </summary>
         [HttpPost("upload-photo")]
         [AllowAnonymous]
         [Consumes("multipart/form-data")]
         [ProducesResponseType(typeof(StaffResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UploadPhoto([FromForm] UploadStaffPhotoDto dto)
         {
             var result = await _staffService.UploadPhotoAsync(dto);
@@ -201,13 +370,11 @@ namespace CollegeManagement.API.Controllers.V1
         }
 
         /// <summary>
-        /// 9. GET /api/v1/staff/photo/{id}
+        /// 26. GET /api/v1/staff/photo/{id}
         /// Stream staff member profile photo.
         /// </summary>
         [HttpGet("photo/{id:int}")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetStaffPhoto(int id)
         {
             var (physicalPath, contentType) = await _staffService.GetPhotoAsync(id);
@@ -247,7 +414,7 @@ namespace CollegeManagement.API.Controllers.V1
             var query = _db.Departments.AsNoTracking().Where(d => d.IsActive);
             if (!string.IsNullOrWhiteSpace(staffType))
             {
-                query = query.Where(d => d.StaffType == null || d.StaffType == staffType);
+                query = query.Where(d => d.StaffType == null || d.StaffType == staffType || d.StaffType == "Both");
             }
 
             var list = await query
@@ -296,138 +463,6 @@ namespace CollegeManagement.API.Controllers.V1
                 : new[] { "Junior Lecturer", "Lecturer", "Senior Lecturer", "Subject Teacher", "Head of Department (HOD)", "Academic Coordinator", "Vice Principal", "Principal" };
 
             return Ok(fallback.Select((name, i) => new { id = i + 1, name, code = name.ToUpperInvariant() }));
-        }
-
-        // =========================================================================
-        // EXPORT TO EXCEL / CSV & PDF
-        // =========================================================================
-
-        [HttpGet("export/excel")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ExportExcel([FromQuery] StaffQueryParams queryParams, CancellationToken ct = default)
-        {
-            queryParams.PageSize = 10000;
-            queryParams.PageNumber = 1;
-
-            var paged = await _staffService.GetPagedStaffAsync(queryParams);
-            var items = paged.Items;
-
-            var sb = new StringBuilder();
-            sb.AppendLine("Employee ID,First Name,Last Name,Staff Type,Department,Designation,Board,Gender,Mobile,Email,Joining Date,Status");
-
-            foreach (var s in items)
-            {
-                var empId = EscapeCsv(s.EmployeeId);
-                var fName = EscapeCsv(s.FirstName);
-                var lName = EscapeCsv(s.LastName);
-                var sType = EscapeCsv(s.StaffType);
-                var dept = EscapeCsv(s.Department);
-                var desig = EscapeCsv(s.Designation);
-                var board = EscapeCsv(s.BoardName ?? s.Board);
-                var gender = EscapeCsv(s.Gender);
-                var mobile = EscapeCsv(s.Mobile);
-                var email = EscapeCsv(s.Email);
-                var join = EscapeCsv(s.JoiningDate.ToString("yyyy-MM-dd"));
-                var status = EscapeCsv(s.Status);
-
-                sb.AppendLine($"{empId},{fName},{lName},{sType},{dept},{desig},{board},{gender},{mobile},{email},{join},{status}");
-            }
-
-            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-            var filename = $"Staff_Export_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
-            return File(bytes, "text/csv; charset=utf-8", filename);
-        }
-
-        [HttpGet("export/pdf")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ExportPdf([FromQuery] StaffQueryParams queryParams, CancellationToken ct = default)
-        {
-            queryParams.PageSize = 10000;
-            queryParams.PageNumber = 1;
-
-            var paged = await _staffService.GetPagedStaffAsync(queryParams);
-            var items = paged.Items;
-            var totalCount = paged.TotalCount;
-            var title = $"Staff Directory ({queryParams.StaffType ?? "All Staff"})";
-
-            var doc = Document.Create(container =>
-            {
-                container.Page(page =>
-                {
-                    page.Size(PageSizes.A4.Landscape());
-                    page.Margin(20);
-                    page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Helvetica"));
-
-                    page.Header().Column(col =>
-                    {
-                        col.Item().Text("PIRNAV COLLEGE - STAFF DIRECTORY")
-                            .SemiBold().FontSize(16).FontColor(Colors.Green.Darken2);
-                        col.Item().Text($"Generated on {DateTime.UtcNow:dd MMM yyyy, hh:mm tt} | Total Records: {totalCount}")
-                            .FontSize(8).FontColor(Colors.Grey.Medium);
-                        col.Item().PaddingBottom(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten1);
-                    });
-
-                    page.Content().Table(table =>
-                    {
-                        table.ColumnsDefinition(cols =>
-                        {
-                            cols.ConstantColumn(75);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(1.5f);
-                            cols.RelativeColumn(1.5f);
-                            cols.RelativeColumn(2);
-                            cols.ConstantColumn(80);
-                            cols.ConstantColumn(55);
-                        });
-
-                        table.Header(h =>
-                        {
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("EMPLOYEE ID").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("NAME").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("DEPARTMENT").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("DESIGNATION").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("BOARD").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("MOBILE").Bold();
-                            h.Cell().Background(Colors.Grey.Lighten3).Padding(4).Text("STATUS").Bold();
-                        });
-
-                        foreach (var s in items)
-                        {
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(s.EmployeeId ?? "");
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text($"{s.FirstName} {s.LastName}".Trim());
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(s.Department ?? "");
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(s.Designation ?? "");
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(s.BoardName ?? s.Board ?? "—");
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(s.Mobile ?? "");
-                            table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(4).Text(s.Status ?? "Active");
-                        }
-                    });
-
-                    page.Footer().AlignCenter().Text(x =>
-                    {
-                        x.Span("Page ");
-                        x.CurrentPageNumber();
-                        x.Span(" of ");
-                        x.TotalPages();
-                    });
-                });
-            });
-
-            using var ms = new MemoryStream();
-            doc.GeneratePdf(ms);
-            var bytes = ms.ToArray();
-            var filename = $"Staff_Directory_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
-            return File(bytes, "application/pdf", filename);
-        }
-
-        private static string EscapeCsv(string? value)
-        {
-            if (string.IsNullOrEmpty(value)) return "";
-            if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
-            {
-                return $"\"{value.Replace("\"", "\"\"")}\"";
-            }
-            return value;
         }
     }
 }

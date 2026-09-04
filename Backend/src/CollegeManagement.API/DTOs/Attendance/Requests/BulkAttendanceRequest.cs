@@ -34,6 +34,11 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         public int GroupId { get; set; }
 
         /// <summary>
+        /// Gets or sets the program identifier.
+        /// </summary>
+        public int ProgramId { get; set; }
+
+        /// <summary>
         /// Gets or sets the section identifier.
         /// </summary>
         public int SectionId { get; set; }
@@ -62,5 +67,10 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         /// Gets or sets the timetable slot identifier.
         /// </summary>
         public int? TimetableId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the session for admin attendance.
+        /// </summary>
+        public CollegeManagement.API.Enums.StudentAttendanceSession? Session { get; set; }
     }
 }

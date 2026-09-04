@@ -34,6 +34,8 @@ namespace CollegeManagement.API.Data
         public DbSet<AttendanceSession> AttendanceSessions { get; set; }
         public DbSet<StaffAttendanceSession> StaffAttendanceSessions { get; set; }
         public DbSet<StaffAttendance> StaffAttendances { get; set; }
+        public DbSet<StaffLeaveRequest> StaffLeaveRequests { get; set; }
+        public DbSet<AttendanceAuditHistory> AttendanceAuditHistories { get; set; }
         public DbSet<GradingSystem> GradingSystems { get; set; }
         public DbSet<AssessmentType> AssessmentTypes { get; set; }
         public DbSet<Board> Boards { get; set; }
@@ -111,6 +113,10 @@ namespace CollegeManagement.API.Data
             #region Attendance
             modelBuilder.Entity<Attendance>().ToTable("Attendances");
             modelBuilder.Entity<AttendanceSession>().ToTable("AttendanceSessions");
+            modelBuilder.ApplyConfiguration(new AttendanceConfiguration());
+            modelBuilder.ApplyConfiguration(new AttendanceSessionConfiguration());
+            modelBuilder.ApplyConfiguration(new StaffLeaveRequestConfiguration());
+            modelBuilder.ApplyConfiguration(new AttendanceAuditHistoryConfiguration());
             #endregion
 
             #region User

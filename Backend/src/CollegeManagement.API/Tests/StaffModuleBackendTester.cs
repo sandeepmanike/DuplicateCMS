@@ -10,6 +10,7 @@ using CollegeManagement.API.DTOs.Staff;
 using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
 using CollegeManagement.API.Models.Staff;
+using CollegeManagement.API.Interfaces;
 using CollegeManagement.API.Profiles;
 using CollegeManagement.API.Repositories;
 using CollegeManagement.API.Repositories.Implementations;
@@ -131,9 +132,19 @@ namespace CollegeManagement.API.Tests
             var mapper = config.CreateMapper();
             services.AddSingleton(mapper);
 
-            // Mock WebHostEnvironment
+            // Mock WebHostEnvironment & Configuration
             var envMock = new TestHostingEnvironment();
             services.AddSingleton<IWebHostEnvironment>(envMock);
+            var testConfig = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["InstitutionSettings:InstitutionName"] = "College Management System",
+                ["InstitutionSettings:PortalUrl"] = "http://localhost:5173"
+            }).Build();
+            services.AddSingleton<IConfiguration>(testConfig);
+
+            // Email Service mock / null service
+            services.AddScoped<IEmailService, NullTestEmailService>();
+            services.AddScoped<IBoardRepository, BoardRepository>();
 
             // Repositories & Services
             services.AddScoped<IStaffRepository, StaffRepository>();
@@ -163,9 +174,10 @@ namespace CollegeManagement.API.Tests
                 Console.WriteLine($"  Next Teaching Employee ID:     {nextTchId}");
                 Console.WriteLine($"  Next Non-Teaching Employee ID: {nextNonTchId}");
 
-                if (nextTchId.StartsWith("PJCTCH") && nextNonTchId.StartsWith("PJCNTCH"))
+                if ((nextTchId.StartsWith("PCTCH") || nextTchId.StartsWith("PJCTCH")) &&
+                    (nextNonTchId.StartsWith("PCNT") || nextNonTchId.StartsWith("PJCNTCH")))
                 {
-                    Console.WriteLine("  [PASS] Auto ID generator produces correct 'PJCTCH####' and 'PJCNTCH####' prefixes.");
+                    Console.WriteLine("  [PASS] Auto ID generator produces correct 'PCTCH####' and 'PCNT####' prefixes.");
                     passed++;
                 }
                 else
@@ -309,7 +321,7 @@ namespace CollegeManagement.API.Tests
                 if (createdTchId > 0)
                 {
                     var staff = await staffService.GetStaffByIdAsync(createdTchId);
-                    if (staff != null && staff.EmployeeId.StartsWith("PJCTCH") && staff.Department == "Mathematics")
+                    if (staff != null && (staff.EmployeeId.StartsWith("PCTCH") || staff.EmployeeId.StartsWith("PJCTCH")) && staff.Department == "Mathematics")
                     {
                         Console.WriteLine($"  [PASS] Staff Profile retrieved: {staff.FullName}, {staff.Designation}, {staff.Email}, Mobile: {staff.Mobile}");
                         passed++;
@@ -483,5 +495,10 @@ namespace CollegeManagement.API.Tests
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = null!;
         public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
         public string EnvironmentName { get; set; } = "Development";
+    }
+
+    public class NullTestEmailService : CollegeManagement.API.Interfaces.IEmailService
+    {
+        public Task SendEmailAsync(string toEmail, string subject, string body) => Task.CompletedTask;
     }
 }

@@ -65,6 +65,11 @@ namespace CollegeManagement.API.DTOs.Attendance.Requests
         /// </summary>
         public int? TimetableId { get; set; }
 
+        /// <summary>
+        /// Gets or sets the session identifier (Morning=1, Afternoon=2).
+        /// </summary>
+        public StudentAttendanceSession? Session { get; set; }
+
         #endregion
 
         #region Student Filters

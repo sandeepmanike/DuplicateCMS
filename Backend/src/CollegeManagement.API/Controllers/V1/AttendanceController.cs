@@ -17,7 +17,7 @@ namespace CollegeManagement.API.Controllers.V1
     [ApiController]
     [ApiVersion("1.0")]
     [Route("api/v{version:apiVersion}/attendance")]
-    [AllowAnonymous]
+    [Authorize]
     [Produces("application/json")]
     public class AttendanceController : ControllerBase
     {
@@ -52,7 +52,8 @@ namespace CollegeManagement.API.Controllers.V1
         {
             var isAdmin = IsCurrentUserAdmin();
             var userName = GetCurrentUserName();
-            var id = await _attendanceService.CreateAttendanceAsync(request, isAdmin, userName);
+            var userId = GetCurrentUserId();
+            var id = await _attendanceService.CreateAttendanceAsync(request, isAdmin, userName, userId);
             return CreatedAtAction(
                 nameof(GetAttendanceById),
                 new
@@ -107,7 +108,8 @@ namespace CollegeManagement.API.Controllers.V1
         {
             var isAdmin = IsCurrentUserAdmin();
             var userName = GetCurrentUserName();
-            var affectedRows = await _attendanceService.UpdateAttendanceAsync(request, isAdmin, userName);
+            var userId = GetCurrentUserId();
+            var affectedRows = await _attendanceService.UpdateAttendanceAsync(request, isAdmin, userName, userId);
             return Ok(affectedRows);
         }
 
@@ -131,7 +133,8 @@ namespace CollegeManagement.API.Controllers.V1
         {
             var isAdmin = IsCurrentUserAdmin();
             var userName = GetCurrentUserName();
-            var affectedRows = await _attendanceService.BulkUpdateAttendanceAsync(request, isAdmin, userName);
+            var userId = GetCurrentUserId();
+            var affectedRows = await _attendanceService.BulkUpdateAttendanceAsync(request, isAdmin, userName, userId);
             return Ok(affectedRows);
         }
 
@@ -192,6 +195,23 @@ namespace CollegeManagement.API.Controllers.V1
         {
             var request = requestBody ?? requestQuery;
             var results = await _attendanceService.GetStudentsForAttendanceAsync(request);
+            return Ok(results);
+        }
+
+        /// <summary>
+        /// Retrieves students for Admin attendance marking (session-based).
+        /// </summary>
+        [HttpPost("admin/students")]
+        [HttpGet("admin/students")]
+        [Authorize]
+        [ProducesResponseType(typeof(IEnumerable<StudentAttendanceResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAdminStudentsForAttendance([FromQuery] AttendanceSearchRequest requestQuery, [FromBody] AttendanceSearchRequest? requestBody = null)
+        {
+            var request = requestBody ?? requestQuery;
+            var results = await _attendanceService.GetAdminStudentsForAttendanceAsync(request);
             return Ok(results);
         }
 
@@ -354,7 +374,7 @@ namespace CollegeManagement.API.Controllers.V1
         /// Auto-derives assigned Subject and Faculty (or Class Teacher) for specified Date, Group, Section, Period, or SessionType.
         /// </summary>
         [HttpGet("faculty-subject")]
-        [AllowAnonymous]
+        
         public async Task<IActionResult> GetFacultySubjectAllocation(
             [FromQuery] DateTime date,
             [FromQuery] int? boardId = null,
@@ -434,6 +454,13 @@ namespace CollegeManagement.API.Controllers.V1
                 return "System Admin";
             }
             return userName;
+        }
+        [HttpPost("audit")]
+        [Authorize(Roles = "Super Admin,College Admin,Admin,HOD")]
+        public async Task<IActionResult> GetAuditHistory([FromBody] CollegeManagement.API.DTOs.Attendance.Requests.AuditHistorySearchRequest request)
+        {
+            var result = await _attendanceService.GetAuditHistoryAsync(request);
+            return Ok(result);
         }
     }
 }

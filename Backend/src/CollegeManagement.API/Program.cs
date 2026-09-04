@@ -227,6 +227,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateStaffDtoValidator>();
 
 // Authentication
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IOtpRepository, OtpRepository>();
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 
@@ -284,6 +285,8 @@ builder.Services.AddScoped<ICertificateRepository, CertificateRepository>();
 #region Services
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 
@@ -310,6 +313,7 @@ builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddSingleton<IAttendanceCacheService, AttendanceCacheService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IStaffAttendanceService, StaffAttendanceService>();
+builder.Services.AddScoped<ILeaveManagementService, LeaveManagementService>();
 
 // Student & Student Admissions
 builder.Services.AddScoped<IStudentService, StudentService>();

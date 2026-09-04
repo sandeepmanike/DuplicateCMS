@@ -18,17 +18,19 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <param name="request">The creation details.</param>
         /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
         /// <param name="userName">The username of the caller.</param>
+        /// <param name="userId">The ID of the calling user.</param>
         /// <returns>The ID of the newly created attendance record.</returns>
-        Task<int> CreateAttendanceAsync(CreateAttendanceRequest request, bool isAdmin, string userName);
+        Task<int> CreateAttendanceAsync(CreateAttendanceRequest request, bool isAdmin, string userName, int? userId = null);
 
         /// <summary>
         /// Creates student attendance records in bulk after performing business validations.
         /// </summary>
-        /// <param name="request">The bulk attendance details.</param>
+        /// <param name="request">The bulk creation details.</param>
         /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
         /// <param name="userName">The username of the caller.</param>
+        /// <param name="userId">The ID of the calling user.</param>
         /// <returns>The number of records successfully created.</returns>
-        Task<int> CreateBulkAttendanceAsync(BulkAttendanceRequest request, bool isAdmin, string userName);
+        Task<int> CreateBulkAttendanceAsync(BulkAttendanceRequest request, bool isAdmin, string userName, int? userId = null);
 
         /// <summary>
         /// Updates an existing attendance record after performing business validations.
@@ -36,8 +38,9 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <param name="request">The update details.</param>
         /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
         /// <param name="userName">The username of the caller.</param>
+        /// <param name="userId">The ID of the calling user.</param>
         /// <returns>The number of affected records.</returns>
-        Task<int> UpdateAttendanceAsync(UpdateAttendanceRequest request, bool isAdmin, string userName);
+        Task<int> UpdateAttendanceAsync(UpdateAttendanceRequest request, bool isAdmin, string userName, int? userId = null);
 
         /// <summary>
         /// Updates multiple existing student attendance records in one bulk operation.
@@ -45,8 +48,9 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <param name="request">The bulk update details.</param>
         /// <param name="isAdmin">Flag indicating if the user has Admin rights.</param>
         /// <param name="userName">The username of the caller.</param>
+        /// <param name="userId">The ID of the calling user.</param>
         /// <returns>The number of records successfully updated.</returns>
-        Task<int> BulkUpdateAttendanceAsync(BulkUpdateAttendanceRequest request, bool isAdmin, string userName);
+        Task<int> BulkUpdateAttendanceAsync(BulkUpdateAttendanceRequest request, bool isAdmin, string userName, int? userId = null);
 
         /// <summary>
         /// Retrieves a single detailed attendance record by its ID.
@@ -68,6 +72,11 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <param name="request">The search and filter parameters.</param>
         /// <returns>A collection of student attendance response DTOs.</returns>
         Task<IEnumerable<StudentAttendanceResponse>> GetStudentsForAttendanceAsync(AttendanceSearchRequest request);
+
+        /// <summary>
+        /// Retrieves students for Admin attendance marking (session-based).
+        /// </summary>
+        Task<IEnumerable<StudentAttendanceResponse>> GetAdminStudentsForAttendanceAsync(AttendanceSearchRequest request);
 
         /// <summary>
         /// Retrieves statistical summary metrics (present, absent, late, leave counts) for the specified filters.
@@ -149,6 +158,14 @@ namespace CollegeManagement.API.Services.Interfaces
         /// <summary>
         /// Exports the Student Monthly Calendar Grid Report to Excel format.
         /// </summary>
-        Task<byte[]> ExportStudentMonthlyReportToExcelAsync(StudentMonthlyReportRequest request);
+        /// <summary>
+        /// Exports the Student Monthly Calendar Grid Report to Excel format.
+        /// </summary>
+        Task<byte[]> ExportStudentMonthlyReportToExcelAsync(CollegeManagement.API.DTOs.Attendance.Requests.StudentMonthlyReportRequest request);
+
+        /// <summary>
+        /// Retrieves paginated audit history for attendance operations.
+        /// </summary>
+        Task<CollegeManagement.API.DTOs.Common.PagedResponse<CollegeManagement.API.DTOs.Attendance.Responses.AttendanceAuditHistoryResponse>> GetAuditHistoryAsync(CollegeManagement.API.DTOs.Attendance.Requests.AuditHistorySearchRequest request);
     }
 }

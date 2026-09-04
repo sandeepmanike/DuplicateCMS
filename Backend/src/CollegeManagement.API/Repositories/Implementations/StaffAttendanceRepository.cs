@@ -323,7 +323,8 @@ namespace CollegeManagement.API.Repositories.Implementations
                     }
                 }
 
-                double percentage = workingDaysCount > 0 ? Math.Round((double)(presentCount + lateCount) / workingDaysCount * 100, 1) : 0;
+                int markedCount = presentCount + absentCount + lateCount + leaveCount;
+                double percentage = markedCount > 0 ? Math.Round((double)(presentCount + lateCount) / markedCount * 100, 1) : 0;
 
                 string empId = string.IsNullOrEmpty(staff.EmployeeId)
                     ? (request.StaffType == StaffType.Teaching ? $"FAC{staff.FacultyId:D3}" : $"NTS{staff.FacultyId:D3}")
@@ -349,9 +350,10 @@ namespace CollegeManagement.API.Repositories.Implementations
                 totalLeaveAll += leaveCount;
             }
 
-            int totalStaffCount = staffRows.Count;
-            double overallPercentage = (totalStaffCount > 0 && workingDaysCount > 0)
-                ? Math.Round((double)(totalPresentAll + totalLateAll) / (totalStaffCount * workingDaysCount) * 100, 1)
+            int totalStaff = staffRows.Count;
+            int totalMarkedAll = totalPresentAll + totalAbsentAll + staffRows.Sum(r => r.LateCount + r.LeaveCount);
+            double overallPercentage = totalMarkedAll > 0
+                ? Math.Round((double)(totalPresentAll + totalLateAll) / totalMarkedAll * 100, 1)
                 : 0;
 
             string deptName = "All Departments";
