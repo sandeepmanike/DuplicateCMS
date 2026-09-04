@@ -1,4 +1,4 @@
-using CollegeManagement.API.Repositories.Interfaces;
+﻿using CollegeManagement.API.Repositories.Interfaces;
 using CollegeManagement.API.Repositories.Implementations;
 using Asp.Versioning;
 using CollegeManagement.API.Data;
@@ -269,6 +269,7 @@ builder.Services.AddScoped<IPromotionRepository, PromotionRepository>();
 
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableRepository, TimetableRepository>();
+builder.Services.AddScoped<ITimetableSubstitutionRepository, TimetableSubstitutionRepository>();
 builder.Services.AddScoped<ITimetableBackupRepository, TimetableBackupRepository>();
 builder.Services.AddScoped<IPeriodRepository, PeriodRepository>();
 builder.Services.AddScoped<IPeriodStructureRepository, PeriodStructureRepository>();
@@ -332,6 +333,7 @@ builder.Services.AddScoped<IPromotionService, PromotionService>();
 
 // Timetable, Period, Room
 builder.Services.AddScoped<ITimetableService, TimetableService>();
+builder.Services.AddScoped<ITimetableSubstitutionService, TimetableSubstitutionService>();
 builder.Services.AddScoped<ITimetableExportService, TimetableExportService>();
 builder.Services.AddScoped<IStudentExportService, StudentExportService>();
 builder.Services.AddScoped<IStudentImportService, StudentImportService>();

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using CollegeManagement.API.Models;
 
@@ -25,7 +25,8 @@ namespace CollegeManagement.API.Data.Configurations
 
             #region Properties
 
-            builder.Property(lr => lr.FacultyId)
+            builder.Property(lr => lr.StaffId)
+                .HasColumnName("StaffId")
                 .IsRequired();
 
             builder.Property(lr => lr.LeaveType)
@@ -80,13 +81,13 @@ namespace CollegeManagement.API.Data.Configurations
 
             #region Indexes
 
-            builder.HasIndex(lr => lr.FacultyId)
+            builder.HasIndex(lr => lr.StaffId)
                 .HasDatabaseName("IX_StaffLeaveRequests_FacultyId");
 
             builder.HasIndex(lr => lr.Status)
                 .HasDatabaseName("IX_StaffLeaveRequests_Status");
 
-            builder.HasIndex(lr => new { lr.FacultyId, lr.StartDate, lr.EndDate })
+            builder.HasIndex(lr => new { lr.StaffId, lr.StartDate, lr.EndDate })
                 .HasDatabaseName("IX_StaffLeaveRequests_Faculty_DateRange");
 
             builder.HasIndex(lr => lr.DepartmentId)
@@ -99,9 +100,10 @@ namespace CollegeManagement.API.Data.Configurations
 
             #region Relationships
 
-            builder.HasOne(lr => lr.Faculty)
+            builder.HasOne(lr => lr.Staff)
                 .WithMany()
-                .HasForeignKey(lr => lr.FacultyId)
+                .HasForeignKey(lr => lr.StaffId)
+                .HasConstraintName("FK_StaffLeaveRequests_Staff_FacultyId")
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasOne(lr => lr.Department)

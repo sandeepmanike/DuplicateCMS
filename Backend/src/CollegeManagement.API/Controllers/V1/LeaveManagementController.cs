@@ -1,4 +1,4 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Asp.Versioning;
 using CollegeManagement.API.DTOs.StaffAttendance.Requests;
 using CollegeManagement.API.Services.Interfaces;
@@ -60,9 +60,9 @@ namespace CollegeManagement.API.Controllers.V1
         [HttpGet("leave")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> GetStaffLeaves([FromQuery] int? facultyId, [FromQuery] int? departmentId, [FromQuery] CollegeManagement.API.Enums.LeaveStatus? status)
+        public async Task<IActionResult> GetStaffLeaves([FromQuery] int? staffId, [FromQuery] int? departmentId, [FromQuery] CollegeManagement.API.Enums.LeaveStatus? status)
         {
-            var result = await _service.GetStaffLeaveRequestsAsync(facultyId, departmentId, status);
+            var result = await _service.GetStaffLeaveRequestsAsync(staffId, departmentId, status);
             return Ok(new { Status = true, Message = "Staff leaves retrieved successfully.", Data = result });
         }
     }

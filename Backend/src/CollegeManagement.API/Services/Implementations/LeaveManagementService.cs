@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,7 +22,7 @@ namespace CollegeManagement.API.Services.Implementations
         {
             var leave = new CollegeManagement.API.Models.StaffLeaveRequest
             {
-                FacultyId = request.FacultyId,
+                StaffId = request.StaffId,
                 LeaveType = request.LeaveType,
                 StartDate = request.StartDate,
                 EndDate = request.EndDate,
@@ -51,7 +51,7 @@ namespace CollegeManagement.API.Services.Implementations
                 {
                     var leave = await _context.StaffLeaveRequests
                         .FromSqlInterpolated($"SELECT * FROM StaffLeaveRequests WHERE StaffLeaveRequestId = {leaveRequestId} FOR UPDATE")
-                        .Include(l => l.Faculty)
+                        .Include(l => l.Staff)
                         .FirstOrDefaultAsync();
                         
                     if (leave == null) throw new CollegeManagement.API.Exceptions.NotFoundException("Leave request not found");
@@ -76,7 +76,7 @@ namespace CollegeManagement.API.Services.Implementations
                         {
                             EntityType = "Staff",
                             EntityId = leave.StaffLeaveRequestId, // using leave ID since no attendance record created
-                            FacultyId = leave.FacultyId,
+                            FacultyId = leave.StaffId,
                             AttendanceDate = leave.StartDate.Date,
                             OldStatus = null,
                             NewStatus = 0, // Fallback for Rejection
@@ -87,6 +87,22 @@ namespace CollegeManagement.API.Services.Implementations
                             CreatedAt = DateTime.UtcNow
                         });
                     }
+                                        // Auto-cancel active timetable substitutions if leave is rejected or revoked
+                    if (request.Status != CollegeManagement.API.Enums.LeaveStatus.Approved)
+                    {
+                        var activeSubstitutions = await _context.TimetableSubstitutions
+                            .Where(ts => ts.StaffLeaveRequestId == leaveRequestId && ts.Status == "Active")
+                            .ToListAsync();
+
+                        foreach (var sub in activeSubstitutions)
+                        {
+                            sub.Status = "Cancelled";
+                            sub.Remarks = (sub.Remarks ?? "") + " | Auto-cancelled due to leave rejection/revocation";
+                            sub.UpdatedByUserId = userId;
+                            sub.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+
                     leave.ApprovedByUserId = userId;
                     leave.ApprovedAt = DateTime.UtcNow;
                     leave.UpdatedAt = DateTime.UtcNow;
@@ -100,13 +116,13 @@ namespace CollegeManagement.API.Services.Implementations
                             // Skip Sundays as per existing project convention
                             if (date.DayOfWeek == DayOfWeek.Sunday) continue;
 
-                            var staffType = leave.Faculty.FacultyType.Equals("Teaching", StringComparison.OrdinalIgnoreCase) 
+                            var staffType = leave.Staff.StaffType.Equals("Teaching", StringComparison.OrdinalIgnoreCase) 
                                 ? CollegeManagement.API.Enums.StaffType.Teaching 
                                 : CollegeManagement.API.Enums.StaffType.NonTeaching;
 
                             // Find or create session
                             var session = await _context.StaffAttendanceSessions
-                                .FirstOrDefaultAsync(s => s.AttendanceDate.Date == date && s.StaffType == staffType && s.DepartmentId == leave.Faculty.DepartmentId);
+                                .FirstOrDefaultAsync(s => s.AttendanceDate.Date == date && s.StaffType == staffType && s.DepartmentId == leave.Staff.DepartmentId);
                                 
                             if (session == null)
                             {
@@ -114,7 +130,7 @@ namespace CollegeManagement.API.Services.Implementations
                                 {
                                     AttendanceDate = date,
                                     StaffType = staffType,
-                                    DepartmentId = leave.Faculty.DepartmentId,
+                                    DepartmentId = leave.Staff.DepartmentId,
                                     CreatedAt = DateTime.UtcNow,
                                     CreatedByUserId = userId,
                                     IsActive = true
@@ -124,13 +140,13 @@ namespace CollegeManagement.API.Services.Implementations
                             }
 
                             var existingAttendance = await _context.StaffAttendances
-                                .FirstOrDefaultAsync(a => a.FacultyId == leave.FacultyId && a.StaffSessionId == session.StaffSessionId);
+                                .FirstOrDefaultAsync(a => a.FacultyId == leave.StaffId && a.StaffSessionId == session.StaffSessionId);
 
                             if (existingAttendance == null)
                             {
                                 var newAtt = new CollegeManagement.API.Models.StaffAttendance
                                 {
-                                    FacultyId = leave.FacultyId,
+                                    FacultyId = leave.StaffId,
                                     StaffSessionId = session.StaffSessionId,
                                     Status = CollegeManagement.API.Enums.AttendanceStatus.Leave,
                                     Remarks = "Leave Approved: " + leave.Reason,
@@ -146,7 +162,7 @@ namespace CollegeManagement.API.Services.Implementations
                                 {
                                     EntityType = "Staff",
                                     EntityId = newAtt.StaffAttendanceId,
-                                    FacultyId = leave.FacultyId,
+                                    FacultyId = leave.StaffId,
                                     AttendanceDate = date,
                                     OldStatus = null,
                                     NewStatus = (byte)CollegeManagement.API.Enums.AttendanceStatus.Leave,
@@ -168,7 +184,7 @@ namespace CollegeManagement.API.Services.Implementations
                                 {
                                     EntityType = "Staff",
                                     EntityId = existingAttendance.StaffAttendanceId,
-                                    FacultyId = leave.FacultyId,
+                                    FacultyId = leave.StaffId,
                                     AttendanceDate = date,
                                     OldStatus = (byte)oldAttStatus,
                                     NewStatus = (byte)CollegeManagement.API.Enums.AttendanceStatus.Leave,
@@ -195,11 +211,11 @@ namespace CollegeManagement.API.Services.Implementations
             });
         }
 
-        public async Task<IEnumerable<StaffLeaveResponse>> GetStaffLeaveRequestsAsync(int? facultyId = null, int? departmentId = null, CollegeManagement.API.Enums.LeaveStatus? status = null)
+        public async Task<IEnumerable<StaffLeaveResponse>> GetStaffLeaveRequestsAsync(int? staffId = null, int? departmentId = null, CollegeManagement.API.Enums.LeaveStatus? status = null)
         {
             var query = _context.StaffLeaveRequests.Where(l => l.IsActive);
             
-            if (facultyId.HasValue) query = query.Where(l => l.FacultyId == facultyId);
+            if (staffId.HasValue) query = query.Where(l => l.StaffId == staffId);
             if (departmentId.HasValue) query = query.Where(l => l.DepartmentId == departmentId);
             if (status.HasValue) query = query.Where(l => l.Status == status);
 
@@ -208,8 +224,8 @@ namespace CollegeManagement.API.Services.Implementations
                 .Select(l => new StaffLeaveResponse
                 {
                     StaffLeaveRequestId = l.StaffLeaveRequestId,
-                    FacultyId = l.FacultyId,
-                    FacultyName = l.Faculty.FirstName + " " + l.Faculty.LastName, // Adjust if property names differ
+                    StaffId = l.StaffId,
+                    StaffName = l.Staff.FirstName + " " + l.Staff.LastName,
                     LeaveType = l.LeaveType,
                     StartDate = l.StartDate,
                     EndDate = l.EndDate,
@@ -232,8 +248,8 @@ namespace CollegeManagement.API.Services.Implementations
                 .Select(l => new StaffLeaveResponse
                 {
                     StaffLeaveRequestId = l.StaffLeaveRequestId,
-                    FacultyId = l.FacultyId,
-                    FacultyName = l.Faculty.FirstName + " " + l.Faculty.LastName,
+                    StaffId = l.StaffId,
+                    StaffName = l.Staff.FirstName + " " + l.Staff.LastName,
                     LeaveType = l.LeaveType,
                     StartDate = l.StartDate,
                     EndDate = l.EndDate,

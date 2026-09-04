@@ -1,4 +1,4 @@
-using CollegeManagement.API.Models;
+﻿using CollegeManagement.API.Models;
 using CollegeManagement.API.Models.Faculty;
 using CollegeManagement.API.Models.Staff;
 using CollegeManagement.API.Data.Configurations;
@@ -103,6 +103,7 @@ namespace CollegeManagement.API.Data
         public DbSet<Timetable> Timetables { get; set; }
         public DbSet<TimetableBackup> TimetableBackups { get; set; }
         public DbSet<TimetableBackupSlot> TimetableBackupSlots { get; set; }
+        public DbSet<TimetableSubstitution> TimetableSubstitutions { get; set; }
         public DbSet<Certificate> Certificates { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
 
@@ -116,6 +117,7 @@ namespace CollegeManagement.API.Data
             modelBuilder.ApplyConfiguration(new AttendanceConfiguration());
             modelBuilder.ApplyConfiguration(new AttendanceSessionConfiguration());
             modelBuilder.ApplyConfiguration(new StaffLeaveRequestConfiguration());
+            modelBuilder.ApplyConfiguration(new TimetableSubstitutionConfiguration());
             modelBuilder.ApplyConfiguration(new AttendanceAuditHistoryConfiguration());
             #endregion
 

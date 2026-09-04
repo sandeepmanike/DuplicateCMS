@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using CollegeManagement.API.Enums;
 
 namespace CollegeManagement.API.DTOs.StaffAttendance.Responses
@@ -6,8 +6,8 @@ namespace CollegeManagement.API.DTOs.StaffAttendance.Responses
     public class StaffLeaveResponse
     {
         public int StaffLeaveRequestId { get; set; }
-        public int FacultyId { get; set; }
-        public string FacultyName { get; set; } = string.Empty;
+        public int StaffId { get; set; }
+        public string StaffName { get; set; } = string.Empty;
         public LeaveType LeaveType { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }

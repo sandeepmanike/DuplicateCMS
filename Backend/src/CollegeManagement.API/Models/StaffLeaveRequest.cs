@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using CollegeManagement.API.Enums;
+using CollegeManagement.API.Models.Staff;
 
 namespace CollegeManagement.API.Models
 {
@@ -20,11 +21,11 @@ namespace CollegeManagement.API.Models
         public int StaffLeaveRequestId { get; set; }
 
         /// <summary>
-        /// Gets or sets the faculty/staff member requesting leave.
+        /// Gets or sets the staff member requesting leave.
         /// References Staff.Id.
         /// </summary>
         [Required]
-        public int FacultyId { get; set; }
+        public int StaffId { get; set; }
 
         /// <summary>
         /// Gets or sets the type of leave (Casual, Sick, Earned, Maternity, Other).
@@ -108,10 +109,10 @@ namespace CollegeManagement.API.Models
         #region Navigation Properties
 
         /// <summary>
-        /// Gets or sets the associated faculty/staff member.
+        /// Gets or sets the associated staff member.
         /// </summary>
-        [ForeignKey(nameof(FacultyId))]
-        public virtual CollegeManagement.API.Models.Faculty.Faculty Faculty { get; set; } = null!;
+        [ForeignKey(nameof(StaffId))]
+        public virtual CollegeManagement.API.Models.Staff.Staff Staff { get; set; } = null!;
 
         /// <summary>
         /// Gets or sets the associated department.
